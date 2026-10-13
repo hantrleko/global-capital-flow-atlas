@@ -1,6 +1,9 @@
 # Global Capital Flow Atlas (全球资本流动图谱)
 ### BIS 国际银行统计宏观分析与跨国风险敞口监测平台
 
+> **🌐 在线访问 (Live Demo)**: [https://hantrleko.github.io/global-capital-flow-atlas/](https://hantrleko.github.io/global-capital-flow-atlas/)  
+> **📦 源码仓库 (GitHub)**: [https://github.com/hantrleko/global-capital-flow-atlas](https://github.com/hantrleko/global-capital-flow-atlas)
+
 以**国际清算银行 (Bank for International Settlements, BIS)** 国际银行统计 (IBS) 为基石，专门面向宏观经济研究员、金融机构首席经济学家及风险管理团队打造的高清可视化分析平台。
 
 ---
