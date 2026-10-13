@@ -1,0 +1,241 @@
+import React, { useState } from 'react';
+import { 
+  PlayCircle, AlertTriangle, ShieldCheck, ArrowRight, 
+  ExternalLink, Layers, TrendingUp, TrendingDown, Clock, CheckCircle2 
+} from 'lucide-react';
+
+export const CRISIS_EPISODES = [
+  {
+    id: 'covid_2020q1',
+    quarter: '2020Q1',
+    title: '2020Q1 疫情冲击与全球“抢夺美元现金” (Dash for Cash & Swap Lines)',
+    subtitle: '离岸银行间美元流动性冻结与美联储无限量央行流动性互换启动',
+    stressLevel: 82,
+    stressColor: 'rose',
+    summary: '新冠疫情暴发初期的数周内，跨国企业、银行及对冲基金同时争夺美元现金头寸。国际掉期基差 (FX Swap Basis) 极度走阔，连美国国债亦遭遇非理性抛售变现。美联储紧急对 14 家全球主要央行开启无限量流动性互换协议与 FIMA 回购便利。',
+    bisObservations: [
+      '全球跨境银行信贷环比单季萎缩创次贷危机以来最快纪录；',
+      '离岸非美银行美元头寸缺口高达 5000 亿美元以上；',
+      '央行流动性互换余额峰值突破 4400 亿美元，成功阻止了全球外债违约雪崩。'
+    ],
+    affectedCorridors: [
+      { from: '英国 (GB)', to: '美国 (US)', impact: '美元存托与同业资金急速回撤' },
+      { from: '日本 (JP)', to: '美国 (US)', impact: '日元对冲美元掉期基差倒挂达 -140bps' },
+      { from: '跨国银行', to: '新兴市场 (EM)', impact: '国际商业银行授信额度瞬时冻结' }
+    ],
+    policyResponse: '美联储大幅调降常备互换利率（降至 OIS + 25bps），并将操作频率提升为每日一次；设立 FIMA 回购便利，允许外国央行抵押美债直接获取美元流动性。',
+    bisQuote: '“The COVID-19 shock was the fastest test of the post-GFC global financial architecture, highlighting that the Fed remains the de facto global lender of last resort in offshore dollars.” — BIS Quarterly Review (June 2020)'
+  },
+  {
+    id: 'fed_tightening_2022q3',
+    quarter: '2022Q3',
+    title: '2022Q3 沃尔克式暴力加息与全球强势美元挤压 (Aggressive Tightening)',
+    subtitle: '通胀爆表下美联储连续 75bps 加息，美元指数破 114，外围债务大收缩',
+    stressLevel: 75,
+    stressColor: 'rose',
+    summary: '美联储以 40 年未见之速度将联邦基金利率自 0% 暴拉至 4% 以上并持续收紧。美元指数飙升至 20 年高点 114.7，欧元与英镑汇率相继跌破平价或历史低点。外围新兴市场面临剧烈资本外流与美元债务滚续利差惩罚。',
+    bisObservations: [
+      '对新兴市场经济体 (EMEs) 的跨境美元银行信贷连续四个季度负增长；',
+      '大宗商品进口国经常账户恶化，土耳其、斯里兰卡、阿根廷外债与外储倍数突破破产阈值；',
+      '非美跨国实体加紧偿还未对冲美元短期商业借款以规避汇率与利息双重暴击。'
+    ],
+    affectedCorridors: [
+      { from: '欧洲跨国行', to: '土耳其 (TR)', impact: '外债展期风险溢价飙升 350bps' },
+      { from: '美国银行', to: '拉美 (BR/MX)', impact: '美元贸易信贷收缩，转回美国本土国债市场' },
+      { from: '英国 (GB)', to: '亚洲新兴市场', impact: '跨国银团贷款规模腰斩' }
+    ],
+    policyResponse: '全球多家新兴市场央行消耗外汇储备干预汇率并被动激进加息；多国开启双边本币结算以减少对美元短融的硬依赖。',
+    bisQuote: '“A stronger dollar acts as a tax on global dollar borrowers, tightening financial conditions far beyond the borders of the United States.” — Hyun Song Shin (BIS Economic Adviser)'
+  },
+  {
+    id: 'svb_cs_2023q1',
+    quarter: '2023Q1',
+    title: '2023Q1 欧美银行业风暴与瑞士信贷 AT1 归零 (SVB & Credit Suisse)',
+    subtitle: '硅谷银行挤兑破产与百年瑞信被瑞银紧急吞并，AT1 债券 170 亿美元全额减记',
+    stressLevel: 78,
+    stressColor: 'amber',
+    summary: '美国硅谷银行 (SVB) 因巨额未实现持债亏损在 36 小时内遭遇 420 亿美元闪电挤兑并破产倒闭；随后瑞士信贷陷入信心崩溃，瑞士当局促成瑞银紧急收购并史无前例全额减记 170 亿美元 AT1 应急可转债，引发跨国同业拆借对对手方信用审查的急剧收紧。',
+    bisObservations: [
+      '欧洲主要商业银行间隔夜与定期无抵押拆借利差短暂冲高；',
+      '跨国影子基金重新评估银行二级资本与 AT1 债的偿付从属风险；',
+      '资金大举涌向全球系统重要性银行 (G-SIBs) 与美国国债避险。'
+    ],
+    affectedCorridors: [
+      { from: '瑞士 (CH)', to: '全球银行间', impact: '瑞信离岸交易对手方风险敞口紧急转移至瑞银' },
+      { from: '美国区域行', to: '离岸商业主体', impact: '美国中型银行跨境授信全面冻结并回防本土' },
+      { from: '开曼离岸对冲基金', to: '欧洲银行', impact: '平仓金融股衍生品头寸与赎回保证金' }
+    ],
+    policyResponse: '美联储联合英格兰银行、加拿大央行、日本央行、欧洲央行及瑞士央行，将 7 天期美元流动性互换操作频率自每周提升为每日；美联储设立 BTFP（银行定期融资计划）提供面值流动性。',
+    bisQuote: '“The speed of deposit flight in the digital banking era has outpaced traditional resolution horizons, making central bank backstops indispensable.” — BIS Annual Economic Report (2023)'
+  },
+  {
+    id: 'divergence_2024q4',
+    quarter: '2024Q4',
+    title: '2024Q4 全球央行大分化与离岸私人信贷崛起 (Policy Divergence)',
+    subtitle: '美联储大步降息 50bps，日本央行走出负利率，离岸非银私人信贷突破 2 万亿美元',
+    stressLevel: 32,
+    stressColor: 'cyan',
+    summary: '美联储正式开启降息周期（首次降息 50bps），欧洲央行同步降息；但日本央行逆势加息促成日元套息交易巨震。在传统商业银行受限于巴塞尔协议的背景下，以开曼群岛、卢森堡为中枢的离岸私人信贷 (Private Credit) 资产规模突破 2.1 万亿美元，成为跨国资金融通新支柱。',
+    bisObservations: [
+      '跨境私人信贷与表外基金中介占比创历史新高；',
+      '非美跨国实体美元债务再融资成本边际缓解，但高债务存量仍约束资本开支；',
+      '日元套息交易（Borrow in JPY, Invest in USD）遭遇波动率脉冲式再平衡。'
+    ],
+    affectedCorridors: [
+      { from: '日本 (JP)', to: '美国 (US)', impact: '日元套息交易平仓引发全球股市与跨境套利资金震荡' },
+      { from: '开曼 (KY)', to: '全球私营部门', impact: '离岸直接借贷 (Direct Lending) 规模迅速填补传统银团借贷' },
+      { from: '中国 (CN)', to: '亚洲自贸伙伴', impact: '本币与多边跨境结算比例持续扩大' }
+    ],
+    policyResponse: '多国央行强化对非银金融中介 (NBFI) 杠杆率与流动性错配的穿透式监管，防范“监管套利”引发的系统性影子银行危机。',
+    bisQuote: '“As traditional bank intermediation declines under stringent capital rules, private credit and offshore non-bank intermediaries are expanding into systemic significance.” — Claudio Borio (BIS)'
+  }
+];
+
+export default function CrisisPlaybook({
+  dataset,
+  selectedQuarter,
+  onSelectQuarter,
+  onSelectCountry
+}) {
+  const [activeEpisodeId, setActiveEpisodeId] = useState('covid_2020q1');
+  const activeEpisode = CRISIS_EPISODES.find(e => e.id === activeEpisodeId) || CRISIS_EPISODES[0];
+
+  const isCurrentQuarter = selectedQuarter === activeEpisode.quarter;
+
+  return (
+    <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-2xl space-y-5">
+      {/* Top Banner */}
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-400">
+            <PlayCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              全球金融风暴复盘与央行应对剧本 (Macro Crisis Playbook & Central Bank Actions)
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              深度复盘 2018-2024 年四大里程碑级宏观流动性风暴，穿透 BIS 官方数据足迹与多国央行救市干预机制
+            </p>
+          </div>
+        </div>
+
+        {/* Action Button: Jump to Episode Quarter */}
+        <button
+          onClick={() => onSelectQuarter(activeEpisode.quarter)}
+          className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shadow-md ${
+            isCurrentQuarter
+              ? 'bg-emerald-600 text-white shadow-emerald-600/30 font-bold'
+              : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30'
+          }`}
+        >
+          {isCurrentQuarter ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+          <span>{isCurrentQuarter ? `当前正在演播：${activeEpisode.quarter}` : `一键装载该危机截面 (${activeEpisode.quarter})`}</span>
+        </button>
+      </div>
+
+      {/* Episode Selection Tabs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {CRISIS_EPISODES.map(ep => {
+          const isSel = ep.id === activeEpisodeId;
+          return (
+            <div
+              key={ep.id}
+              onClick={() => setActiveEpisodeId(ep.id)}
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                isSel
+                  ? 'bg-blue-950/40 border-blue-500/70 shadow-lg shadow-blue-950/50'
+                  : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-xs font-bold text-blue-400 bg-blue-950 px-2 py-0.5 rounded border border-blue-900/60">
+                  {ep.quarter}
+                </span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                  ep.stressLevel > 75 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                }`}>
+                  压力: {ep.stressLevel}
+                </span>
+              </div>
+              <h3 className="font-bold text-xs text-white line-clamp-1">{ep.title.split(' ')[1]}</h3>
+              <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                {ep.subtitle}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Deep-Dive Narrative & Analytical Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Left Column: Shock Overview & Policy Intervention (7 cols) */}
+        <div className="lg:col-span-7 space-y-4">
+          {/* Executive Overview */}
+          <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+            <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <span>宏观冲击本质与风暴脉络：</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {activeEpisode.summary}
+            </p>
+          </div>
+
+          {/* Policy Response Box */}
+          <div className="p-4 bg-blue-950/20 rounded-xl border border-blue-900/50 space-y-2">
+            <div className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-blue-400" />
+              <span>多国央行干预与流动性救助防线：</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {activeEpisode.policyResponse}
+            </p>
+          </div>
+
+          {/* BIS Official Report Citation */}
+          <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 text-xs italic text-slate-400 leading-relaxed">
+            {activeEpisode.bisQuote}
+          </div>
+        </div>
+
+        {/* Right Column: Quantitative BIS Footprint & Corridors (5 cols) */}
+        <div className="lg:col-span-5 space-y-4">
+          {/* Official BIS Footprint */}
+          <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2.5">
+            <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 uppercase font-mono">
+              <Layers className="w-4 h-4" /> BIS 官方数据足迹与统计印证
+            </div>
+            <div className="space-y-2">
+              {activeEpisode.bisObservations.map((obs, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-xs text-slate-300 leading-normal">
+                  <span className="font-mono text-emerald-400 font-bold">•</span>
+                  <span>{obs}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Shock Corridor Footprint */}
+          <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2.5">
+            <div className="text-xs font-bold text-rose-400 flex items-center gap-1.5 uppercase font-mono">
+              <TrendingDown className="w-4 h-4" /> 震中核心信贷走廊异动
+            </div>
+            <div className="space-y-2">
+              {activeEpisode.affectedCorridors.map((c, idx) => (
+                <div key={idx} className="p-2 bg-slate-950/70 rounded-lg border border-slate-800/80 text-xs">
+                  <div className="font-bold text-white flex items-center gap-1">
+                    <span>{c.from}</span>
+                    <ArrowRight className="w-3 h-3 text-slate-500" />
+                    <span>{c.to}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-1">{c.impact}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
