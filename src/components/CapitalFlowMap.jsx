@@ -638,6 +638,52 @@ export default function CapitalFlowMap({
     };
   }, [selectedCorridor, currentLinks]);
 
+  // Top 5 Bilateral Corridors for the selected quarter
+  const topCorridors = useMemo(() => {
+    return [...currentLinks]
+      .sort((a, b) => b.claims_usd_bn - a.claims_usd_bn)
+      .slice(0, 5)
+      .map(l => ({
+        ...l,
+        fromName: countryMap[l.source]?.name_zh || l.source,
+        toName: countryMap[l.target]?.name_zh || l.target,
+        usdShare: Math.round((l.usd_denominated_bn / Math.max(1, l.claims_usd_bn)) * 100)
+      }));
+  }, [currentLinks, countryMap]);
+
+  // Global net creditor and debtor poles
+  const netPositions = useMemo(() => {
+    const list = countries.map(c => {
+      const qData = (lbsQuarter[c.code] || [])[dataset.quarters.indexOf(selectedQuarter)] || {};
+      const claims = qData.claims_usd_bn || c.base_claims || 0;
+      const liab = qData.liabilities_usd_bn || c.base_liab || 0;
+      const net = qData.net_position_usd_bn !== undefined ? qData.net_position_usd_bn : (claims - liab);
+      return {
+        code: c.code,
+        name: c.name_zh,
+        region: c.region,
+        net,
+        claims,
+        liab
+      };
+    });
+    const creditors = [...list].filter(x => x.net > 0).sort((a, b) => b.net - a.net).slice(0, 3);
+    const debtors = [...list].filter(x => x.net < 0).sort((a, b) => a.net - b.net).slice(0, 3);
+    return { creditors, debtors };
+  }, [countries, lbsQuarter, selectedQuarter, dataset.quarters]);
+
+  // Key Systemic Jurisdictions for quick filtering
+  const SYSTEMIC_JURISDICTIONS = ['US', 'CN', 'GB', 'JP', 'DE', 'CH', 'FR', 'SG', 'KY', 'HK'];
+
+  // Pivotal Macro Historical Epochs
+  const MACRO_EPOCHS = [
+    { label: '联储缩表', quarter: '2018Q4', tag: '加息顶峰' },
+    { label: '疫情危机', quarter: '2020Q1', tag: '流动性海啸' },
+    { label: '供给再通胀', quarter: '2021Q3', tag: '通胀狂飙' },
+    { label: '硅谷银行风暴', quarter: '2023Q1', tag: '极速紧缩' },
+    { label: '高息降息博弈', quarter: '2024Q4', tag: '最新基准' }
+  ];
+
   useEffect(() => {
     if (!selectedCorridor) {
       if (corridorSparklineInstance.current) {
@@ -846,152 +892,300 @@ export default function CapitalFlowMap({
         </div>
       </div>
 
-      {/* Main Map Canvas */}
-      <div className="glass-panel rounded-2xl relative overflow-hidden shadow-2xl border border-white/[0.06] min-h-[640px] flex flex-col">
-        {/* Ocean Background Canvas with deep velvet atmosphere */}
-        <div 
-          ref={chartRef} 
-          className="w-full h-[640px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
-        />
+      {/* Pro-Analytics Desk (Map + Real-Time Intelligence Dossier) */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        {/* Main Map Canvas Column */}
+        <div className="xl:col-span-8 2xl:col-span-9 glass-panel rounded-2xl relative overflow-hidden shadow-2xl border border-white/[0.06] min-h-[640px] flex flex-col">
+          {/* Ocean Background Canvas with deep velvet atmosphere */}
+          <div 
+            ref={chartRef} 
+            className="w-full h-[640px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
+          />
 
-        {/* Floating Viewport Preset Pills (Bottom-Left) */}
-        <div className="absolute bottom-5 left-5 z-20 flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-1.5 text-xs shadow-xl">
-          <span className="text-[11px] text-slate-400 px-2 flex items-center gap-1">
-            <Compass className="w-3.5 h-3.5 text-sky-400" /> 区域聚焦:
-          </span>
-          {[
-            { id: 'global', label: '全球轨道' },
-            { id: 'asia', label: '亚太环' },
-            { id: 'europe', label: '泛欧网络' },
-            { id: 'americas', label: '美洲中枢' }
-          ].map(p => (
-            <button
-              key={p.id}
-              onClick={() => setGeoPreset(p.id)}
-              className={`px-2.5 py-1 rounded-lg transition-all text-xs font-medium ${
-                geoPreset === p.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+          {/* Floating Viewport Preset Pills (Bottom-Left) */}
+          <div className="absolute bottom-5 left-5 z-20 flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-1.5 text-xs shadow-xl">
+            <span className="text-[11px] text-slate-400 px-2 flex items-center gap-1">
+              <Compass className="w-3.5 h-3.5 text-sky-400" /> 区域聚焦:
+            </span>
+            {[
+              { id: 'global', label: '全球轨道' },
+              { id: 'asia', label: '亚太环' },
+              { id: 'europe', label: '泛欧网络' },
+              { id: 'americas', label: '美洲中枢' }
+            ].map(p => (
+              <button
+                key={p.id}
+                onClick={() => setGeoPreset(p.id)}
+                className={`px-2.5 py-1 rounded-lg transition-all text-xs font-medium cursor-pointer ${
+                  geoPreset === p.id
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Floating Focus Mode Banner (Top-Left) */}
+          {focusCountry !== 'ALL' && (
+            <div className="absolute top-4 left-4 z-20 flex items-center gap-2.5 bg-slate-950/90 backdrop-blur-md border border-sky-500/40 px-3.5 py-1.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-top-1 duration-200">
+              <Target className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
+              <span className="text-xs text-white">
+                已隔离该国双边管道: <strong className="text-sky-300 font-mono">{countryMap[focusCountry]?.name_zh || focusCountry} ({focusCountry})</strong>
+              </span>
+              <button
+                onClick={() => setFocusCountry('ALL')}
+                className="text-[11px] text-sky-400 hover:text-white underline ml-1 cursor-pointer font-medium"
+              >
+                重置全网视角
+              </button>
+            </div>
+          )}
+
+          {/* Floating Corridor Deep-Dive Inspector HUD Card (Top-Right) */}
+          {activeCorridorStats && (
+            <div className="absolute top-4 right-4 z-30 w-80 sm:w-96 bg-slate-950/92 backdrop-blur-xl border border-sky-500/35 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.85)] animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="p-1 rounded-lg bg-sky-500/20 text-sky-400">
+                    <ArrowRight className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <div className="text-xs font-semibold text-white flex items-center gap-1.5">
+                      <span>{activeCorridorStats.fromName}</span>
+                      <span className="text-slate-400">→</span>
+                      <span>{activeCorridorStats.toName}</span>
+                    </div>
+                    <div className="text-[10px] font-mono text-sky-400">
+                      {activeCorridorStats.source} → {activeCorridorStats.target} 跨境信贷走廊
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedCorridor(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="关闭该走廊透视卡片"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Metric Cards */}
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="bg-slate-900/80 rounded-xl p-2.5 border border-white/5">
+                  <div className="text-[10px] text-slate-400">{selectedQuarter} 跨国债权</div>
+                  <div className="text-sm font-bold text-white font-mono mt-0.5">
+                    ${activeCorridorStats.value} <span className="text-[10px] font-normal text-slate-400">亿 USD</span>
+                  </div>
+                </div>
+                <div className="bg-slate-900/80 rounded-xl p-2.5 border border-white/5">
+                  <div className="text-[10px] text-slate-400">美元计价总额</div>
+                  <div className="text-sm font-bold text-emerald-400 font-mono mt-0.5">
+                    ${activeCorridorStats.usdVol} <span className="text-[10px] font-normal text-slate-400">亿 ({Math.round((activeCorridorStats.usdVol / Math.max(1, activeCorridorStats.value)) * 100)}%)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sparkline Header */}
+              <div className="flex items-center justify-between text-[11px] mb-1">
+                <span className="text-slate-300 font-medium flex items-center gap-1">
+                  <TrendingUp className="w-3.5 h-3.5 text-sky-400" /> 28 季度双边信贷走廊演进趋势
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">2018Q1 - 2024Q4</span>
+              </div>
+
+              {/* Sparkline Canvas */}
+              <div ref={corridorSparklineRef} className="w-full h-32 bg-slate-900/50 rounded-xl border border-white/5" />
+
+              {/* Quick Actions */}
+              <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-white/5">
+                <button
+                  onClick={() => setFocusCountry(activeCorridorStats.source)}
+                  className="flex-1 py-1.5 px-2 rounded-lg bg-sky-600/25 hover:bg-sky-600/40 text-sky-200 border border-sky-500/30 text-[11px] font-medium transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  title={`隔离并只展示 ${activeCorridorStats.fromName} 的全部进出管道`}
+                >
+                  <Target className="w-3.5 h-3.5" />
+                  聚焦 {activeCorridorStats.source}
+                </button>
+                <button
+                  onClick={() => setFocusCountry(activeCorridorStats.target)}
+                  className="flex-1 py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-medium transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  title={`隔离并只展示 ${activeCorridorStats.toName} 的全部进出管道`}
+                >
+                  <Target className="w-3.5 h-3.5" />
+                  聚焦 {activeCorridorStats.target}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Floating Minimalist Legend (Bottom-Right) */}
+          <div className="absolute bottom-5 right-5 z-20 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-3 text-xs shadow-xl space-y-1.5 hidden md:block">
+            <div className="text-[10px] font-mono uppercase text-slate-400 mb-1 tracking-wider border-b border-white/5 pb-1">
+              图谱符号体系 (Symbology)
+            </div>
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="w-2.5 h-2.5 rounded-full border border-sky-400 bg-sky-400/20" />
+              <span className="text-slate-300">储备货币核心 (Global Core)</span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="w-2.5 h-2.5 rounded-full border border-amber-400 bg-amber-400/20" />
+              <span className="text-slate-300">离岸转口中介 (Offshore Conduit)</span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="w-2.5 h-2.5 rounded-full border border-emerald-400 bg-emerald-400/20" />
+              <span className="text-slate-300">对外净债权国 (Net Creditor &gt; $250B)</span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="w-2.5 h-2.5 rounded-full border border-rose-400 bg-rose-400/20" />
+              <span className="text-slate-300">对外净负债国 (Net Debtor &lt; -$250B)</span>
+            </div>
+          </div>
         </div>
 
-        {/* Floating Focus Mode Banner (Top-Left) */}
-        {focusCountry !== 'ALL' && (
-          <div className="absolute top-4 left-4 z-20 flex items-center gap-2.5 bg-slate-950/90 backdrop-blur-md border border-sky-500/40 px-3.5 py-1.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-top-1 duration-200">
-            <Target className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
-            <span className="text-xs text-white">
-              已隔离该国双边管道: <strong className="text-sky-300 font-mono">{countryMap[focusCountry]?.name_zh || focusCountry} ({focusCountry})</strong>
-            </span>
-            <button
-              onClick={() => setFocusCountry('ALL')}
-              className="text-[11px] text-sky-400 hover:text-white underline ml-1 cursor-pointer font-medium"
-            >
-              重置全网视角
-            </button>
-          </div>
-        )}
-
-        {/* Floating Corridor Deep-Dive Inspector HUD Card (Top-Right) */}
-        {activeCorridorStats && (
-          <div className="absolute top-4 right-4 z-30 w-80 sm:w-96 bg-slate-950/92 backdrop-blur-xl border border-sky-500/35 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.85)] animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
+        {/* Right Intelligence Dossier Column */}
+        <div className="xl:col-span-4 2xl:col-span-3 flex flex-col gap-3.5">
+          {/* Card 1: Top 5 Bilateral Arterial Corridors in Current Quarter */}
+          <div className="glass-panel rounded-2xl p-4 shadow-xl border border-white/[0.06] flex-1">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-3">
               <div className="flex items-center gap-2">
                 <span className="p-1 rounded-lg bg-sky-500/20 text-sky-400">
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </span>
-                <div>
-                  <div className="text-xs font-semibold text-white flex items-center gap-1.5">
-                    <span>{activeCorridorStats.fromName}</span>
-                    <span className="text-slate-400">→</span>
-                    <span>{activeCorridorStats.toName}</span>
-                  </div>
-                  <div className="text-[10px] font-mono text-sky-400">
-                    {activeCorridorStats.source} → {activeCorridorStats.target} 跨境信贷走廊
-                  </div>
-                </div>
+                <h4 className="text-xs font-bold text-white tracking-wide">
+                  当季核心信贷动脉 Top 5
+                </h4>
               </div>
-              <button
-                onClick={() => setSelectedCorridor(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                title="关闭该走廊透视卡片"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Metric Cards */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="bg-slate-900/80 rounded-xl p-2.5 border border-white/5">
-                <div className="text-[10px] text-slate-400">{selectedQuarter} 跨国债权</div>
-                <div className="text-sm font-bold text-white font-mono mt-0.5">
-                  ${activeCorridorStats.value} <span className="text-[10px] font-normal text-slate-400">亿 USD</span>
-                </div>
-              </div>
-              <div className="bg-slate-900/80 rounded-xl p-2.5 border border-white/5">
-                <div className="text-[10px] text-slate-400">美元计价总额</div>
-                <div className="text-sm font-bold text-emerald-400 font-mono mt-0.5">
-                  ${activeCorridorStats.usdVol} <span className="text-[10px] font-normal text-slate-400">亿 ({Math.round((activeCorridorStats.usdVol / Math.max(1, activeCorridorStats.value)) * 100)}%)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Sparkline Header */}
-            <div className="flex items-center justify-between text-[11px] mb-1">
-              <span className="text-slate-300 font-medium flex items-center gap-1">
-                <TrendingUp className="w-3.5 h-3.5 text-sky-400" /> 28 季度双边信贷走廊演进趋势
+              <span className="text-[10px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/30">
+                {selectedQuarter}
               </span>
-              <span className="text-[10px] font-mono text-slate-400">2018Q1 - 2024Q4</span>
             </div>
 
-            {/* Sparkline Canvas */}
-            <div ref={corridorSparklineRef} className="w-full h-32 bg-slate-900/50 rounded-xl border border-white/5" />
+            <div className="space-y-2">
+              {topCorridors.map((c, idx) => (
+                <div
+                  key={`${c.source}->${c.target}`}
+                  onClick={() => {
+                    setSelectedCorridor({
+                      source: c.source,
+                      target: c.target,
+                      fromName: c.fromName,
+                      toName: c.toName,
+                      value: c.claims_usd_bn,
+                      usdVol: c.usd_denominated_bn
+                    });
+                  }}
+                  className="p-2 rounded-xl bg-slate-900/70 hover:bg-slate-800/90 border border-white/5 hover:border-sky-500/40 cursor-pointer transition-all group"
+                  title="点击在地图中高亮透视此走廊"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5 font-medium text-slate-200 group-hover:text-white">
+                      <span className="text-[10px] font-mono font-bold text-sky-400 w-4">#{idx + 1}</span>
+                      <span>{c.fromName}</span>
+                      <span className="text-slate-500">→</span>
+                      <span>{c.toName}</span>
+                    </div>
+                    <span className="font-mono font-bold text-white text-xs">
+                      ${c.claims_usd_bn} <span className="text-[10px] text-slate-400 font-normal">亿</span>
+                    </span>
+                  </div>
 
-            {/* Quick Actions */}
-            <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-white/5">
-              <button
-                onClick={() => setFocusCountry(activeCorridorStats.source)}
-                className="flex-1 py-1.5 px-2 rounded-lg bg-sky-600/25 hover:bg-sky-600/40 text-sky-200 border border-sky-500/30 text-[11px] font-medium transition-colors flex items-center justify-center gap-1"
-                title={`隔离并只展示 ${activeCorridorStats.fromName} 的全部进出管道`}
-              >
-                <Target className="w-3.5 h-3.5" />
-                聚焦 {activeCorridorStats.source}
-              </button>
-              <button
-                onClick={() => setFocusCountry(activeCorridorStats.target)}
-                className="flex-1 py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-medium transition-colors flex items-center justify-center gap-1"
-                title={`隔离并只展示 ${activeCorridorStats.toName} 的全部进出管道`}
-              >
-                <Target className="w-3.5 h-3.5" />
-                聚焦 {activeCorridorStats.target}
-              </button>
+                  <div className="flex items-center justify-between mt-1.5 text-[10px] text-slate-400 font-mono">
+                    <span className="flex items-center gap-1">
+                      <DollarSign className="w-2.5 h-2.5 text-emerald-400" /> 美元占比: {c.usdShare}%
+                    </span>
+                    <span className="text-emerald-400 font-semibold">${c.usd_denominated_bn} 亿</span>
+                  </div>
+                  <div className="w-full h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-sky-500 to-emerald-400" 
+                      style={{ width: `${Math.min(100, c.usdShare)}%` }} 
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        )}
 
-        {/* Floating Minimalist Legend (Bottom-Right) */}
-        <div className="absolute bottom-5 right-5 z-20 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-3 text-xs shadow-xl space-y-1.5 hidden md:block">
-          <div className="text-[10px] font-mono uppercase text-slate-400 mb-1 tracking-wider border-b border-white/5 pb-1">
-            图谱符号体系 (Symbology)
+          {/* Card 2: Global Net Creditors vs Debtors */}
+          <div className="glass-panel rounded-2xl p-4 shadow-xl border border-white/[0.06]">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded-lg bg-emerald-500/20 text-emerald-400">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                </span>
+                <h4 className="text-xs font-bold text-white tracking-wide">
+                  全球对外净头寸极化两极
+                </h4>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono">LBS 综合</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {/* Top Creditors */}
+              <div className="space-y-1.5 bg-slate-900/60 rounded-xl p-2.5 border border-emerald-500/10">
+                <div className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1 font-mono">
+                  <span>🟢 净债权巨头</span>
+                </div>
+                {netPositions.creditors.map(c => (
+                  <div key={c.code} className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-300 truncate">{c.name}</span>
+                    <span className="font-mono text-emerald-400 font-semibold">+${(c.net / 10).toFixed(0)}B</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Top Debtors */}
+              <div className="space-y-1.5 bg-slate-900/60 rounded-xl p-2.5 border border-rose-500/10">
+                <div className="text-[10px] font-semibold text-rose-400 uppercase tracking-wider flex items-center gap-1 font-mono">
+                  <span>🔴 净负债巨头</span>
+                </div>
+                {netPositions.debtors.map(c => (
+                  <div key={c.code} className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-300 truncate">{c.name}</span>
+                    <span className="font-mono text-rose-400 font-semibold">-${Math.abs(c.net / 10).toFixed(0)}B</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="w-2.5 h-2.5 rounded-full border border-sky-400 bg-sky-400/20" />
-            <span className="text-slate-300">储备货币核心 (Global Core)</span>
-          </div>
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="w-2.5 h-2.5 rounded-full border border-amber-400 bg-amber-400/20" />
-            <span className="text-slate-300">离岸转口中介 (Offshore Conduit)</span>
-          </div>
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="w-2.5 h-2.5 rounded-full border border-emerald-400 bg-emerald-400/20" />
-            <span className="text-slate-300">对外净债权国 (Net Creditor &gt; $250B)</span>
-          </div>
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="w-2.5 h-2.5 rounded-full border border-rose-400 bg-rose-400/20" />
-            <span className="text-slate-300">对外净负债国 (Net Debtor &lt; -$250B)</span>
+
+          {/* Card 3: Rapid Systemic Jurisdiction Filter */}
+          <div className="glass-panel rounded-2xl p-3.5 shadow-xl border border-white/[0.06]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
+                <Target className="w-3 h-3 text-sky-400" /> 核心主权经济体快选:
+              </span>
+              {focusCountry !== 'ALL' && (
+                <button
+                  onClick={() => setFocusCountry('ALL')}
+                  className="text-[10px] text-sky-400 hover:text-white underline cursor-pointer"
+                >
+                  重置全局
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {SYSTEMIC_JURISDICTIONS.map(code => {
+                const c = countryMap[code];
+                const isActive = focusCountry === code;
+                return (
+                  <button
+                    key={code}
+                    onClick={() => setFocusCountry(isActive ? 'ALL' : code)}
+                    className={`px-2 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer flex items-center gap-1 border ${
+                      isActive
+                        ? 'bg-blue-600 text-white font-bold border-blue-400 shadow-sm'
+                        : 'bg-slate-900/80 text-slate-300 border-slate-700/60 hover:border-slate-500 hover:text-white'
+                    }`}
+                  >
+                    <span>{code}</span>
+                    <span className="text-[10px] text-slate-400 font-sans">{c?.name_zh?.slice(0, 2)}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -1021,6 +1215,28 @@ export default function CapitalFlowMap({
             <span className="text-slate-600">·</span>
             <span>最新总量: $37.13 万亿</span>
           </div>
+        </div>
+
+        {/* Macro Historical Epoch Anchors */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-white/[0.06]">
+          <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1 shrink-0">
+            <Sparkles className="w-3.5 h-3.5 text-sky-400" /> 历史周期锚点快选:
+          </span>
+          {MACRO_EPOCHS.map(ep => (
+            <button
+              key={ep.quarter}
+              onClick={() => onSelectQuarter?.(ep.quarter)}
+              className={`px-2.5 py-1 rounded-xl text-xs font-mono transition-all flex items-center gap-1.5 shrink-0 border cursor-pointer ${
+                selectedQuarter === ep.quarter
+                  ? 'bg-blue-600/30 text-sky-300 border-sky-400/60 font-bold shadow-[0_0_10px_rgba(56,189,248,0.3)]'
+                  : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+              }`}
+              title={`跳转至 ${ep.quarter} (${ep.tag})`}
+            >
+              <span className="font-semibold">{ep.label}</span>
+              <span className="text-[10px] text-sky-400/80 font-bold">({ep.quarter})</span>
+            </button>
+          ))}
         </div>
 
         {/* ECharts Scrubber Chart */}
