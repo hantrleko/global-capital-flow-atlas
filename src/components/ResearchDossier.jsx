@@ -212,6 +212,64 @@ else:
     print(f"BIS API HTTP 状态码: {response.status_code}")
 `;
 
+  const handleExportFullPythonScript = () => {
+    const fullScript = `"""
+=============================================================================
+BIS Global Capital Flow Atlas - Quantitative Macro Research Package
+Quarter: ${selectedQuarter}
+Data Source: BIS Locational Banking Statistics (LBS) & Consolidated Banking Statistics (CBS)
+SDMX Version: 2.1 Audited Standards
+=============================================================================
+"""
+import requests
+import json
+import pandas as pd
+import numpy as np
+
+# 1. Macro Indicators for ${selectedQuarter}
+macro_data = {
+    "quarter": "${selectedQuarter}",
+    "total_claims_usd_bn": ${currentMacro.total_cross_border_claims_usd_bn || 37000},
+    "usd_share_pct": ${currentMacro.global_usd_share_pct || 48.5},
+    "bis_funding_stress": ${currentMacro.bis_usd_funding_stress_index || 42},
+    "qoq_growth_pct": ${currentMacro.global_qoq_growth_pct || 1.2}
+}
+
+print("=== Macro Financial Snapshot ===")
+for k, v in macro_data.items():
+    print(f"  {k}: {v}")
+
+# 2. Reconstruct Bilateral Banking Claims Graph
+try:
+    import networkx as nx
+    G = nx.DiGraph()
+    # Bilateral Links Sample (Top Cross-Border Flows)
+    links = ${JSON.stringify((dataset.bilateral_matrix?.[selectedQuarter] || []).slice(0, 20), null, 4)}
+    
+    for l in links:
+        G.add_edge(l['source'], l['target'], weight=l['claims_usd_bn'], usd_vol=l['usd_denominated_bn'])
+
+    print(f"\\nGraph Topology: {G.number_of_nodes()} Nodes, {G.number_of_edges()} Edges")
+    pagerank = nx.pagerank(G, weight='weight')
+    top_cores = sorted(pagerank.items(), key=lambda x: x[1], reverse=True)[:5]
+    print("\\nTop Global Financial Centers by Network Centrality (PageRank):")
+    for rank, (node, score) in enumerate(top_cores, 1):
+        print(f"  #{rank}: {node} (Score: {score:.4f})")
+except ImportError:
+    print("\\n[Note] Install networkx for topological centrality: pip install networkx")
+
+print("\\n=== Research Package Generation Completed Successfully ===")
+`;
+    const blob = new Blob([fullScript], { type: 'text/x-python;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bis_atlas_quantitative_research_${selectedQuarter}.py`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
   const copyCode = () => {
     navigator.clipboard.writeText(pythonApiSnippet);
     setCopiedCode(true);
@@ -220,6 +278,17 @@ else:
 
   return (
     <div className="space-y-6">
+      {/* Print-specific style */}
+      <style>{`
+        @media print {
+          body { background: white !important; color: black !important; }
+          header, nav, button, select, input { display: none !important; }
+          .glass-panel { background: white !important; color: black !important; border: 1px solid #ccc !important; box-shadow: none !important; }
+          .text-white { color: black !important; }
+          .text-slate-400 { color: #555 !important; }
+        }
+      `}</style>
+
       {/* Top Banner: Research Memo */}
       <div className="glass-panel rounded-2xl p-6 shadow-2xl">
         <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-4 mb-4 gap-4">
@@ -241,28 +310,35 @@ else:
             <button
               onClick={handleExportXlsx}
               disabled={isExportingXlsx}
-              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/20"
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
               title="导出包含5张独立数据表的多工作簿 Excel 文件"
             >
               <Table className="w-3.5 h-3.5" />
-              <span>{isExportingXlsx ? '正在打包 Excel...' : '导出机构级 Excel (.xlsx)'}</span>
+              <span>{isExportingXlsx ? '打包 Excel...' : '导出机构级 Excel (.xlsx)'}</span>
+            </button>
+            <button
+              onClick={handleExportFullPythonScript}
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
+              title="导出包含完整 NetworkX 与 Pandas 的自执行 Python 脚本"
+            >
+              <Code2 className="w-3.5 h-3.5" /> 导出 Python 研报包 (.py)
             </button>
             <button
               onClick={() => window.print()}
-              className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-all shadow-sm"
+              className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
               title="一键打印或导出 PDF 机构研报"
             >
               <FileText className="w-3.5 h-3.5 text-blue-400" /> 打印 / 保存 PDF
             </button>
             <button
               onClick={handleExportCsv}
-              className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-all shadow-sm"
+              className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-blue-400" /> 导出 CSV
             </button>
             <button
               onClick={handleExportJson}
-              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/30"
+              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/30 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" /> 导出 JSON
             </button>
@@ -270,8 +346,8 @@ else:
         </div>
 
         {/* Dynamic Research Report Content */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-xl">
             <div className="text-xs text-slate-400 uppercase tracking-wider font-mono">1. 信贷规模与环比动能</div>
             <div className="text-sm font-semibold text-white mt-1">
               跨境总债权规模达 <span className="text-blue-400 font-mono font-bold">${currentMacro.total_cross_border_claims_usd_bn} 亿</span>
@@ -281,7 +357,7 @@ else:
             </p>
           </div>
 
-          <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-lg">
+          <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-xl">
             <div className="text-xs text-slate-400 uppercase tracking-wider font-mono">2. 美元霸权与离岸融资压迫</div>
             <div className="text-sm font-semibold text-white mt-1">
               美元跨境比重 <span className="text-emerald-400 font-mono font-bold">{currentMacro.global_usd_share_pct}%</span> (规模 ${currentMacro.total_usd_cross_border_bn} 亿)
@@ -291,7 +367,7 @@ else:
             </p>
           </div>
 
-          <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-lg">
+          <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-xl">
             <div className="text-xs text-slate-400 uppercase tracking-wider font-mono">3. 系统性中枢与转口影子银行</div>
             <div className="text-sm font-semibold text-white mt-1">
               离岸中心 (Cayman/UK/SG) 净敞口持续活跃
@@ -299,6 +375,28 @@ else:
             <p className="text-xs text-slate-400 mt-2 leading-relaxed">
               非银金融机构 (NBFIs) 与离岸基金通道构成了当前国际资本流动的最活跃节点。在加息或流动性收缩背景下，这类机构易成为跨国传染的加速器。
             </p>
+          </div>
+        </div>
+
+        {/* Section 4: Institutional Allocation & Policy Guidance */}
+        <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl mb-4">
+          <div className="text-xs text-slate-400 uppercase tracking-wider font-mono mb-2 flex items-center gap-1.5">
+            <BookOpen className="w-3.5 h-3.5 text-sky-400" />
+            <span>4. 投委会策略与央行风控指引 (Institutional Allocation &amp; Central Bank Policy Memo)</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs leading-relaxed text-slate-300">
+            <div className="bg-slate-950/60 p-3 rounded-lg border border-white/5">
+              <strong className="text-sky-300 block mb-1">🏦 央行与外储管理者:</strong>
+              建议适度拓宽与主要贸易伙伴的双边本币互换协议额度，防范美联储货币政策急转弯引发的 CIP 交叉货币掉期基差走阔与离岸美元踩踏。
+            </div>
+            <div className="bg-slate-950/60 p-3 rounded-lg border border-white/5">
+              <strong className="text-emerald-300 block mb-1">🏛️ 跨国商业银行风控:</strong>
+              严密监控 Basel III CCyB 逆周期资本缓冲与 Greenspan-Guidotti 期限缺口，对短期跨国拆借占比超 45% 的新兴市场借款人实施提前压力对冲。
+            </div>
+            <div className="bg-slate-950/60 p-3 rounded-lg border border-white/5">
+              <strong className="text-amber-300 block mb-1">📈 全球宏观对冲基金:</strong>
+              重点捕捉离岸避税中枢 (Cayman/Luxembourg) 衍生品隐含杠杆与利率掉期基差错配，防范期限错配带来的突发回购挤兑。
+            </div>
           </div>
         </div>
 

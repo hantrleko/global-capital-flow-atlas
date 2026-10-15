@@ -16,10 +16,19 @@ export default function NetworkContagionSimulator({
   const lbsData = dataset.lbs_data || {};
   const cbsRisk = dataset.cbs_risk || {};
 
+  // Standard Macro Contagion Presets
+  const CONTAGION_PRESETS = [
+    { id: 'emerging_debt', name: '前沿主权外债违约', epicenter: 'TR', haircut: 40, deleveraging: 1.8, dollarSqueeze: 15, desc: '新兴市场主权债务暴雷引发直接资产减记与信贷重估' },
+    { id: 'dollar_crunch', name: '离岸美元流动性休克', epicenter: 'GB', haircut: 20, deleveraging: 2.2, dollarSqueeze: 25, desc: '欧洲美元转口中枢流动性骤紧与全球美元荒' },
+    { id: 'euro_contagion', name: '泛欧跨国银行去杠杆', epicenter: 'IT', haircut: 30, deleveraging: 2.0, dollarSqueeze: 12, desc: '核心主权息差走阔导致多米诺骨牌级联收缩' }
+  ];
+
   // Simulation parameters
+  const [activePreset, setActivePreset] = useState('custom');
   const [epicenter, setEpicenter] = useState('TR'); // Default: Turkey (high external vulnerability)
-  const [haircutPct, setHaircutPct] = useState(25); // 25% credit loss
-  const [deleveragingMultiplier, setDeleveragingMultiplier] = useState(1.5); // Bank deleveraging ratio on capital loss
+  const [haircutPct, setHaircutPct] = useState(25); // Credit loss %
+  const [deleveragingMultiplier, setDeleveragingMultiplier] = useState(1.5); // Bank deleveraging ratio
+  const [dollarSqueezePct, setDollarSqueezePct] = useState(12); // Dollar liquidity squeeze %
   const [simResults, setSimResults] = useState(null);
 
   const chartRef = useRef(null);
@@ -27,9 +36,18 @@ export default function NetworkContagionSimulator({
 
   const epicenterCountry = countries.find(c => c.code === epicenter) || countries[0];
 
+  // Apply preset
+  const handleSelectPreset = (p) => {
+    setActivePreset(p.id);
+    setEpicenter(p.epicenter);
+    setHaircutPct(p.haircut);
+    setDeleveragingMultiplier(p.deleveraging);
+    setDollarSqueezePct(p.dollarSqueeze);
+  };
+
   // Run Multi-Round Contagion Simulation (Eisenberg-Noe / Upper-Worms network cascade model)
   const runSimulation = () => {
-    // 1. Find direct creditors to epicenter (Inbound claims into epicenter, i.e., lenders where target == epicenter)
+    // 1. Direct creditors to epicenter
     const directCreditorLinks = currentLinks.filter(l => l.target === epicenter);
     
     // Round 1: Direct Losses
@@ -42,14 +60,13 @@ export default function NetworkContagionSimulator({
       totalR1Loss += loss;
     });
 
-    // Round 2: Secondary Deleveraging (Creditor banks cut outbound lending to other countries)
+    // Round 2: Secondary Deleveraging
     const round2Spillovers = {};
     let totalR2Contagion = 0;
 
     Object.entries(round1Losses).forEach(([creditorCode, r1Loss]) => {
-      if (r1Loss > 10) { // If loss is material
+      if (r1Loss > 10) {
         const retrenchmentPool = Math.round(r1Loss * deleveragingMultiplier);
-        // Find other outward loans by this creditor (excluding epicenter)
         const otherLoans = currentLinks.filter(l => l.source === creditorCode && l.target !== epicenter);
         const totalOtherLoans = otherLoans.reduce((sum, l) => sum + l.claims_usd_bn, 0);
 
@@ -63,13 +80,26 @@ export default function NetworkContagionSimulator({
       }
     });
 
+    // Round 3: Dollar Refinancing Squeeze (Global Dollar Shortage)
+    const round3DollarSqueeze = {};
+    let totalR3Dollar = 0;
+
+    countries.forEach(c => {
+      if (c.code !== epicenter) {
+        const dSqueeze = Math.round((c.base_liab || 120) * (c.default_usd_share / 100) * (dollarSqueezePct / 100));
+        round3DollarSqueeze[c.code] = dSqueeze;
+        totalR3Dollar += dSqueeze;
+      }
+    });
+
     // Compile comprehensive impact ranking
     const impactList = countries
       .filter(c => c.code !== epicenter)
       .map(c => {
-        const r1 = round1Losses[c.code] || 0; // Direct creditor loss
-        const r2 = round2Spillovers[c.code] || 0; // Indirect liquidity squeeze suffered
-        const totalImpact = r1 + r2;
+        const r1 = round1Losses[c.code] || 0;
+        const r2 = round2Spillovers[c.code] || 0;
+        const r3 = round3DollarSqueeze[c.code] || 0;
+        const totalImpact = r1 + r2 + r3;
         const reserves = c.fx_reserves || 1;
         const impactToReservesPct = parseFloat(((totalImpact / reserves) * 100).toFixed(1));
 
@@ -81,6 +111,7 @@ export default function NetworkContagionSimulator({
           tier: c.tier,
           r1Loss: r1,
           r2Spillover: r2,
+          r3Dollar: r3,
           totalImpact,
           impactToReservesPct
         };
@@ -91,17 +122,20 @@ export default function NetworkContagionSimulator({
     setSimResults({
       epicenterCode: epicenter,
       haircutPct,
+      deleveragingMultiplier,
+      dollarSqueezePct,
       totalR1Loss,
       totalR2Contagion,
-      totalSystemicLoss: totalR1Loss + totalR2Contagion,
+      totalR3Dollar,
+      totalSystemicLoss: totalR1Loss + totalR2Contagion + totalR3Dollar,
       impactList
     });
   };
 
-  // Run on mount or when epicenter/haircut change
+  // Run on mount or when parameters change
   useEffect(() => {
     runSimulation();
-  }, [epicenter, haircutPct, deleveragingMultiplier, selectedQuarter]);
+  }, [epicenter, haircutPct, deleveragingMultiplier, dollarSqueezePct, selectedQuarter]);
 
   // Render Cascade Chart
   useEffect(() => {
@@ -143,17 +177,19 @@ export default function NetworkContagionSimulator({
               </div>
               <div class="space-y-1 text-xs">
                 <div>第一轮：直接资产减记损失: <b class="font-mono text-rose-400">$${item.r1Loss} 亿</b></div>
-                <div>第二轮：间接流动性抽离外溢: <b class="font-mono text-amber-400">$${item.r2Spillover} 亿</b></div>
+                <div>第二轮：去杠杆流动性抽离: <b class="font-mono text-amber-400">$${item.r2Spillover} 亿</b></div>
+                <div>第三轮：离岸美元再融资挤压: <b class="font-mono text-sky-400">$${item.r3Dollar} 亿</b></div>
                 <div class="border-t border-slate-800 pt-1">
                   综合受损总额: <b class="font-mono text-white text-sm font-bold">$${item.totalImpact} 亿</b>
                 </div>
+                <div class="text-[10px] text-slate-400">冲击占外汇储备比: <b class="font-mono text-rose-400">${item.impactToReservesPct}%</b></div>
               </div>
             </div>
           `;
         }
       },
       legend: {
-        data: ['第一轮：直接资产减记 (Direct Haircut)', '第二轮：去杠杆流动性抽离 (Secondary Retrenchment)'],
+        data: ['第一轮：直接资产减记 (Direct Loss)', '第二轮：去杠杆流动性抽离 (Secondary Retrenchment)', '第三轮：离岸美元再融资挤压 (USD Squeeze)'],
         top: 8,
         textStyle: { color: '#94a3b8', fontSize: 11 }
       },
@@ -177,7 +213,7 @@ export default function NetworkContagionSimulator({
       },
       series: [
         {
-          name: '第一轮：直接资产减记 (Direct Haircut)',
+          name: '第一轮：直接资产减记 (Direct Loss)',
           type: 'bar',
           stack: 'total',
           itemStyle: { color: '#f43f5e' },
@@ -189,6 +225,13 @@ export default function NetworkContagionSimulator({
           stack: 'total',
           itemStyle: { color: '#f59e0b' },
           data: topImpacted.map(d => d.r2Spillover)
+        },
+        {
+          name: '第三轮：离岸美元再融资挤压 (USD Squeeze)',
+          type: 'bar',
+          stack: 'total',
+          itemStyle: { color: '#38bdf8' },
+          data: topImpacted.map(d => d.r3Dollar)
         }
       ]
     };
@@ -225,28 +268,62 @@ export default function NetworkContagionSimulator({
               </span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              基于 BIS 官方双边有向网络，推演某经济体违约或资本减记时，跨国银行一级资本的直接损失与次生去杠杆外溢
+              基于 BIS 官方双边有向网络，推演某经济体违约或资本减记时，跨国银行一级资本的直接损失、去杠杆外溢与美元流动性短缺
             </p>
           </div>
         </div>
 
         <button
           onClick={handleDownloadSnapshot}
-          className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+          className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
           title="导出高清仿真图 PNG"
         >
           <Download className="w-4 h-4" />
         </button>
       </div>
 
+      {/* Scenario Presets Pill Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <span className="text-xs font-mono text-slate-400 flex items-center gap-1 shrink-0">
+          <Zap className="w-3.5 h-3.5 text-amber-400" /> 经典压力预设:
+        </span>
+        {CONTAGION_PRESETS.map(p => (
+          <button
+            key={p.id}
+            onClick={() => handleSelectPreset(p)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer border ${
+              activePreset === p.id
+                ? 'bg-rose-600/30 text-rose-300 border-rose-500/60 font-bold shadow-sm'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+            title={p.desc}
+          >
+            {p.name}
+          </button>
+        ))}
+        <button
+          onClick={() => setActivePreset('custom')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer border ${
+            activePreset === 'custom'
+              ? 'bg-sky-600/30 text-sky-300 border-sky-500/60 font-bold shadow-sm'
+              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          ⚙️ 自由参数工坊
+        </button>
+      </div>
+
       {/* Simulator Control Sliders */}
-      <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+      <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
         <div>
           <label className="block text-slate-400 mb-1 font-semibold">1. 设定震中经济体 (Trigger Epicenter):</label>
           <select
             value={epicenter}
-            onChange={(e) => setEpicenter(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 text-white font-bold px-2 py-1.5 rounded focus:outline-none focus:border-rose-500"
+            onChange={(e) => {
+              setEpicenter(e.target.value);
+              setActivePreset('custom');
+            }}
+            className="w-full bg-slate-800 border border-slate-700 text-white font-bold px-2 py-1.5 rounded focus:outline-none focus:border-rose-500 cursor-pointer"
           >
             {countries.map(c => (
               <option key={c.code} value={c.code}>
@@ -267,7 +344,10 @@ export default function NetworkContagionSimulator({
             max={60}
             step={5}
             value={haircutPct}
-            onChange={(e) => setHaircutPct(parseInt(e.target.value, 10))}
+            onChange={(e) => {
+              setHaircutPct(parseInt(e.target.value, 10));
+              setActivePreset('custom');
+            }}
             className="w-full accent-rose-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
           />
         </div>
@@ -283,25 +363,38 @@ export default function NetworkContagionSimulator({
             max={3.0}
             step={0.1}
             value={deleveragingMultiplier}
-            onChange={(e) => setDeleveragingMultiplier(parseFloat(e.target.value))}
+            onChange={(e) => {
+              setDeleveragingMultiplier(parseFloat(e.target.value));
+              setActivePreset('custom');
+            }}
             className="w-full accent-amber-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
           />
         </div>
 
-        <div className="flex items-end">
-          <button
-            onClick={runSimulation}
-            className="w-full py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-lg flex items-center justify-center gap-1.5 shadow-md shadow-rose-600/30 transition-all"
-          >
-            <Play className="w-3.5 h-3.5" /> 重新执行蒙特卡洛/级联模拟
-          </button>
+        <div>
+          <div className="flex justify-between text-slate-400 mb-1">
+            <span className="font-semibold">4. 离岸美元流动性抽水:</span>
+            <span className="font-mono text-sky-400 font-bold">{dollarSqueezePct}%</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={30}
+            step={2}
+            value={dollarSqueezePct}
+            onChange={(e) => {
+              setDollarSqueezePct(parseInt(e.target.value, 10));
+              setActivePreset('custom');
+            }}
+            className="w-full accent-sky-400 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
+          />
         </div>
       </div>
 
       {/* Summary KPI Badges */}
       {simResults && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
             <div className="text-[11px] text-slate-400 uppercase tracking-wider font-mono">
               震中直接吸收敞口 (Round 1)
             </div>
@@ -313,7 +406,7 @@ export default function NetworkContagionSimulator({
             </div>
           </div>
 
-          <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+          <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
             <div className="text-[11px] text-slate-400 uppercase tracking-wider font-mono">
               次生信贷抽离外溢 (Round 2)
             </div>
@@ -321,11 +414,23 @@ export default function NetworkContagionSimulator({
               ${simResults.totalR2Contagion} 亿
             </div>
             <div className="text-[11px] text-slate-500 mt-0.5">
-              受损银行为了维系资本充足率向全球削减的信贷池
+              受损银行为了维系资本充足率削减的外债池
             </div>
           </div>
 
-          <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+          <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+            <div className="text-[11px] text-slate-400 uppercase tracking-wider font-mono">
+              离岸美元挤兑缺口 (Round 3)
+            </div>
+            <div className="text-lg font-bold font-mono text-sky-400 mt-0.5">
+              ${simResults.totalR3Dollar} 亿
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">
+              非美实体美元未对冲敞口再融资冲击
+            </div>
+          </div>
+
+          <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
             <div className="text-[11px] text-slate-400 uppercase tracking-wider font-mono">
               全网系统性流动性蒸发
             </div>

@@ -14,6 +14,7 @@ export default function CountryRiskMatrix({
 }) {
   const scatterRef = useRef(null);
   const [selectedScenarioId, setSelectedScenarioId] = useState('baseline');
+  const [riskBasis, setRiskBasis] = useState('immediate'); // 'immediate' | 'ultimate'
   const [sortField, setSortField] = useState('vulnerability_score');
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -39,11 +40,49 @@ export default function CountryRiskMatrix({
   const cbsRisk = dataset.cbs_risk || {};
   const currentQIdx = quarters.indexOf(selectedQuarter);
 
-  // Compute stress-adjusted risk table
+  // BIS CBS Offshore Reallocation Matrix (Immediate Counterparty -> Ultimate Risk Basis)
+  const OFFSHORE_REALLOCATIONS = useMemo(() => ({
+    KY: { name: '开曼群岛', domesticPct: 0.08, parents: { US: 0.62, CN: 0.22, GB: 0.08 } },
+    LU: { name: '卢森堡', domesticPct: 0.14, parents: { DE: 0.42, FR: 0.24, US: 0.20 } },
+    CH: { name: '瑞士离岸信托', domesticPct: 0.45, parents: { DE: 0.25, US: 0.18, GB: 0.12 } },
+    HK: { name: '中国香港', domesticPct: 0.32, parents: { CN: 0.52, US: 0.10, GB: 0.06 } },
+    SG: { name: '新加坡', domesticPct: 0.36, parents: { US: 0.28, CN: 0.22, JP: 0.14 } }
+  }), []);
+
+  // Compute stress-adjusted risk table factoring in Immediate vs Ultimate Risk Basis
   const riskTable = useMemo(() => {
+    // 1. Calculate offshore conduit reallocations if Ultimate Risk is selected
+    const parentAdditions = {};
+    if (riskBasis === 'ultimate') {
+      countries.forEach(c => {
+        const alloc = OFFSHORE_REALLOCATIONS[c.code];
+        if (alloc) {
+          const qRisk = (cbsRisk[c.code] || [])[currentQIdx] || {};
+          const nominalBorrowing = qRisk.cross_border_borrowings_bn || c.base_liab || 100;
+          const reallocatedPool = nominalBorrowing * (1.0 - alloc.domesticPct);
+          Object.entries(alloc.parents).forEach(([pCode, pct]) => {
+            parentAdditions[pCode] = (parentAdditions[pCode] || 0) + (reallocatedPool * pct);
+          });
+        }
+      });
+    }
+
     return countries.map(c => {
       const qRisk = (cbsRisk[c.code] || [])[currentQIdx] || {};
-      const baseBorrowing = qRisk.cross_border_borrowings_bn || c.base_liab;
+      let baseBorrowing = qRisk.cross_border_borrowings_bn || c.base_liab || 100;
+
+      // Adjust borrowing under Ultimate Risk Basis
+      if (riskBasis === 'ultimate') {
+        const conduit = OFFSHORE_REALLOCATIONS[c.code];
+        if (conduit) {
+          // Offshore shell collapsed to true domestic absorption
+          baseBorrowing = Math.round(baseBorrowing * conduit.domesticPct);
+        } else if (parentAdditions[c.code]) {
+          // Sovereign parent absorbs its offshore entities' guaranteed liabilities
+          baseBorrowing = Math.round(baseBorrowing + parentAdditions[c.code]);
+        }
+      }
+
       const reserves = qRisk.fx_reserves_bn || c.fx_reserves || 1.0;
 
       // Apply scenario shocks
@@ -56,6 +95,9 @@ export default function CountryRiskMatrix({
       // Calculate adjusted vulnerability score
       let adjustedScore = (qRisk.vulnerability_score || 30.0) + (scenario.spreadWidenBps / 10.0) * (c.default_usd_share / 100.0);
       if (c.type === 'emerging_vulnerable') adjustedScore += 12;
+      if (riskBasis === 'ultimate' && OFFSHORE_REALLOCATIONS[c.code]) {
+        adjustedScore = Math.max(15, adjustedScore - 22); // Conduit stripped of facade risk
+      }
       adjustedScore = Math.min(99, Math.max(5, Math.round(adjustedScore)));
 
       // Refinancing gap under stress ($Bn)
@@ -102,7 +144,7 @@ export default function CountryRiskMatrix({
       }
       return sortAsc ? valA - valB : valB - valA;
     });
-  }, [countries, cbsRisk, currentQIdx, scenario, sortField, sortAsc]);
+  }, [countries, cbsRisk, currentQIdx, scenario, sortField, sortAsc, riskBasis, OFFSHORE_REALLOCATIONS]);
 
   // Scatter Plot: Debt-to-Reserves vs Vulnerability Score
   useEffect(() => {
@@ -241,38 +283,99 @@ export default function CountryRiskMatrix({
               测算在不同宏观流动性冲击下，各国对跨国银行的美元再融资敞口、外汇储备保障倍数及潜在展期缺口
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 flex items-center gap-1">
-              <Flame className="w-3.5 h-3.5 text-amber-400" /> 选择压力情景:
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.values(STRESS_SCENARIOS).map(sc => (
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Risk Accounting Basis Toggle */}
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-xl p-1 text-xs shadow-sm">
+              <span className="text-[11px] font-mono text-slate-400 px-1.5">统计口径:</span>
+              <button
+                onClick={() => setRiskBasis('immediate')}
+                className={`px-2.5 py-1 rounded-lg transition-all text-xs font-medium cursor-pointer ${
+                  riskBasis === 'immediate'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="按法定借款人所在地统计 (离岸避税港名义借款虚高)"
+              >
+                即期借款人原则 (Immediate)
+              </button>
+              <button
+                onClick={() => setRiskBasis('ultimate')}
+                className={`px-2.5 py-1 rounded-lg transition-all text-xs font-medium cursor-pointer flex items-center gap-1 ${
+                  riskBasis === 'ultimate'
+                    ? 'bg-emerald-600 text-white font-bold shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                    : 'text-slate-400 hover:text-emerald-400'
+                }`}
+                title="穿透剥离避税港外壳，将资产回溯归属至真实最终母国担保人"
+              >
+                <span>⚡ 最终风险穿透原则 (Ultimate Risk)</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-400 flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 text-amber-400" /> 选择压力情景:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.values(STRESS_SCENARIOS).map(sc => (
+                  <button
+                    key={sc.id}
+                    onClick={() => setSelectedScenarioId(sc.id)}
+                    className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${
+                      selectedScenarioId === sc.id
+                        ? 'bg-rose-600 text-white font-semibold shadow-md shadow-rose-600/30'
+                        : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
+                    }`}
+                  >
+                    {sc.name.split(' ')[0]}
+                  </button>
+                ))}
                 <button
-                  key={sc.id}
-                  onClick={() => setSelectedScenarioId(sc.id)}
-                  className={`px-3 py-1.5 rounded text-xs transition-all ${
-                    selectedScenarioId === sc.id
-                      ? 'bg-rose-600 text-white font-semibold shadow-md shadow-rose-600/30'
-                      : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
+                  onClick={() => setSelectedScenarioId('custom')}
+                  className={`px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1 cursor-pointer ${
+                    selectedScenarioId === 'custom'
+                      ? 'bg-amber-600 text-white font-semibold shadow-md shadow-amber-600/30'
+                      : 'bg-slate-900 text-amber-400 border border-amber-500/40 hover:bg-slate-800'
                   }`}
                 >
-                  {sc.name.split(' ')[0]}
+                  <Sliders className="w-3 h-3" />
+                  <span>自定义冲击工坊</span>
                 </button>
-              ))}
-              <button
-                onClick={() => setSelectedScenarioId('custom')}
-                className={`px-3 py-1.5 rounded text-xs transition-all flex items-center gap-1 ${
-                  selectedScenarioId === 'custom'
-                    ? 'bg-amber-600 text-white font-semibold shadow-md shadow-amber-600/30'
-                    : 'bg-slate-900 text-amber-400 border border-amber-500/40 hover:bg-slate-800'
-                }`}
-              >
-                <Sliders className="w-3 h-3" />
-                <span>自定义冲击工坊</span>
-              </button>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Offshore Conduit Piercing Ledger Banner */}
+        {riskBasis === 'ultimate' && (
+          <div className="mb-3 p-3 bg-emerald-950/25 border border-emerald-500/40 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded-lg bg-emerald-500/20 text-emerald-400">
+                  <ShieldCheck className="w-4 h-4" />
+                </span>
+                <span className="font-bold text-emerald-300">
+                  国际清算银行 CBS 最终风险穿透透镜已启动 (Offshore Conduit Veil Piercer Active)
+                </span>
+              </div>
+              <span className="text-[11px] font-mono text-emerald-400 hidden sm:inline">
+                已剥离离岸虚高外壳，将实质债务回溯穿透至实际母公司所在国
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-[11px] font-mono pt-1">
+              {Object.entries(OFFSHORE_REALLOCATIONS).map(([code, conduit]) => (
+                <div key={code} className="bg-slate-900/80 p-2 rounded-lg border border-white/5">
+                  <div className="flex justify-between items-center text-white font-bold">
+                    <span>{conduit.name} ({code})</span>
+                    <span className="text-emerald-400">本国仅 {Math.round(conduit.domesticPct * 100)}%</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1 truncate">
+                    实质母国: {Object.entries(conduit.parents).map(([p, pct]) => `${p} ${Math.round(pct * 100)}%`).join(', ')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Custom Sliders Panel when isCustom is true */}
         {isCustom && (
