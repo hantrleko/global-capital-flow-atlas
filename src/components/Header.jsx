@@ -13,6 +13,8 @@ export default function Header({
   onSelectQuarter,
   isPlaying,
   onTogglePlay,
+  playSpeed = 1,
+  onChangePlaySpeed,
   globalMacroMap,
   activeTab,
   onSelectTab,
@@ -324,6 +326,24 @@ export default function Header({
             >
               <SkipForward className="w-3.5 h-3.5" />
             </button>
+
+            {/* Playback Speed Multiplier */}
+            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono ml-0.5" title="回放速率调节">
+              {[0.5, 1, 1.5, 2].map(spd => (
+                <button
+                  key={spd}
+                  onClick={() => onChangePlaySpeed?.(spd)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] transition-all font-medium ${
+                    playSpeed === spd
+                      ? 'bg-sky-500/30 text-sky-300 font-bold border border-sky-400/40 shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title={`设置回放倍速: ${spd}x`}
+                >
+                  {spd}x
+                </button>
+              ))}
+            </div>
 
             {/* Direct Quarter Selector Dropdown */}
             <div className="flex items-center gap-1 bg-slate-900 border border-blue-500/40 rounded-lg px-2 py-1 shadow-[0_0_10px_rgba(59,130,246,0.2)]">

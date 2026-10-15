@@ -135,6 +135,7 @@ export default function NetworkTopology({
       const filamentColor = isMajor ? '#38bdf8' : 'rgba(148, 163, 184, 0.35)';
 
       return {
+        id: `${l.source}->${l.target}`,
         source: l.source,
         target: l.target,
         value: l.claims_usd_bn,

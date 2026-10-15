@@ -3,7 +3,8 @@ import * as echarts from 'echarts';
 import { 
   Layers, Eye, Filter, ArrowUpRight, ArrowDownLeft, 
   Info, Download, Target, Compass, Maximize2, Sparkles,
-  Radio, Zap, Shield, Globe2, Sliders, Check, Calendar, TrendingUp
+  Radio, Zap, Shield, Globe2, Sliders, Check, Calendar, TrendingUp,
+  X, ArrowRight, DollarSign
 } from 'lucide-react';
 
 export default function CapitalFlowMap({
@@ -17,7 +18,10 @@ export default function CapitalFlowMap({
   const chartInstance = useRef(null);
   const timelineChartRef = useRef(null);
   const timelineChartInstance = useRef(null);
+  const corridorSparklineRef = useRef(null);
+  const corridorSparklineInstance = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [selectedCorridor, setSelectedCorridor] = useState(null);
 
   // Density & View controls
   const [corridorDensity, setCorridorDensity] = useState('backbone'); // 'backbone' | 'all' | 'usd_dominant'
@@ -57,6 +61,15 @@ export default function CapitalFlowMap({
       chartInstance.current.on('click', (params) => {
         if (params.data && params.data.countryCode) {
           onSelectCountry(params.data.countryCode);
+        } else if (params.seriesType === 'lines' && params.data && params.data.sourceCode) {
+          setSelectedCorridor({
+            source: params.data.sourceCode,
+            target: params.data.targetCode,
+            fromName: params.data.fromName,
+            toName: params.data.toName,
+            value: params.data.value,
+            usdVol: params.data.usdVol
+          });
         }
       });
 
@@ -133,6 +146,8 @@ export default function CapitalFlowMap({
       const strokeOpacity = isFocused ? 0.85 : isMajor ? 0.45 : 0.22;
 
       return {
+        id: `${l.source}->${l.target}`,
+        name: `${src.name_zh} → ${dst.name_zh}`,
         fromName: src.name_zh,
         toName: dst.name_zh,
         sourceCode: l.source,
@@ -156,7 +171,15 @@ export default function CapitalFlowMap({
     const particleData = linesData
       .filter(l => focusCountry !== 'ALL' || l.value >= 240)
       .map(l => ({
-        ...l,
+        id: `particle-${l.sourceCode}->${l.targetCode}`,
+        name: l.name,
+        fromName: l.fromName,
+        toName: l.toName,
+        sourceCode: l.sourceCode,
+        targetCode: l.targetCode,
+        coords: l.coords,
+        value: l.value,
+        usdVol: l.usdVol,
         lineStyle: {
           width: 0,
           opacity: 0,
@@ -198,6 +221,7 @@ export default function CapitalFlowMap({
 
       // 1. Outer translucent halo ring
       haloNodes.push({
+        id: `halo-${c.code}`,
         name: c.name_zh,
         countryCode: c.code,
         value: [c.lng, c.lat, valForSize],
@@ -212,21 +236,24 @@ export default function CapitalFlowMap({
         itemStyle: {
           color: isSelected ? 'rgba(255, 255, 255, 0.25)' : 'rgba(15, 23, 42, 0.6)',
           borderColor: themeColor,
-          borderWidth: isSelected ? 2 : 1,
-          opacity: isSelected ? 0.95 : 0.7
+          borderWidth: isSelected ? 2.5 : 1.2,
+          shadowBlur: isSelected ? 16 : 6,
+          shadowColor: themeColor,
+          opacity: isSelected ? 0.98 : 0.72
         }
       });
 
       // 2. Inner bright pearl center dot
       coreNodes.push({
+        id: `core-${c.code}`,
         name: c.name_zh,
         countryCode: c.code,
         value: [c.lng, c.lat, valForSize],
         symbolSize: coreSize,
         itemStyle: {
           color: isSelected ? '#ffffff' : themeColor,
-          shadowBlur: isSelected ? 12 : 6,
-          shadowColor: themeColor
+          shadowBlur: isSelected ? 16 : 8,
+          shadowColor: isSelected ? '#ffffff' : themeColor
         },
         label: {
           show: showLabels && (c.tier === 1 || isSelected || focusCountry === c.code || haloSize > 18),
@@ -234,7 +261,8 @@ export default function CapitalFlowMap({
           distance: 6,
           formatter: `{b}`,
           fontSize: 10,
-          color: isSelected ? '#ffffff' : '#94a3b8',
+          fontWeight: isSelected ? 'bold' : 'normal',
+          color: isSelected ? '#ffffff' : '#cbd5e1',
           fontFamily: 'system-ui, -apple-system, sans-serif'
         }
       });
@@ -242,6 +270,7 @@ export default function CapitalFlowMap({
       // 3. Eased calm ripple: ONLY for selected country or top global core (US/GB)
       if (isSelected || (focusCountry === 'ALL' && (c.code === 'US' || c.code === 'GB'))) {
         rippleNodes.push({
+          id: `ripple-${c.code}`,
           name: c.name_zh,
           countryCode: c.code,
           value: [c.lng, c.lat, valForSize],
@@ -364,13 +393,22 @@ export default function CapitalFlowMap({
         }
       },
       series: [
-        // 1. Refined Luminous Geodesic Filaments (Static Canvas Layer 1 - Never repainted on tick)
+        // 1. Refined Luminous Geodesic Filaments (Interactive Canvas Layer 1)
         {
           name: 'Filaments',
           type: 'lines',
           coordinateSystem: 'geo',
           zlevel: 1,
-          silent: true,
+          silent: false,
+          emphasis: {
+            focus: 'self',
+            lineStyle: {
+              width: 3.2,
+              opacity: 0.95,
+              shadowBlur: 12,
+              shadowColor: '#38bdf8'
+            }
+          },
           data: linesData
         },
         // 2. Concentric Halo Rings (Static Canvas Layer 1 - Never repainted on tick)
@@ -573,6 +611,120 @@ export default function CapitalFlowMap({
     };
   }, [selectedQuarter, dataset, onSelectQuarter]);
 
+  // Corridor 28-Quarter History Sparkline
+  const corridorHistory = useMemo(() => {
+    if (!selectedCorridor) return [];
+    const quarters = dataset.quarters || [];
+    const bMatrix = dataset.bilateral_matrix || {};
+    return quarters.map(q => {
+      const links = bMatrix[q] || [];
+      const link = links.find(l => l.source === selectedCorridor.source && l.target === selectedCorridor.target);
+      return {
+        quarter: q,
+        claims: link ? link.claims_usd_bn : 0,
+        usdVol: link ? link.usd_denominated_bn : 0
+      };
+    });
+  }, [selectedCorridor, dataset]);
+
+  // Current active corridor stats dynamically synchronized with selectedQuarter
+  const activeCorridorStats = useMemo(() => {
+    if (!selectedCorridor) return null;
+    const link = currentLinks.find(l => l.source === selectedCorridor.source && l.target === selectedCorridor.target);
+    return {
+      ...selectedCorridor,
+      value: link ? link.claims_usd_bn : selectedCorridor.value,
+      usdVol: link ? link.usd_denominated_bn : selectedCorridor.usdVol
+    };
+  }, [selectedCorridor, currentLinks]);
+
+  useEffect(() => {
+    if (!selectedCorridor) {
+      if (corridorSparklineInstance.current) {
+        corridorSparklineInstance.current.dispose();
+        corridorSparklineInstance.current = null;
+      }
+      return;
+    }
+    if (!corridorSparklineRef.current) return;
+    if (!corridorSparklineInstance.current) {
+      corridorSparklineInstance.current = echarts.init(corridorSparklineRef.current, 'dark');
+    }
+
+    const quarters = corridorHistory.map(h => h.quarter);
+    const claims = corridorHistory.map(h => h.claims);
+    const usd = corridorHistory.map(h => h.usdVol);
+
+    const option = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        borderColor: '#334155',
+        textStyle: { color: '#f8fafc', fontSize: 11 },
+        formatter: (params) => {
+          const q = params[0].name;
+          const cVal = params[0].value;
+          const uVal = params[1]?.value || 0;
+          return `
+            <div class="font-bold text-white mb-1">${q}</div>
+            <div class="text-xs text-sky-400">总债权: $${cVal} 亿</div>
+            <div class="text-xs text-emerald-400">美元计价: $${uVal} 亿 (${Math.round((uVal / Math.max(1, cVal)) * 100)}%)</div>
+          `;
+        }
+      },
+      grid: { left: '2%', right: '2%', top: '8%', bottom: '14%', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: quarters,
+        axisLine: { lineStyle: { color: '#334155' } },
+        axisLabel: { color: '#64748b', fontSize: 9, interval: 4 }
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: { lineStyle: { color: '#334155' } },
+        splitLine: { lineStyle: { color: 'rgba(51, 65, 85, 0.25)', type: 'dashed' } },
+        axisLabel: { color: '#64748b', fontSize: 9, formatter: '${value}B' }
+      },
+      series: [
+        {
+          name: '双边总债权',
+          type: 'line',
+          smooth: true,
+          data: claims,
+          itemStyle: { color: '#38bdf8' },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(56, 189, 248, 0.35)' },
+              { offset: 1, color: 'rgba(56, 189, 248, 0.0)' }
+            ])
+          },
+          markLine: {
+            silent: true,
+            symbol: 'none',
+            data: [{ xAxis: selectedQuarter, lineStyle: { color: '#ffffff', type: 'dashed' } }]
+          }
+        },
+        {
+          name: '美元计价额',
+          type: 'line',
+          smooth: true,
+          data: usd,
+          itemStyle: { color: '#10b981' }
+        }
+      ]
+    };
+
+    corridorSparklineInstance.current.setOption(option);
+    setTimeout(() => {
+      corridorSparklineInstance.current?.resize();
+    }, 40);
+
+    const handleResize = () => corridorSparklineInstance.current?.resize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [selectedCorridor, corridorHistory, selectedQuarter]);
+
   const handleExportPng = () => {
     if (!chartInstance.current) return;
     const url = chartInstance.current.getDataURL({
@@ -726,6 +878,99 @@ export default function CapitalFlowMap({
             </button>
           ))}
         </div>
+
+        {/* Floating Focus Mode Banner (Top-Left) */}
+        {focusCountry !== 'ALL' && (
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2.5 bg-slate-950/90 backdrop-blur-md border border-sky-500/40 px-3.5 py-1.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-top-1 duration-200">
+            <Target className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
+            <span className="text-xs text-white">
+              已隔离该国双边管道: <strong className="text-sky-300 font-mono">{countryMap[focusCountry]?.name_zh || focusCountry} ({focusCountry})</strong>
+            </span>
+            <button
+              onClick={() => setFocusCountry('ALL')}
+              className="text-[11px] text-sky-400 hover:text-white underline ml-1 cursor-pointer font-medium"
+            >
+              重置全网视角
+            </button>
+          </div>
+        )}
+
+        {/* Floating Corridor Deep-Dive Inspector HUD Card (Top-Right) */}
+        {activeCorridorStats && (
+          <div className="absolute top-4 right-4 z-30 w-80 sm:w-96 bg-slate-950/92 backdrop-blur-xl border border-sky-500/35 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.85)] animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded-lg bg-sky-500/20 text-sky-400">
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+                <div>
+                  <div className="text-xs font-semibold text-white flex items-center gap-1.5">
+                    <span>{activeCorridorStats.fromName}</span>
+                    <span className="text-slate-400">→</span>
+                    <span>{activeCorridorStats.toName}</span>
+                  </div>
+                  <div className="text-[10px] font-mono text-sky-400">
+                    {activeCorridorStats.source} → {activeCorridorStats.target} 跨境信贷走廊
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedCorridor(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                title="关闭该走廊透视卡片"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Metric Cards */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="bg-slate-900/80 rounded-xl p-2.5 border border-white/5">
+                <div className="text-[10px] text-slate-400">{selectedQuarter} 跨国债权</div>
+                <div className="text-sm font-bold text-white font-mono mt-0.5">
+                  ${activeCorridorStats.value} <span className="text-[10px] font-normal text-slate-400">亿 USD</span>
+                </div>
+              </div>
+              <div className="bg-slate-900/80 rounded-xl p-2.5 border border-white/5">
+                <div className="text-[10px] text-slate-400">美元计价总额</div>
+                <div className="text-sm font-bold text-emerald-400 font-mono mt-0.5">
+                  ${activeCorridorStats.usdVol} <span className="text-[10px] font-normal text-slate-400">亿 ({Math.round((activeCorridorStats.usdVol / Math.max(1, activeCorridorStats.value)) * 100)}%)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sparkline Header */}
+            <div className="flex items-center justify-between text-[11px] mb-1">
+              <span className="text-slate-300 font-medium flex items-center gap-1">
+                <TrendingUp className="w-3.5 h-3.5 text-sky-400" /> 28 季度双边信贷走廊演进趋势
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">2018Q1 - 2024Q4</span>
+            </div>
+
+            {/* Sparkline Canvas */}
+            <div ref={corridorSparklineRef} className="w-full h-32 bg-slate-900/50 rounded-xl border border-white/5" />
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-white/5">
+              <button
+                onClick={() => setFocusCountry(activeCorridorStats.source)}
+                className="flex-1 py-1.5 px-2 rounded-lg bg-sky-600/25 hover:bg-sky-600/40 text-sky-200 border border-sky-500/30 text-[11px] font-medium transition-colors flex items-center justify-center gap-1"
+                title={`隔离并只展示 ${activeCorridorStats.fromName} 的全部进出管道`}
+              >
+                <Target className="w-3.5 h-3.5" />
+                聚焦 {activeCorridorStats.source}
+              </button>
+              <button
+                onClick={() => setFocusCountry(activeCorridorStats.target)}
+                className="flex-1 py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-medium transition-colors flex items-center justify-center gap-1"
+                title={`隔离并只展示 ${activeCorridorStats.toName} 的全部进出管道`}
+              >
+                <Target className="w-3.5 h-3.5" />
+                聚焦 {activeCorridorStats.target}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Floating Minimalist Legend (Bottom-Right) */}
         <div className="absolute bottom-5 right-5 z-20 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-3 text-xs shadow-xl space-y-1.5 hidden md:block">

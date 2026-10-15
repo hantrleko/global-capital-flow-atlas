@@ -27,6 +27,7 @@ export default function App() {
   // Default to the latest quarter 2024Q4
   const [selectedQuarter, setSelectedQuarter] = useState(quarters[quarters.length - 1] || '2024Q4');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playSpeed, setPlaySpeed] = useState(1);
   const [activeTab, setActiveTab] = useState('map');
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -56,10 +57,11 @@ export default function App() {
     return Object.fromEntries((bisDataset.global_macro || []).map(m => [m.quarter, m]));
   }, []);
 
-  // Auto-play timer for timeline
+  // Auto-play timer for timeline with variable playback speed
   useEffect(() => {
     if (!isPlaying) return;
 
+    const intervalTime = Math.round(2000 / playSpeed);
     const interval = setInterval(() => {
       setSelectedQuarter(prev => {
         const curIdx = quarters.indexOf(prev);
@@ -71,10 +73,10 @@ export default function App() {
           return prev;
         }
       });
-    }, 2200);
+    }, intervalTime);
 
     return () => clearInterval(interval);
-  }, [isPlaying, quarters]);
+  }, [isPlaying, playSpeed, quarters]);
 
   // Global Pro-Terminal Keyboard Shortcuts (Space, ArrowLeft, ArrowRight, Ctrl+K, ?, etc.)
   useEffect(() => {
@@ -136,6 +138,8 @@ export default function App() {
         }}
         isPlaying={isPlaying}
         onTogglePlay={() => setIsPlaying(!isPlaying)}
+        playSpeed={playSpeed}
+        onChangePlaySpeed={setPlaySpeed}
         globalMacroMap={globalMacroMap}
         activeTab={activeTab}
         onSelectTab={setActiveTab}
