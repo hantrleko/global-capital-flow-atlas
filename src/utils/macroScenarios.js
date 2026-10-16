@@ -45,6 +45,20 @@ export const HISTORICAL_REGIMES = [
     description: "美联储开启降息周期，欧洲央行跟进，日本央行逆势走出负利率，离岸私人信贷 (Private Credit) 与跨国非银机构敞口持续扩张。",
     stress: 32.0,
     badgeColor: "cyan"
+  },
+  {
+    quarter: "2025Q3",
+    name: "日元套息平仓与全球美元再平衡 (2025 Nowcast)",
+    description: "美联储降息与日本央行加息共振，日元套息交易遭遇阶段性平仓回流，新兴市场汇率企稳，离岸非银信贷重塑。",
+    stress: 48.0,
+    badgeColor: "amber"
+  },
+  {
+    quarter: "2026Q4",
+    name: "多极本币结算网络与 AI 算力基建热潮 (2026 Projection)",
+    description: "金砖伙伴联盟双边本币结算与央行互换常态化，跨国银团加大对绿色转型与主权 AI 算力基建的资本开支信贷投放。",
+    stress: 34.0,
+    badgeColor: "emerald"
   }
 ];
 

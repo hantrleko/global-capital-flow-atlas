@@ -681,7 +681,9 @@ export default function CapitalFlowMap({
     { label: '疫情危机', quarter: '2020Q1', tag: '流动性海啸' },
     { label: '供给再通胀', quarter: '2021Q3', tag: '通胀狂飙' },
     { label: '硅谷银行风暴', quarter: '2023Q1', tag: '极速紧缩' },
-    { label: '高息降息博弈', quarter: '2024Q4', tag: '最新基准' }
+    { label: '高息降息博弈', quarter: '2024Q4', tag: '官方审计' },
+    { label: '套息平仓潮', quarter: '2025Q3', tag: 'Nowcast' },
+    { label: '多极算力网络', quarter: '2026Q4', tag: '前瞻推演' }
   ];
 
   useEffect(() => {

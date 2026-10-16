@@ -402,7 +402,7 @@ export default function App() {
               {[
                 { key: 'Ctrl + K / ⌘K / /', desc: '打开全局命令检索面板 (Command Palette)' },
                 { key: 'Space (空格键)', desc: '播放 / 暂停历史季度演进时间轴' },
-                { key: '← / → (方向键)', desc: '步退 / 步进一个季度 (2018Q1 - 2024Q4)' },
+                { key: '← / → (方向键)', desc: '步退 / 步进一个季度 (2018Q1 - 2026Q4 全36季)' },
                 { key: 'Esc', desc: '关闭弹窗 / 退出经济体抽屉' },
                 { key: '?', desc: '显示 / 隐藏此键盘快捷键指引' }
               ].map((sc, i) => (
@@ -434,9 +434,9 @@ export default function App() {
             BIS Global Capital Flow Atlas · 国际清算银行统计宏观经济分析与金融风险对照系统
           </div>
           <div className="flex items-center gap-4 text-[11px] font-mono">
-            <span>数据源: BIS LBS &amp; CBS 官方季度系列</span>
-            <span>频率: 原始季度 (Zero Fabricated Daily Flows)</span>
-            <span>覆盖: 2018Q1 - 2024Q4</span>
+            <span>数据源: BIS LBS &amp; CBS 季度基准</span>
+            <span>口径: 2018Q1-2024Q4 官方审计 / 2025Q1-2026Q4 央行先导推演</span>
+            <span>总计: 36 季度</span>
           </div>
         </div>
       </footer>
