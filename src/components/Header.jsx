@@ -164,7 +164,7 @@ export default function Header({
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(16,185,129,0.25)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  [BIS 官方观测口径] SDMX 2.1 Audited (至 2026Q2)
+                  [总量锚定 BIS 公布值 · 国别模型分配] SDMX 2.1 (至 2026Q2)
                 </span>
               )}
             </div>

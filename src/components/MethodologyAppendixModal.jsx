@@ -121,8 +121,7 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                     </div>
                     <div className="text-xl font-bold font-mono text-white">2018Q1 – 2026Q2 (34 季度)</div>
                     <p className="text-xs text-slate-300">
-                      完全基于国际清算银行官方发布的 SDMX 2.1 统计序列（<code className="text-sky-300 font-mono">WS_LBS_D_PUB</code> 和 <code className="text-sky-300 font-mono">WS_CBS_PUB</code>）。
-                      2025 年末全球跨境银行总债权收于 <strong>$46.12T</strong>；2026Q2 官方基准最新公布值为 <strong>$47.82T</strong>。
+                      <strong>全球总量锚定 BIS 官方公布值</strong>（2025 年末全球跨境银行总债权收于 <strong>$46.12T</strong>，2026Q2 官方最新基准公布值为 <strong>$47.82T</strong>）；国别总额与双边信贷走廊在满足该总量硬约束下，基于申报国权重与最大熵矩阵平衡 (RAS) 进行模型校准分配。
                     </p>
                   </div>
 

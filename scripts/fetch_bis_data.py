@@ -298,11 +298,9 @@ BASE_CORRIDOR_WEIGHTS = [
 def try_fetch_live_bis_sdmx():
     """
     Attempts to connect to BIS SDMX 2.1 REST API to verify live connectivity
-    and check for the latest dataflow releases.
+    and check for the latest dataflow releases using default SSL verification.
     """
     ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
 
     url = "https://stats.bis.org/api/v1/dataflow/BIS/all/latest"
     try:
@@ -699,7 +697,8 @@ def build_dataset():
             "end_2025_cross_border_claims_usd_bn": 46120.0,
             "latest_nowcast_claims_usd_bn": 48600.0,
             "unit": "USD Billions",
-            "methodology_status": "Hybrid Framework: Official BIS SDMX LBS/CBS Aggregates (2018Q1-2026Q2) + Maximum Entropy RAS Matrix Balancing + Dynamic Nowcasting (2026Q3-Q4)",
+            "methodology_status": "Hybrid Calibration Framework: Global Aggregates Anchored to Official BIS Published Releases (2018Q1-2026Q2); Country Totals and Bilateral Corridors Model-Allocated via Maximum Entropy RAS Balancing; Forward Quarters (2026Q3-Q4) Econometrically Nowcast.",
+            "data_allocation_policy": "全球总量锚定 BIS 官方公布值，国别总额与双边走廊为模型分配 (Global Totals Anchored to BIS Official Releases, Country/Bilateral Corridors Model-Allocated)",
             "academic_citations": [
                 "BIS Locational Banking Statistics (Table A6.2) & Consolidated Banking Statistics (Table B4)",
                 "Eisenberg, L., & Noe, T. H. (2001). Systemic risk in financial systems. Management Science, 47(2), 236-249.",
