@@ -28,10 +28,34 @@ export default function GlobalFlowGlobe3D({
   const lastMousePosRef = useRef({ x: 0, y: 0 });
   const animFrameIdRef = useRef(null);
   const particleOffsetRef = useRef(0);
+  const targetFlightRef = useRef(null);
+
+  // Background starfield particles
+  const starsRef = useRef(
+    Array.from({ length: 95 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      size: Math.random() * 1.6 + 0.4,
+      alpha: Math.random() * 0.7 + 0.2,
+      twinkleSpeed: Math.random() * 0.03 + 0.01
+    }))
+  );
 
   const countryMap = useMemo(() => {
     return Object.fromEntries(countries.map(c => [c.code, c]));
   }, [countries]);
+
+  // Trigger smooth orbital flight camera when selectedCountry changes
+  useEffect(() => {
+    if (selectedCountry && countryMap[selectedCountry]) {
+      const c = countryMap[selectedCountry];
+      targetFlightRef.current = {
+        yaw: -c.lng,
+        pitch: Math.max(-50, Math.min(50, c.lat))
+      };
+      setIsRotating(false);
+    }
+  }, [selectedCountry, countryMap]);
 
   // Filter links
   const filteredLinks = useMemo(() => {
@@ -52,7 +76,34 @@ export default function GlobalFlowGlobe3D({
   // Mouse drag handlers
   const handleMouseDown = (e) => {
     isDraggingRef.current = true;
+    targetFlightRef.current = null;
     lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleClickCanvas = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const mouseY = ((e.clientY - rect.top) / rect.height) * canvas.height;
+
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const baseRadius = Math.min(canvas.width, canvas.height) * 0.38 * zoom;
+
+    // Hit test on countries
+    for (const c of countries) {
+      const pt = projectTo3D(c.lng, c.lat, baseRadius, rotationRef.current.yaw, rotationRef.current.pitch);
+      if (pt.isFront) {
+        const dx = (cx + pt.x) - mouseX;
+        const dy = (cy + pt.y) - mouseY;
+        if (Math.sqrt(dx * dx + dy * dy) <= 12) {
+          soundFx.playChime();
+          onSelectCountry?.(c.code);
+          return;
+        }
+      }
+    }
   };
 
   const handleMouseMove = (e) => {
@@ -122,18 +173,37 @@ export default function GlobalFlowGlobe3D({
       const cy = height / 2;
       const baseRadius = Math.min(width, height) * 0.38 * zoom;
 
-      // Auto rotation
-      if (isRotating && !isDraggingRef.current) {
+      // Handle Smooth Orbital Flight Camera Interpolation
+      if (targetFlightRef.current) {
+        const dyaw = targetFlightRef.current.yaw - rotationRef.current.yaw;
+        const dpitch = targetFlightRef.current.pitch - rotationRef.current.pitch;
+        rotationRef.current.yaw += dyaw * 0.085;
+        rotationRef.current.pitch += dpitch * 0.085;
+
+        if (Math.abs(dyaw) < 0.25 && Math.abs(dpitch) < 0.25) {
+          targetFlightRef.current = null;
+        }
+      } else if (isRotating && !isDraggingRef.current) {
         rotationRef.current.yaw += 0.22;
       }
       particleOffsetRef.current = (particleOffsetRef.current + 0.008) % 1;
 
       ctx.clearRect(0, 0, width, height);
 
+      // 0. Starfield Cosmic Background
+      starsRef.current.forEach(star => {
+        star.alpha += star.twinkleSpeed;
+        if (star.alpha > 0.8 || star.alpha < 0.2) star.twinkleSpeed = -star.twinkleSpeed;
+        ctx.fillStyle = `rgba(224, 242, 254, ${star.alpha.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(star.x * width, star.y * height, star.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
       // 1. Atmosphere Halo Gradient
       const atmosGrad = ctx.createRadialGradient(cx, cy, baseRadius * 0.85, cx, cy, baseRadius * 1.25);
-      atmosGrad.addColorStop(0, 'rgba(56, 189, 248, 0.12)');
-      atmosGrad.addColorStop(0.4, 'rgba(30, 58, 138, 0.08)');
+      atmosGrad.addColorStop(0, 'rgba(56, 189, 248, 0.14)');
+      atmosGrad.addColorStop(0.4, 'rgba(30, 58, 138, 0.09)');
       atmosGrad.addColorStop(1, 'rgba(6, 9, 19, 0)');
       ctx.fillStyle = atmosGrad;
       ctx.beginPath();
@@ -320,6 +390,7 @@ export default function GlobalFlowGlobe3D({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
+        onClick={handleClickCanvas}
       />
 
       {/* Top Floating Controls */}

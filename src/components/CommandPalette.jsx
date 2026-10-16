@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Search, Globe, Layers, Calendar, ArrowRight, X, Command, 
   HelpCircle, Moon, Sun, Activity, ShieldAlert, Split, Sliders,
-  Code, FileText, BookOpen, History
+  Code, FileText, BookOpen, History, UploadCloud, Building2
 } from 'lucide-react';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
 
@@ -22,7 +22,8 @@ export default function CommandPalette({
   onOpenCodeExporter,
   onOpenShockSandbox,
   onOpenInstitutionalReport,
-  onToggleMilestones
+  onToggleMilestones,
+  onOpenCustomData
 }) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -40,6 +41,7 @@ export default function CommandPalette({
     { id: 'map', label: '🌐 跨境信贷流向地图', cat: '核心视图' },
     { id: 'network', label: '🕸️ 全球金融网络拓扑', cat: '核心视图' },
     { id: 'ews', label: '🚦 巴塞尔 III 早期预警 (EWS)', cat: '宏观审慎' },
+    { id: 'gsib', label: '🏛️ G-SIB 顶级银行透镜', cat: '微观穿透' },
     { id: 'fragmentation', label: '💔 地缘金融碎片化与阵营', cat: '地缘政治' },
     { id: 'routing', label: '🔀 资本路由与双边矩阵', cat: '结构分析' },
     { id: 'shadow', label: '🏦 离岸影子银行与非银透视', cat: '非银体系' },
@@ -119,6 +121,16 @@ export default function CommandPalette({
         desc: '查阅为何总信贷流向优于经常账户贸易、BIS 统计学三大支柱',
         icon: BookOpen,
         action: () => onOpenIntro?.()
+      });
+    }
+
+    if (!q || '导入 私有 数据 自定义 upload excel csv import custom portfolio'.includes(q)) {
+      results.push({
+        type: 'action',
+        title: '📥 机构私有资产敞口导入沙盒 (Excel / CSV)',
+        desc: '上传本地投资组合或银行双边敞口，在本地内存中即刻全景推演',
+        icon: UploadCloud,
+        action: () => onOpenCustomData?.()
       });
     }
 

@@ -4,10 +4,11 @@ import {
   DollarSign, Activity, Database, Calendar, TrendingUp, Layers,
   Search, Coins, X, Sun, Moon, ArrowRightLeft, Clock, Sparkles,
   Zap, Radio, Command, HelpCircle, Split, Volume2, VolumeX, Bot,
-  BookOpen, FileText, Sliders, Code, History
+  BookOpen, FileText, Sliders, Code, History, UploadCloud, Building2
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
+import { CURRENCY_LIST, formatValueInCurrency } from '../utils/currencyConversion';
 
 export const NAVIGATION_DOMAINS = [
   {
@@ -26,6 +27,7 @@ export const NAVIGATION_DOMAINS = [
     short: '系统性风险',
     tabs: [
       { id: 'ews', label: '巴塞尔早期预警 (EWS)', desc: 'Credit Gap & CCyB Buffer' },
+      { id: 'gsib', label: 'G-SIB 顶级银行透镜', desc: 'Top 30 Systemic Banks' },
       { id: 'contagion', label: '银行级联传染模拟', desc: 'Eisenberg-Noe Contagion' },
       { id: 'shadow', label: '影子银行与非银透视', desc: 'Offshore NBFIs & FX Swaps' },
       { id: 'maturity', label: '期限结构与转期挤兑', desc: 'CBS Residual Maturity' }
@@ -88,6 +90,10 @@ export default function Header({
   onOpenInstitutionalReport,
   onToggleMilestones,
   isMilestonesOpen = false,
+  selectedCurrency = 'USD',
+  onChangeCurrency,
+  onOpenCustomData,
+  customFileName = null,
   isSoundMuted = false,
   onToggleSound
 }) {
@@ -241,6 +247,51 @@ export default function Header({
             </button>
           )}
 
+          {/* Custom Data Ingestion Sandbox Trigger */}
+          {onOpenCustomData && (
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                onOpenCustomData();
+              }}
+              className={`px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer ${
+                customFileName
+                  ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                  : 'border-slate-700/80 bg-slate-900/90 text-slate-300 hover:text-white hover:border-slate-500'
+              }`}
+              title="导入机构内部 Excel / CSV 资产敞口或恢复官方基准"
+            >
+              <UploadCloud className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden lg:inline text-[11px] truncate max-w-[120px]">
+                {customFileName ? `私有: ${customFileName}` : '私有数据'}
+              </span>
+            </button>
+          )}
+
+          {/* Multi-Currency Denomination Switcher */}
+          {onChangeCurrency && (
+            <div className="flex items-center bg-slate-900 border border-slate-700/80 rounded-xl p-0.5 text-xs font-mono shadow-sm" title="切换全站基准计价货币">
+              {CURRENCY_LIST.map(cur => (
+                <button
+                  key={cur.id}
+                  onClick={() => {
+                    soundFx.playTick();
+                    onChangeCurrency(cur.id);
+                  }}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    selectedCurrency === cur.id
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title={`以 ${cur.name} 为全站基准计价`}
+                >
+                  <span>{cur.symbol}</span>
+                  <span className="hidden xl:inline">{cur.shortName}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Pro Terminal Command Palette Trigger */}
           {onOpenCommandPalette && (
             <button
@@ -371,8 +422,10 @@ export default function Header({
               <TrendingUp className="w-3 h-3 text-sky-400" /> 全球跨境总债权
             </div>
             <div className="text-base font-bold text-white font-mono flex items-baseline gap-1 mt-0.5">
-              ${((currentMacro.total_cross_border_claims_usd_bn || 0) / 1000).toFixed(2)}
-              <span className="text-[11px] font-normal text-slate-400">万亿 USD</span>
+              {formatValueInCurrency(currentMacro.total_cross_border_claims_usd_bn || 0, selectedCurrency, selectedQuarter)}
+              <span className="text-[11px] font-normal text-slate-400">
+                {selectedCurrency === 'USD' ? '总债权' : `(${selectedCurrency})`}
+              </span>
             </div>
           </div>
 

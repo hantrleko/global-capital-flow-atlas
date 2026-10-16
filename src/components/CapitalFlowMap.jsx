@@ -13,7 +13,8 @@ export default function CapitalFlowMap({
   selectedQuarter,
   onSelectQuarter,
   selectedCountry,
-  onSelectCountry
+  onSelectCountry,
+  selectedCurrency = 'USD'
 }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);

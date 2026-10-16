@@ -1,23 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import bisDataset from './data/bis_atlas_dataset.json';
 import Header from './components/Header';
 import CapitalFlowMap from './components/CapitalFlowMap';
-import NetworkTopology from './components/NetworkTopology';
-import EarlyWarningSystem from './components/EarlyWarningSystem';
-import FinancialFragmentation from './components/FinancialFragmentation';
-import BilateralRoutingMatrix from './components/BilateralRoutingMatrix';
-import ShadowBankingMonitor from './components/ShadowBankingMonitor';
-import NetworkContagionSimulator from './components/NetworkContagionSimulator';
-import MaturityRolloverMonitor from './components/MaturityRolloverMonitor';
-import CentralBankSwapLines from './components/CentralBankSwapLines';
-import UsdFundingMonitor from './components/UsdFundingMonitor';
-import CurrencyHegemonyTracker from './components/CurrencyHegemonyTracker';
-import CountryRiskMatrix from './components/CountryRiskMatrix';
-import MultiCountryCompare from './components/MultiCountryCompare';
-import GravityEconometrics from './components/GravityEconometrics';
-import RegimeComparison from './components/RegimeComparison';
-import CrisisPlaybook from './components/CrisisPlaybook';
-import ResearchDossier from './components/ResearchDossier';
 import CountryDrawer from './components/CountryDrawer';
 import CommandPalette from './components/CommandPalette';
 import MacroAiCopilot from './components/MacroAiCopilot';
@@ -28,6 +12,33 @@ import MacroShockSandbox from './components/MacroShockSandbox';
 import InstitutionalReportModal from './components/InstitutionalReportModal';
 import soundFx from './utils/soundEffects';
 import { Keyboard, X, Bot, Sparkles } from 'lucide-react';
+
+// Lazy-loaded secondary quant components for bundle code-splitting
+const NetworkTopology = React.lazy(() => import('./components/NetworkTopology'));
+const EarlyWarningSystem = React.lazy(() => import('./components/EarlyWarningSystem'));
+const GsibMonitor = React.lazy(() => import('./components/GsibMonitor'));
+const FinancialFragmentation = React.lazy(() => import('./components/FinancialFragmentation'));
+const BilateralRoutingMatrix = React.lazy(() => import('./components/BilateralRoutingMatrix'));
+const ShadowBankingMonitor = React.lazy(() => import('./components/ShadowBankingMonitor'));
+const NetworkContagionSimulator = React.lazy(() => import('./components/NetworkContagionSimulator'));
+const MaturityRolloverMonitor = React.lazy(() => import('./components/MaturityRolloverMonitor'));
+const CentralBankSwapLines = React.lazy(() => import('./components/CentralBankSwapLines'));
+const UsdFundingMonitor = React.lazy(() => import('./components/UsdFundingMonitor'));
+const CurrencyHegemonyTracker = React.lazy(() => import('./components/CurrencyHegemonyTracker'));
+const CountryRiskMatrix = React.lazy(() => import('./components/CountryRiskMatrix'));
+const MultiCountryCompare = React.lazy(() => import('./components/MultiCountryCompare'));
+const GravityEconometrics = React.lazy(() => import('./components/GravityEconometrics'));
+const RegimeComparison = React.lazy(() => import('./components/RegimeComparison'));
+const CrisisPlaybook = React.lazy(() => import('./components/CrisisPlaybook'));
+const ResearchDossier = React.lazy(() => import('./components/ResearchDossier'));
+const CustomDataImporter = React.lazy(() => import('./components/CustomDataImporter'));
+
+const LoadingFallback = () => (
+  <div className="w-full h-80 flex flex-col items-center justify-center gap-3 text-slate-400">
+    <div className="w-8 h-8 rounded-full border-2 border-sky-400 border-t-transparent animate-spin" />
+    <span className="text-xs font-mono text-slate-400">正在异步加载高维量化引擎 (Code-Splitting)...</span>
+  </div>
+);
 
 export default function App() {
   const quarters = bisDataset.quarters || [];
@@ -47,11 +58,35 @@ export default function App() {
   const [isCodeExporterOpen, setIsCodeExporterOpen] = useState(false);
   const [isShockSandboxOpen, setIsShockSandboxOpen] = useState(false);
   const [isInstitutionalReportOpen, setIsInstitutionalReportOpen] = useState(false);
+  const [isCustomDataOpen, setIsCustomDataOpen] = useState(false);
+  const [customMatrix, setCustomMatrix] = useState(null);
+  const [customFileName, setCustomFileName] = useState(null);
+  const [selectedCurrency, setSelectedCurrency] = useState(() => {
+    return localStorage.getItem('bis_atlas_currency') || 'USD';
+  });
   const [isSoundMuted, setIsSoundMuted] = useState(() => soundFx.isMuted());
   const [contagionConfig, setContagionConfig] = useState(null);
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('bis_atlas_theme') || 'dark';
   });
+
+  const handleCurrencyChange = (newCur) => {
+    soundFx.playTick();
+    setSelectedCurrency(newCur);
+    localStorage.setItem('bis_atlas_currency', newCur);
+  };
+
+  // Active dataset that transparently overlays custom uploaded matrix in memory
+  const activeDataset = useMemo(() => {
+    if (!customMatrix) return bisDataset;
+    return {
+      ...bisDataset,
+      bilateral_matrix: {
+        ...bisDataset.bilateral_matrix,
+        [selectedQuarter]: customMatrix
+      }
+    };
+  }, [customMatrix, selectedQuarter]);
 
   const toggleSound = () => {
     const next = soundFx.toggleMute();
@@ -148,6 +183,7 @@ export default function App() {
         setIsCodeExporterOpen(false);
         setIsShockSandboxOpen(false);
         setIsInstitutionalReportOpen(false);
+        setIsCustomDataOpen(false);
         setSelectedCountry(null);
       }
     };
@@ -186,6 +222,10 @@ export default function App() {
         onOpenInstitutionalReport={() => setIsInstitutionalReportOpen(true)}
         onToggleMilestones={() => setIsMilestonesOpen(prev => !prev)}
         isMilestonesOpen={isMilestonesOpen}
+        selectedCurrency={selectedCurrency}
+        onChangeCurrency={handleCurrencyChange}
+        onOpenCustomData={() => setIsCustomDataOpen(true)}
+        customFileName={customFileName}
         isSoundMuted={isSoundMuted}
         onToggleSound={toggleSound}
       />
@@ -203,148 +243,160 @@ export default function App() {
 
       {/* Main Analysis Viewport */}
       <main className="flex-1 max-w-[1780px] w-full mx-auto p-4 md:p-6 space-y-6">
-        {activeTab === 'map' && (
-          <CapitalFlowMap
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectQuarter={(q) => setSelectedQuarter(q)}
-            selectedCountry={selectedCountry}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+        <Suspense fallback={<LoadingFallback />}>
+          {activeTab === 'map' && (
+            <CapitalFlowMap
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectQuarter={(q) => setSelectedQuarter(q)}
+              selectedCountry={selectedCountry}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+              selectedCurrency={selectedCurrency}
+            />
+          )}
 
-        {activeTab === 'network' && (
-          <NetworkTopology
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            selectedCountry={selectedCountry}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'network' && (
+            <NetworkTopology
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              selectedCountry={selectedCountry}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'ews' && (
-          <EarlyWarningSystem
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectQuarter={(q) => setSelectedQuarter(q)}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'ews' && (
+            <EarlyWarningSystem
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectQuarter={(q) => setSelectedQuarter(q)}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'fragmentation' && (
-          <FinancialFragmentation
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'gsib' && (
+            <GsibMonitor
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+              selectedCurrency={selectedCurrency}
+            />
+          )}
 
-        {activeTab === 'routing' && (
-          <BilateralRoutingMatrix
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'fragmentation' && (
+            <FinancialFragmentation
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'shadow' && (
-          <ShadowBankingMonitor
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'routing' && (
+            <BilateralRoutingMatrix
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'contagion' && (
-          <NetworkContagionSimulator
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-            contagionConfig={contagionConfig}
-          />
-        )}
+          {activeTab === 'shadow' && (
+            <ShadowBankingMonitor
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'maturity' && (
-          <MaturityRolloverMonitor
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'contagion' && (
+            <NetworkContagionSimulator
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+              contagionConfig={contagionConfig}
+            />
+          )}
 
-        {activeTab === 'swaps' && (
-          <CentralBankSwapLines
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'maturity' && (
+            <MaturityRolloverMonitor
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'usd' && (
-          <UsdFundingMonitor
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'swaps' && (
+            <CentralBankSwapLines
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'currency' && (
-          <CurrencyHegemonyTracker
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'usd' && (
+            <UsdFundingMonitor
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'risk' && (
-          <CountryRiskMatrix
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            selectedCountry={selectedCountry}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'currency' && (
+            <CurrencyHegemonyTracker
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'compare' && (
-          <MultiCountryCompare
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'risk' && (
+            <CountryRiskMatrix
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              selectedCountry={selectedCountry}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'gravity' && (
-          <GravityEconometrics
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'compare' && (
+            <MultiCountryCompare
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'comparison' && (
-          <RegimeComparison
-            dataset={bisDataset}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-          />
-        )}
+          {activeTab === 'gravity' && (
+            <GravityEconometrics
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'playbook' && (
-          <CrisisPlaybook
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-            onSelectQuarter={(q) => setSelectedQuarter(q)}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-            onSelectTab={setActiveTab}
-            onSetContagionConfig={setContagionConfig}
-          />
-        )}
+          {activeTab === 'comparison' && (
+            <RegimeComparison
+              dataset={activeDataset}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+            />
+          )}
 
-        {activeTab === 'dossier' && (
-          <ResearchDossier
-            dataset={bisDataset}
-            selectedQuarter={selectedQuarter}
-          />
-        )}
+          {activeTab === 'playbook' && (
+            <CrisisPlaybook
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              onSelectQuarter={(q) => setSelectedQuarter(q)}
+              onSelectCountry={(code) => setSelectedCountry(code)}
+              onSelectTab={setActiveTab}
+              onSetContagionConfig={setContagionConfig}
+            />
+          )}
+
+          {activeTab === 'dossier' && (
+            <ResearchDossier
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+            />
+          )}
+        </Suspense>
       </main>
 
       {/* Sovereign 360° Detailed Profile Drawer (Overlay) */}
@@ -413,9 +465,25 @@ export default function App() {
       <InstitutionalReportModal
         isOpen={isInstitutionalReportOpen}
         onClose={() => setIsInstitutionalReportOpen(false)}
-        dataset={bisDataset}
+        dataset={activeDataset}
         selectedQuarter={selectedQuarter}
       />
+
+      {/* Custom Data Ingestion Sandbox Modal */}
+      <Suspense fallback={null}>
+        <CustomDataImporter
+          isOpen={isCustomDataOpen}
+          onClose={() => setIsCustomDataOpen(false)}
+          onApplyCustomData={(matrix, fName) => {
+            setCustomMatrix(matrix);
+            setCustomFileName(fName);
+          }}
+          onResetToOfficial={() => {
+            setCustomMatrix(null);
+            setCustomFileName(null);
+          }}
+        />
+      </Suspense>
 
       {/* BIS Macro AI Copilot Modal Window */}
       <MacroAiCopilot
@@ -464,6 +532,10 @@ export default function App() {
         onToggleMilestones={() => {
           setIsCommandPaletteOpen(false);
           setIsMilestonesOpen(prev => !prev);
+        }}
+        onOpenCustomData={() => {
+          setIsCommandPaletteOpen(false);
+          setIsCustomDataOpen(true);
         }}
       />
 
