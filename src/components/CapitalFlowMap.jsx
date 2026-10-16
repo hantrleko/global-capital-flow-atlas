@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as echarts from 'echarts';
 import GlobalFlowGlobe3D from './GlobalFlowGlobe3D';
+import MethodologyFootnote from './MethodologyFootnote';
 import { 
   Layers, Eye, Filter, ArrowUpRight, ArrowDownLeft, 
   Info, Download, Target, Compass, Maximize2, Sparkles,
@@ -14,7 +15,8 @@ export default function CapitalFlowMap({
   onSelectQuarter,
   selectedCountry,
   onSelectCountry,
-  selectedCurrency = 'USD'
+  selectedCurrency = 'USD',
+  onOpenAppendix
 }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -377,6 +379,7 @@ export default function CapitalFlowMap({
       geo: {
         map: 'world',
         roam: true,
+        scaleLimit: { min: 0.8, max: 6.0 },
         zoom: geoZoom,
         center: geoCenter,
         aspectScale: 0.85,
@@ -682,11 +685,14 @@ export default function CapitalFlowMap({
   const MACRO_EPOCHS = [
     { label: '联储缩表', quarter: '2018Q4', tag: '加息顶峰' },
     { label: '疫情危机', quarter: '2020Q1', tag: '流动性海啸' },
-    { label: '供给再通胀', quarter: '2021Q3', tag: '通胀狂飙' },
-    { label: '硅谷银行风暴', quarter: '2023Q1', tag: '极速紧缩' },
-    { label: '高息降息博弈', quarter: '2024Q4', tag: '官方审计' },
-    { label: '套息平仓潮', quarter: '2025Q3', tag: 'Nowcast' },
-    { label: '多极算力网络', quarter: '2026Q4', tag: '前瞻推演' }
+    { label: '供给再通胀', quarter: '2021Q2', tag: '信贷扩张' },
+    { label: '强美元紧缩', quarter: '2022Q3', tag: 'DXY 114' },
+    { label: '硅谷银行风暴', quarter: '2023Q1', tag: 'SVB/瑞信' },
+    { label: '日元套息巨震', quarter: '2024Q3', tag: 'BOJ加息' },
+    { label: '全球降息周期', quarter: '2024Q4', tag: '官方审计' },
+    { label: '跨境信贷破46T', quarter: '2025Q4', tag: '基准审计' },
+    { label: '峰值47.8T', quarter: '2026Q2', tag: '官方最新' },
+    { label: '多极清算网络', quarter: '2026Q4', tag: 'Nowcast' }
   ];
 
   useEffect(() => {
@@ -1241,7 +1247,7 @@ export default function CapitalFlowMap({
         </div>
       </div>
 
-      {/* Integrated 28-Quarter Full Historical Scrubber & Macro Trend Panel */}
+      {/* Integrated 36-Quarter Full Historical Scrubber & Macro Trend Panel */}
       <div className="glass-panel rounded-2xl p-4 md:p-5 shadow-xl border border-white/[0.06] space-y-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
           <div className="flex items-center gap-2">
@@ -1250,9 +1256,13 @@ export default function CapitalFlowMap({
             </span>
             <div>
               <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                28 个季度官方时间序列全息穿透 (2018Q1 - 2024Q4)
-                <span className="text-[11px] font-mono text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/30">
-                  当前处于: {selectedQuarter}
+                36 个季度时间序列全息穿透 (2018Q1 - 2026Q4)
+                <span className={`text-[11px] font-mono px-2 py-0.5 rounded border ${
+                  selectedQuarter > '2026Q2' 
+                    ? 'text-purple-300 bg-purple-500/15 border-purple-500/35 shadow-[0_0_8px_rgba(168,85,247,0.25)]' 
+                    : 'text-sky-300 bg-sky-500/10 border-sky-500/30'
+                }`}>
+                  当前处于: {selectedQuarter} {selectedQuarter > '2026Q2' ? '[NOWCAST 临近预测]' : '[BIS 官方观测]'}
                 </span>
               </h3>
               <p className="text-[11px] text-slate-400 mt-0.5">
@@ -1261,10 +1271,12 @@ export default function CapitalFlowMap({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs font-mono text-slate-400 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
-            <span>总跨度: 7 年 / 28 季</span>
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-400 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
+            <span>总跨度: 9 年 / 36 季</span>
             <span className="text-slate-600">·</span>
-            <span>最新总量: $37.13 万亿</span>
+            <span className="text-emerald-400 font-semibold">2026Q2 官方: $47.82T</span>
+            <span className="text-slate-600">·</span>
+            <span className="text-purple-400 font-semibold">2026Q4 Nowcast: ~$48.60T</span>
           </div>
         </div>
 
@@ -1292,6 +1304,14 @@ export default function CapitalFlowMap({
 
         {/* ECharts Scrubber Chart */}
         <div ref={timelineChartRef} className="w-full h-44" />
+
+        {/* Methodology & Data Attribution Footnote */}
+        <MethodologyFootnote
+          source="BIS LBS Table A6.2 (Locational Banking Statistics by Residence)"
+          accounting="常住地即时交易对手原则 (Immediate Counterparty Basis)"
+          model="最大熵矩阵平衡 (RAS Entropy Balancing)"
+          onOpenAppendix={onOpenAppendix}
+        />
       </div>
     </div>
   );

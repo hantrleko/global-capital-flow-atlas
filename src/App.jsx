@@ -32,6 +32,7 @@ const RegimeComparison = React.lazy(() => import('./components/RegimeComparison'
 const CrisisPlaybook = React.lazy(() => import('./components/CrisisPlaybook'));
 const ResearchDossier = React.lazy(() => import('./components/ResearchDossier'));
 const CustomDataImporter = React.lazy(() => import('./components/CustomDataImporter'));
+const MethodologyAppendixModal = React.lazy(() => import('./components/MethodologyAppendixModal'));
 
 const LoadingFallback = () => (
   <div className="w-full h-80 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -42,12 +43,36 @@ const LoadingFallback = () => (
 
 export default function App() {
   const quarters = bisDataset.quarters || [];
-  // Default to the latest quarter (2026Q4)
-  const [selectedQuarter, setSelectedQuarter] = useState(quarters[quarters.length - 1] || '2026Q4');
+
+  // Parse Deep Linking URL search parameters
+  const initialParams = useMemo(() => {
+    try {
+      return new URLSearchParams(window.location.search);
+    } catch {
+      return new URLSearchParams();
+    }
+  }, []);
+
+  const paramQ = initialParams.get('q');
+  const paramTab = initialParams.get('tab');
+  const paramCountry = initialParams.get('country');
+  const paramCurrency = initialParams.get('currency');
+
+  // Default to the latest quarter (2026Q4) or deep-linked quarter
+  const [selectedQuarter, setSelectedQuarter] = useState(() => {
+    if (paramQ && quarters.includes(paramQ)) return paramQ;
+    return quarters[quarters.length - 1] || '2026Q4';
+  });
   const [isPlaying, setIsPlaying] = useState(false);
   const [playSpeed, setPlaySpeed] = useState(1);
-  const [activeTab, setActiveTab] = useState('map');
-  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [activeTab, setActiveTab] = useState(() => {
+    if (paramTab) return paramTab;
+    return 'map';
+  });
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    if (paramCountry) return paramCountry;
+    return null;
+  });
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isMacroAiOpen, setIsMacroAiOpen] = useState(false);
@@ -59,9 +84,12 @@ export default function App() {
   const [isShockSandboxOpen, setIsShockSandboxOpen] = useState(false);
   const [isInstitutionalReportOpen, setIsInstitutionalReportOpen] = useState(false);
   const [isCustomDataOpen, setIsCustomDataOpen] = useState(false);
+  const [isAppendixOpen, setIsAppendixOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
   const [customMatrix, setCustomMatrix] = useState(null);
   const [customFileName, setCustomFileName] = useState(null);
   const [selectedCurrency, setSelectedCurrency] = useState(() => {
+    if (paramCurrency && ['USD', 'EUR', 'CNY', 'JPY', 'GOLD'].includes(paramCurrency)) return paramCurrency;
     return localStorage.getItem('bis_atlas_currency') || 'USD';
   });
   const [isSoundMuted, setIsSoundMuted] = useState(() => soundFx.isMuted());
@@ -69,6 +97,31 @@ export default function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('bis_atlas_theme') || 'dark';
   });
+
+  // Keep URL search params synchronized for deep linking
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams();
+      if (selectedQuarter) params.set('q', selectedQuarter);
+      if (activeTab && activeTab !== 'map') params.set('tab', activeTab);
+      if (selectedCountry) params.set('country', selectedCountry);
+      if (selectedCurrency && selectedCurrency !== 'USD') params.set('currency', selectedCurrency);
+
+      const qs = params.toString();
+      const newPath = window.location.pathname + (qs ? `?${qs}` : '');
+      window.history.replaceState(null, '', newPath);
+    } catch {
+      // Ignore in non-browser environments
+    }
+  }, [selectedQuarter, activeTab, selectedCountry, selectedCurrency]);
+
+  const handleCopyDeepLink = () => {
+    soundFx.playChime();
+    const currentUrl = window.location.href;
+    navigator.clipboard.writeText(currentUrl);
+    setToastMessage('✅ 深度快照链接已复制！包含当前季度、所选视角与分析域');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const handleCurrencyChange = (newCur) => {
     soundFx.playTick();
@@ -228,6 +281,7 @@ export default function App() {
         customFileName={customFileName}
         isSoundMuted={isSoundMuted}
         onToggleSound={toggleSound}
+        onOpenAppendix={() => setIsAppendixOpen(true)}
       />
 
       {/* Historical Macro Milestones Ribbon (2018-2026 Epochs) */}
@@ -252,6 +306,7 @@ export default function App() {
               selectedCountry={selectedCountry}
               onSelectCountry={(code) => setSelectedCountry(code)}
               selectedCurrency={selectedCurrency}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -270,6 +325,7 @@ export default function App() {
               selectedQuarter={selectedQuarter}
               onSelectQuarter={(q) => setSelectedQuarter(q)}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -279,6 +335,7 @@ export default function App() {
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
               selectedCurrency={selectedCurrency}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -312,6 +369,7 @@ export default function App() {
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
               contagionConfig={contagionConfig}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -537,7 +595,30 @@ export default function App() {
           setIsCommandPaletteOpen(false);
           setIsCustomDataOpen(true);
         }}
+        onOpenAppendix={() => {
+          setIsCommandPaletteOpen(false);
+          setIsAppendixOpen(true);
+        }}
+        onCopyDeepLink={() => {
+          setIsCommandPaletteOpen(false);
+          handleCopyDeepLink();
+        }}
       />
+
+      {/* Methodology & Data Appendix Modal */}
+      <Suspense fallback={null}>
+        <MethodologyAppendixModal
+          isOpen={isAppendixOpen}
+          onClose={() => setIsAppendixOpen(false)}
+        />
+      </Suspense>
+
+      {/* Floating Deep Link Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-slate-900/95 border border-emerald-500/50 text-emerald-300 text-xs font-mono shadow-[0_0_20px_rgba(16,185,129,0.35)] backdrop-blur-md flex items-center gap-2 animate-bounce-subtle">
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       {/* Keyboard Shortcuts Reference Modal */}
       {isShortcutsOpen && (
@@ -582,7 +663,7 @@ export default function App() {
             <div className="pt-2 text-center">
               <button
                 onClick={() => setIsShortcutsOpen(false)}
-                className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold"
+                className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold cursor-pointer"
               >
                 我知道了 (OK)
               </button>
@@ -599,7 +680,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4 text-[11px] font-mono">
             <span>数据源: BIS LBS &amp; CBS 季度基准</span>
-            <span>口径: 2018Q1-2024Q4 官方审计 / 2025Q1-2026Q4 央行先导推演</span>
+            <span>口径: 2018Q1-2026Q2 官方观测 / 2026Q3-2026Q4 动态 Nowcast</span>
             <span>总计: 36 季度</span>
           </div>
         </div>

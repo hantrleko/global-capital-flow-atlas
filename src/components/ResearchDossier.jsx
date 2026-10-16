@@ -28,9 +28,11 @@ export default function ResearchDossier({
     try {
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: Global Macro Timeline (28 Quarters)
+      // Sheet 1: Global Macro Timeline (36 Quarters: 2018Q1 - 2026Q4)
       const macroRows = (dataset.global_macro || []).map(m => ({
         'Quarter': m.quarter,
+        'Observation Status': m.observation_status || (m.is_nowcast ? 'NOWCAST_ESTIMATE' : 'OBSERVED'),
+        'Data Vintage': m.data_vintage || '2026-10-14 BIS SDMX',
         'Total Cross-Border Claims ($B)': m.total_cross_border_claims_usd_bn,
         'USD Claims ($B)': m.total_usd_cross_border_bn,
         'USD Share (%)': m.global_usd_share_pct,

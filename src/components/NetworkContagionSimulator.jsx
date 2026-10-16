@@ -5,12 +5,14 @@ import {
   TrendingDown, Layers, Zap, Download, Info 
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
+import MethodologyFootnote from './MethodologyFootnote';
 
 export default function NetworkContagionSimulator({
   dataset,
   selectedQuarter,
   onSelectCountry,
-  contagionConfig
+  contagionConfig,
+  onOpenAppendix
 }) {
   const countries = dataset.countries || [];
   const currentLinks = (dataset.bilateral_matrix || {})[selectedQuarter] || [];
@@ -504,11 +506,20 @@ export default function NetworkContagionSimulator({
             </div>
           </div>
 
-          <div className="text-[11px] text-slate-400 bg-slate-950 p-2 rounded border border-slate-800/80 mt-2">
-            💡 <strong>金融网络学理论提示：</strong> 该模拟基于国际金融经典网络传导模型（Eisenberg & Noe 2001, Upper & Worms 2004）。如果震中位于具备高借款集中度的中心，英、美、法、西等大型跨国母行的一级资本首当其冲。
+          <div className="text-[11px] text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 mt-2 space-y-1">
+            <div>💡 <strong>金融网络学理论提示：</strong> 该模拟基于国际金融经典网络传导模型（Eisenberg & Noe 2001, Upper & Worms 2004）。如果震中位于具备高借款集中度的中心，英、美、法、西等大型跨国母行的一级资本首当其冲。</div>
           </div>
         </div>
       </div>
+
+      {/* Academic Methodology Footnote */}
+      <MethodologyFootnote
+        source="BIS CBS Table B4 (Consolidated Banking Statistics) & FSB G-SIB"
+        accounting="最终风险承担原则 (Ultimate Risk Basis)"
+        model="Eisenberg-Noe (2001) 级联清算模型"
+        isSimulation={true}
+        onOpenAppendix={onOpenAppendix}
+      />
     </div>
   );
 }

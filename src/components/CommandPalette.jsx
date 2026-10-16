@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Search, Globe, Layers, Calendar, ArrowRight, X, Command, 
   HelpCircle, Moon, Sun, Activity, ShieldAlert, Split, Sliders,
-  Code, FileText, BookOpen, History, UploadCloud, Building2
+  Code, FileText, BookOpen, History, UploadCloud, Building2, Share2
 } from 'lucide-react';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
 
@@ -23,7 +23,9 @@ export default function CommandPalette({
   onOpenShockSandbox,
   onOpenInstitutionalReport,
   onToggleMilestones,
-  onOpenCustomData
+  onOpenCustomData,
+  onOpenAppendix,
+  onCopyDeepLink
 }) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -131,6 +133,26 @@ export default function CommandPalette({
         desc: '上传本地投资组合或银行双边敞口，在本地内存中即刻全景推演',
         icon: UploadCloud,
         action: () => onOpenCustomData?.()
+      });
+    }
+
+    if (!q || '方法论 附录 假定 算法 数据源 引用 bibtex appendix methodology data sdmx'.includes(q)) {
+      results.push({
+        type: 'action',
+        title: '📖 打开方法论与数据附录 (Methodology & Data Appendix)',
+        desc: '查阅 BIS SDMX 官方数据流、RAS 矩阵平衡优化公式与级联清算假定',
+        icon: FileText,
+        action: () => onOpenAppendix?.()
+      });
+    }
+
+    if (!q || '分享 链接 复制 深度链接 share link deep url'.includes(q)) {
+      results.push({
+        type: 'action',
+        title: '🔗 复制当前视图深度链接 (Share Deep Link URL)',
+        desc: '生成包含当前季度、所选国家与分析模块的永久快照链接',
+        icon: Share2,
+        action: () => onCopyDeepLink?.()
       });
     }
 

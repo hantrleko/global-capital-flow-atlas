@@ -7,12 +7,14 @@ import {
 import { GSIB_BANKS, GSIB_BUCKETS } from '../data/gsibData';
 import { formatValueInCurrency } from '../utils/currencyConversion';
 import soundFx from '../utils/soundEffects';
+import MethodologyFootnote from './MethodologyFootnote';
 
 export default function GsibMonitor({
   dataset,
   selectedQuarter,
   onSelectCountry,
-  selectedCurrency = 'USD'
+  selectedCurrency = 'USD',
+  onOpenAppendix
 }) {
   const [selectedBucket, setSelectedBucket] = useState('ALL');
   const [selectedCountryFilter, setSelectedCountryFilter] = useState('ALL');
@@ -327,6 +329,15 @@ export default function GsibMonitor({
           </div>
         </div>
       </div>
+
+      {/* Academic Methodology Footnote */}
+      <MethodologyFootnote
+        source="FSB G-SIB 2025/2026 Assessment & Basel III Pillar 3 Disclosures"
+        accounting="最高并表母行原则 (Consolidated Parent Group Basis)"
+        model="微观资产负债表信贷传导测算 (Micro Stress Test)"
+        isSimulation={true}
+        onOpenAppendix={onOpenAppendix}
+      />
     </div>
   );
 }

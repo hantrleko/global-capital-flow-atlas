@@ -1,0 +1,63 @@
+name: Automated BIS SDMX Data Pipeline & Deployment
+
+on:
+  schedule:
+    # Run every Monday at 04:00 UTC to check for quarterly BIS releases
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run BIS Data Calibration Pipeline
+        run: |
+          python scripts/fetch_bis_data.py
+
+      - name: Commit Updated Dataset if Changed
+        id: git_check
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -n $(git status -s src/data/bis_atlas_dataset.json) ]]; then
+            git add src/data/bis_atlas_dataset.json
+            git commit -m "chore(data): automate BIS SDMX quarterly data update [skip ci]"
+            git push origin main
+            echo "updated=true" >> $GITHUB_OUTPUT
+          else
+            echo "No data changes detected."
+            echo "updated=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Production Assets
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist

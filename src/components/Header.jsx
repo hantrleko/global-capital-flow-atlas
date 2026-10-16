@@ -95,7 +95,8 @@ export default function Header({
   onOpenCustomData,
   customFileName = null,
   isSoundMuted = false,
-  onToggleSound
+  onToggleSound,
+  onOpenAppendix
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const currentMacro = globalMacroMap[selectedQuarter] || {};
@@ -155,10 +156,17 @@ export default function Header({
                   全球资本流动图谱
                 </span>
               </h1>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(16,185,129,0.25)]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                BIS 官方季度频率标准 (SDMX 2.1 Audited)
-              </span>
+              {selectedQuarter > '2026Q2' ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(168,85,247,0.25)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                  [NOWCAST 临近预报] 动态引力外推 (95% CI: ±1.2%)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(16,185,129,0.25)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  [BIS 官方观测口径] SDMX 2.1 Audited (至 2026Q2)
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
               以国际清算银行居住地 (LBS) 与综合银行统计 (CBS) 为基石 · 国际信贷、美元流动性与国家主权敞口监测台
@@ -168,6 +176,21 @@ export default function Header({
 
         {/* Global Country Search & Key Metrics Badges */}
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Methodology & Data Appendix Trigger */}
+          {onOpenAppendix && (
+            <button
+              onClick={() => {
+                soundFx.playChime();
+                onOpenAppendix();
+              }}
+              className="px-2.5 py-1.5 rounded-xl border border-blue-500/40 bg-blue-950/40 text-blue-300 hover:text-white hover:bg-blue-900/40 flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer"
+              title="查看 BIS 数据口径、矩阵平衡算法与学理假定说明"
+            >
+              <FileText className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline text-[11px]">方法论附录</span>
+            </button>
+          )}
+
           {/* Platform Brief / Intro Trigger */}
           {onOpenIntro && (
             <button
@@ -418,13 +441,21 @@ export default function Header({
 
           {/* Metric 1: Total Claims */}
           <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-1.5 min-w-[135px] shadow-sm">
-            <div className="text-[10px] uppercase tracking-wider text-slate-400 flex items-center gap-1 font-mono">
-              <TrendingUp className="w-3 h-3 text-sky-400" /> 全球跨境总债权
+            <div className="text-[10px] uppercase tracking-wider text-slate-400 flex items-center justify-between gap-1 font-mono">
+              <span className="flex items-center gap-1">
+                <TrendingUp className="w-3 h-3 text-sky-400" /> 全球跨境总债权
+              </span>
+              {selectedQuarter > '2026Q2' && (
+                <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/25 text-purple-300 font-bold border border-purple-500/40">
+                  NOWCAST
+                </span>
+              )}
             </div>
             <div className="text-base font-bold text-white font-mono flex items-baseline gap-1 mt-0.5">
+              {selectedQuarter > '2026Q2' ? '~' : ''}
               {formatValueInCurrency(currentMacro.total_cross_border_claims_usd_bn || 0, selectedCurrency, selectedQuarter)}
               <span className="text-[11px] font-normal text-slate-400">
-                {selectedCurrency === 'USD' ? '总债权' : `(${selectedCurrency})`}
+                {selectedCurrency === 'USD' ? (selectedQuarter > '2026Q2' ? '预估' : '总债权') : `(${selectedCurrency})`}
               </span>
             </div>
           </div>

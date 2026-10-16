@@ -5,12 +5,14 @@ import {
   HelpCircle, Compass, BarChart3, Layers, Filter, Search, ShieldCheck,
   Calendar
 } from 'lucide-react';
+import MethodologyFootnote from './MethodologyFootnote';
 
 export default function EarlyWarningSystem({
   dataset,
   selectedQuarter,
   onSelectQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const [filterRegion, setFilterRegion] = useState('ALL');
   const [filterSignal, setFilterSignal] = useState('ALL');
@@ -752,17 +754,17 @@ export default function EarlyWarningSystem({
         </div>
       )}
 
-      {/* Subtab 4: Full 28-Quarter Risk Heatmap Evolution Matrix */}
+      {/* Subtab 4: Full 36-Quarter Risk Heatmap Evolution Matrix */}
       {activeSubTab === 'history_heatmap' && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-sky-400" />
-                28 个季度全球 23 个系统重要性经济体脆弱性热力图谱 (2018Q1 - 2024Q4)
+                36 个季度全球 23 个系统重要性经济体脆弱性热力图谱 (2018Q1 - 2026Q4)
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                横轴为 28 个完整季度，纵轴为经济体。颜色由深绿（极度稳健）经黄色转为深红（高危预警）。点击矩阵任意单元格即可穿透加载该季度数据！
+                横轴为 36 个完整季度（34 季官方观测 + 2 季 Nowcast），纵轴为经济体。颜色由深绿（稳健）经黄色转为深红（高危预警）。点击矩阵任意单元格即可穿透加载该季度数据！
               </p>
             </div>
             <div className="text-xs font-mono text-slate-400 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 shrink-0">
@@ -773,6 +775,14 @@ export default function EarlyWarningSystem({
           <div ref={heatmapChartRef} className="w-full h-[620px]" />
         </div>
       )}
+
+      {/* Academic Methodology Footnote */}
+      <MethodologyFootnote
+        source="BIS Table WS_CREDIT_GAP (Credit-to-GDP Gaps) & CBS Table B4"
+        accounting="巴塞尔 III 逆周期资本缓冲框架 (BCBS CCyB Guidelines)"
+        model="HP 滤波趋势偏离 (HP Filter Trend Deviation, λ=400,000)"
+        onOpenAppendix={onOpenAppendix}
+      />
     </div>
   );
 }
