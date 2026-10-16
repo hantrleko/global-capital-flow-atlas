@@ -77,6 +77,7 @@ export default function App() {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isMacroAiOpen, setIsMacroAiOpen] = useState(false);
   const [isIntroOpen, setIsIntroOpen] = useState(() => {
+    if (initialParams.get('intro') === '0' || initialParams.get('intro') === 'false') return false;
     return !localStorage.getItem('bis_atlas_intro_seen');
   });
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
@@ -674,14 +675,38 @@ export default function App() {
 
       {/* Institutional Footer */}
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 px-6 text-xs text-slate-500 text-center">
-        <div className="max-w-[1780px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div>
-            BIS Global Capital Flow Atlas · 国际清算银行统计宏观经济分析与金融风险对照系统
+        <div className="max-w-[1780px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-slate-400">
+            <span className="font-medium text-slate-300">BIS Global Capital Flow Atlas</span>
+            <span className="text-slate-600">·</span>
+            <span>EF Lab Quantitative Macro Research</span>
           </div>
-          <div className="flex items-center gap-4 text-[11px] font-mono">
-            <span>数据源: BIS LBS &amp; CBS 季度基准</span>
-            <span>口径: 2018Q1-2026Q2 官方观测 / 2026Q3-2026Q4 动态 Nowcast</span>
-            <span>总计: 36 季度</span>
+
+          {/* User Requested Data Statement with Methodology Link */}
+          <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-slate-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800/60">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>数据截至 2026Q2 · 国别/双边为模型分配 · </span>
+            <button
+              onClick={() => setIsAppendixOpen(true)}
+              className="text-sky-400 hover:text-sky-300 underline underline-offset-2 transition-colors cursor-pointer"
+            >
+              方法论见附录 →
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 text-[11px] font-mono text-slate-500">
+            <span>官方口径 $47.8T</span>
+            <span>·</span>
+            <span>36 季度</span>
+            <span>·</span>
+            <a
+              href="https://github.com/hantrleko/global-capital-flow-atlas"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-slate-300 transition-colors"
+            >
+              GitHub 源码
+            </a>
           </div>
         </div>
       </footer>

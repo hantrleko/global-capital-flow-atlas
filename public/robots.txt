@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hantrleko.github.io/global-capital-flow-atlas/sitemap.xml
