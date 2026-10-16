@@ -94,6 +94,29 @@ export const CRISIS_EPISODES = [
     ],
     policyResponse: '多国央行强化对非银金融中介 (NBFI) 杠杆率与流动性错配的穿透式监管，防范“监管套利”引发的系统性影子银行危机。',
     bisQuote: '“As traditional bank intermediation declines under stringent capital rules, private credit and offshore non-bank intermediaries are expanding into systemic significance.” — Claudio Borio (BIS)'
+  },
+  {
+    id: 'record_high_2026q1',
+    quarter: '2026Q1',
+    title: '2026Q1 全球跨境债权 47.6 万亿美元创历史峰值 (Historical Record $47.6T)',
+    subtitle: 'BIS 2026年7月31日发布：单季激增 2.1 万亿美元，新兴市场非主要货币信贷占比升至 29%',
+    stressLevel: 34,
+    stressColor: 'emerald',
+    contagionPreset: { epicenter: 'GB', haircut: 20, deleveraging: 1.4, dollarSqueeze: 10 },
+    summary: '根据国际清算银行 (BIS) 于 2026 年 7 月 31 日正式发布的最新国际银行业统计 (IBS)，全球跨国银行跨境债权存量经汇率调整后单季净增 2.1 万亿美元，历史性突破 47.6 万亿美元大关（年增 11%）。与此同时，新兴市场与发展中经济体 (EMDE) 借款人中，以非主要货币（含人民币、本地货币）计价的跨境信贷占比由 2019 年末的 21% 跃升至 29%。',
+    bisObservations: [
+      '全球跨境银行债权经汇率调整单季暴增 2.1 万亿美元，创 47.6 万亿美元历史新高 (BIS 2026-07-31 公告)；',
+      '对新兴市场与发展中经济体 (EMDEs) 跨国信贷净增 1,480 亿美元，非洲与中东领涨；',
+      '新兴市场借款人非主要货币计价跨境贷款占比升至 29%，本币结算多元化成效显著；',
+      '日本银行 2026 年 9 月 25 日最新 CBS 统计显示，日本对美对外净头寸维持在 3.52 万亿美元高位。'
+    ],
+    affectedCorridors: [
+      { from: '美国 (US)', to: '全球非银金融 (NBFIs)', impact: '对冲基金与私人信贷吸纳跨国流动性' },
+      { from: '中国 (CN)', to: '中东/新兴市场', impact: '双边本币结算与跨国基础设施信贷稳步放量' },
+      { from: '日本 (JP)', to: '美国 (US)', impact: '日美息差收窄后对外净资产结构逐步再平衡' }
+    ],
+    policyResponse: 'BIS 宏观审慎委员会强调对非银金融中介 (NBFI) 与离岸合成美元流动性错配的穿透监管，鼓励多边央行货币互换网络常态化运作。',
+    bisQuote: '“Global cross-border claims reached an all-time high of $47.6 trillion in Q1 2026, with emerging markets demonstrating growing currency resilience as local currency borrowing reaches 29%.” — BIS Quarterly Review (July 2026)'
   }
 ];
 

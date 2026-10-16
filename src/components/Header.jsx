@@ -492,7 +492,7 @@ export default function Header({
               >
                 {quarters.map((q, idx) => (
                   <option key={q} value={q} className="bg-slate-900 text-white font-mono">
-                    {q} ({idx + 1}/28)
+                    {q} ({idx + 1}/{quarters.length})
                   </option>
                 ))}
               </select>
@@ -501,12 +501,15 @@ export default function Header({
             {/* Quick Year Jump Buttons */}
             <div className="hidden sm:flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-0.5 rounded-lg ml-1">
               <span className="text-[10px] text-slate-500 px-1.5 font-mono">年份:</span>
-              {['2018', '2019', '2020', '2021', '2022', '2023', '2024'].map(yr => {
+              {['2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'].map(yr => {
                 const isCurrentYear = selectedQuarter.startsWith(yr);
                 return (
                   <button
                     key={yr}
-                    onClick={() => onSelectQuarter(`${yr}Q4`)}
+                    onClick={() => {
+                      soundFx.playTick();
+                      onSelectQuarter(`${yr}Q4`);
+                    }}
                     className={`px-2 py-0.5 rounded text-[11px] font-mono transition-all ${
                       isCurrentYear
                         ? 'bg-blue-600 text-white font-bold shadow-sm'
