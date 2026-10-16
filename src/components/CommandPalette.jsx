@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Search, Globe, Layers, Calendar, ArrowRight, X, Command, 
-  HelpCircle, Moon, Sun, Activity, ShieldAlert, Split, Sliders
+  HelpCircle, Moon, Sun, Activity, ShieldAlert, Split, Sliders,
+  Code, FileText, BookOpen, History
 } from 'lucide-react';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
 
@@ -16,7 +17,12 @@ export default function CommandPalette({
   onSelectTab,
   onSelectCountry,
   theme,
-  onToggleTheme
+  onToggleTheme,
+  onOpenIntro,
+  onOpenCodeExporter,
+  onOpenShockSandbox,
+  onOpenInstitutionalReport,
+  onToggleMilestones
 }) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -55,14 +61,64 @@ export default function CommandPalette({
     const q = query.trim().toLowerCase();
     const results = [];
 
-    // 1. Actions / Themes
-    if ('主题 浅色 暗色 theme light dark 彭博 金融时报'.includes(q)) {
+    // 1. Actions / Themes & Pro Tools
+    if (!q || '主题 浅色 暗色 theme light dark 彭博 金融时报'.includes(q)) {
       results.push({
         type: 'action',
         title: theme === 'dark' ? '切换为 FT 浅色纸媒模式' : '切换为彭博终端暗色模式',
         desc: '切换全站视觉主题配色',
         icon: theme === 'dark' ? Sun : Moon,
         action: () => onToggleTheme?.()
+      });
+    }
+
+    if (!q || '代码 导出 python r stata 计量 引力模型 code export econometrics'.includes(q)) {
+      results.push({
+        type: 'action',
+        title: '💻 生成 Python / R / Stata 计量引力模型代码',
+        desc: '生成可直接执行的跨国银行双边引力回归与网络清算脚本',
+        icon: Code,
+        action: () => onOpenCodeExporter?.()
+      });
+    }
+
+    if (!q || '冲击 压力测试 沙盒 危机 违约 shock sandbox stress test'.includes(q)) {
+      results.push({
+        type: 'action',
+        title: '⚡ 复合宏观冲击调制台与压力测试沙盒',
+        desc: '自由调制加息、信贷收缩、掉期基差与主权违约因子',
+        icon: Sliders,
+        action: () => onOpenShockSandbox?.()
+      });
+    }
+
+    if (!q || '简报 报告 打印 pdf 导出 投研 dossier report brief'.includes(q)) {
+      results.push({
+        type: 'action',
+        title: '📑 投委会级 A4 宏观研判与风险评估简报',
+        desc: '一键生成高保真双语投研报告，支持另存为 PDF 或导出 Markdown',
+        icon: FileText,
+        action: () => onOpenInstitutionalReport?.()
+      });
+    }
+
+    if (!q || '大事件 里程碑 纪元 历史 2018 2026 milestone events history'.includes(q)) {
+      results.push({
+        type: 'action',
+        title: '📜 展开 / 折叠宏观历史大事件纪元轴 (2018-2026)',
+        desc: '浏览涵盖 36 季度的关键转折期大事记，点击秒级穿梭',
+        icon: History,
+        action: () => onToggleMilestones?.()
+      });
+    }
+
+    if (!q || '导读 简介 背景 意义 intro brief guide onboarding'.includes(q)) {
+      results.push({
+        type: 'action',
+        title: '📖 打开项目创立初衷与平台学术导读',
+        desc: '查阅为何总信贷流向优于经常账户贸易、BIS 统计学三大支柱',
+        icon: BookOpen,
+        action: () => onOpenIntro?.()
       });
     }
 

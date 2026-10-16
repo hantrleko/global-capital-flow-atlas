@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as echarts from 'echarts';
+import GlobalFlowGlobe3D from './GlobalFlowGlobe3D';
 import { 
   Layers, Eye, Filter, ArrowUpRight, ArrowDownLeft, 
   Info, Download, Target, Compass, Maximize2, Sparkles,
   Radio, Zap, Shield, Globe2, Sliders, Check, Calendar, TrendingUp,
-  X, ArrowRight, DollarSign
+  X, ArrowRight, DollarSign, Globe
 } from 'lucide-react';
 
 export default function CapitalFlowMap({
@@ -24,6 +25,7 @@ export default function CapitalFlowMap({
   const [selectedCorridor, setSelectedCorridor] = useState(null);
 
   // Density & View controls
+  const [mapProjection, setMapProjection] = useState('2d'); // '2d' | '3d'
   const [corridorDensity, setCorridorDensity] = useState('backbone'); // 'backbone' | 'all' | 'usd_dominant'
   const [metricView, setMetricView] = useState('claims'); // 'claims' | 'net' | 'liab'
   const [focusCountry, setFocusCountry] = useState('ALL'); // 'ALL' or countryCode
@@ -811,6 +813,36 @@ export default function CapitalFlowMap({
 
         {/* Refined Functional Controls */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* 2D Flat vs 3D Globe Projection Switcher */}
+          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-xl p-1 text-xs shadow-sm">
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                setMapProjection('2d');
+              }}
+              className={`px-2.5 py-1 rounded-lg transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
+                mapProjection === '2d'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>🗺️ 2D 平面投影</span>
+            </button>
+            <button
+              onClick={() => {
+                soundFx.playChime();
+                setMapProjection('3d');
+              }}
+              className={`px-2.5 py-1 rounded-lg transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
+                mapProjection === '3d'
+                  ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>🌐 3D 数字地球仪</span>
+            </button>
+          </div>
+
           {/* Corridor Density Curation Toggle */}
           <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-xl p-1 text-xs">
             {[
@@ -898,36 +930,52 @@ export default function CapitalFlowMap({
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
         {/* Main Map Canvas Column */}
         <div className="xl:col-span-8 2xl:col-span-9 glass-panel rounded-2xl relative overflow-hidden shadow-2xl border border-white/[0.06] min-h-[640px] flex flex-col">
-          {/* Ocean Background Canvas with deep velvet atmosphere */}
-          <div 
-            ref={chartRef} 
-            className="w-full h-[640px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
-          />
+          {mapProjection === '3d' ? (
+            <GlobalFlowGlobe3D
+              countries={countries}
+              currentLinks={currentLinks}
+              selectedQuarter={selectedQuarter}
+              selectedCountry={selectedCountry}
+              onSelectCountry={onSelectCountry}
+              focusCountry={focusCountry}
+              corridorDensity={corridorDensity}
+              metricView={metricView}
+              onSelectCorridor={setSelectedCorridor}
+            />
+          ) : (
+            <>
+              {/* Ocean Background Canvas with deep velvet atmosphere */}
+              <div 
+                ref={chartRef} 
+                className="w-full h-[640px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
+              />
 
-          {/* Floating Viewport Preset Pills (Bottom-Left) */}
-          <div className="absolute bottom-5 left-5 z-20 flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-1.5 text-xs shadow-xl">
-            <span className="text-[11px] text-slate-400 px-2 flex items-center gap-1">
-              <Compass className="w-3.5 h-3.5 text-sky-400" /> 区域聚焦:
-            </span>
-            {[
-              { id: 'global', label: '全球轨道' },
-              { id: 'asia', label: '亚太环' },
-              { id: 'europe', label: '泛欧网络' },
-              { id: 'americas', label: '美洲中枢' }
-            ].map(p => (
-              <button
-                key={p.id}
-                onClick={() => setGeoPreset(p.id)}
-                className={`px-2.5 py-1 rounded-lg transition-all text-xs font-medium cursor-pointer ${
-                  geoPreset === p.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+              {/* Floating Viewport Preset Pills (Bottom-Left for 2D mode) */}
+              <div className="absolute bottom-5 left-5 z-20 flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-1.5 text-xs shadow-xl">
+                <span className="text-[11px] text-slate-400 px-2 flex items-center gap-1">
+                  <Compass className="w-3.5 h-3.5 text-sky-400" /> 区域聚焦:
+                </span>
+                {[
+                  { id: 'global', label: '全球轨道' },
+                  { id: 'asia', label: '亚太环' },
+                  { id: 'europe', label: '泛欧网络' },
+                  { id: 'americas', label: '美洲中枢' }
+                ].map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setGeoPreset(p.id)}
+                    className={`px-2.5 py-1 rounded-lg transition-all text-xs font-medium cursor-pointer ${
+                      geoPreset === p.id
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Floating Focus Mode Banner (Top-Left) */}
           {focusCountry !== 'ALL' && (

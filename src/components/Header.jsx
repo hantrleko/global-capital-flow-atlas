@@ -4,7 +4,7 @@ import {
   DollarSign, Activity, Database, Calendar, TrendingUp, Layers,
   Search, Coins, X, Sun, Moon, ArrowRightLeft, Clock, Sparkles,
   Zap, Radio, Command, HelpCircle, Split, Volume2, VolumeX, Bot,
-  BookOpen
+  BookOpen, FileText, Sliders, Code, History
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
@@ -83,6 +83,11 @@ export default function Header({
   onOpenShortcuts,
   onOpenMacroAi,
   onOpenIntro,
+  onOpenCodeExporter,
+  onOpenShockSandbox,
+  onOpenInstitutionalReport,
+  onToggleMilestones,
+  isMilestonesOpen = false,
   isSoundMuted = false,
   onToggleSound
 }) {
@@ -172,11 +177,75 @@ export default function Header({
             </button>
           )}
 
+          {/* Historical Macro Milestones Ribbon Toggle */}
+          {onToggleMilestones && (
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                onToggleMilestones();
+              }}
+              className={`px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer ${
+                isMilestonesOpen
+                  ? 'bg-blue-600 border-sky-400 text-white shadow-[0_0_12px_rgba(56,189,248,0.4)]'
+                  : 'border-slate-700/80 bg-slate-900/90 text-slate-300 hover:text-white hover:border-slate-500'
+              }`}
+              title="展开 / 折叠 2018-2026 宏观历史大事件时间轴"
+            >
+              <History className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" />
+              <span className="hidden sm:inline text-[11px]">大事记</span>
+            </button>
+          )}
+
+          {/* Macro Shock Sandbox Trigger */}
+          {onOpenShockSandbox && (
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                onOpenShockSandbox();
+              }}
+              className="px-2.5 py-1.5 rounded-xl border border-rose-500/40 bg-rose-950/40 text-rose-300 hover:text-white hover:bg-rose-900/40 flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer"
+              title="打开复合宏观冲击调制台与压力测试沙盒"
+            >
+              <Sliders className="w-3.5 h-3.5 text-rose-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden md:inline text-[11px]">冲击沙盒</span>
+            </button>
+          )}
+
+          {/* Institutional Intelligence Briefing Report Trigger */}
+          {onOpenInstitutionalReport && (
+            <button
+              onClick={() => {
+                soundFx.playChime();
+                onOpenInstitutionalReport();
+              }}
+              className="px-2.5 py-1.5 rounded-xl border border-indigo-500/40 bg-indigo-950/40 text-indigo-300 hover:text-white hover:bg-indigo-900/40 flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer"
+              title="生成并打印投委会级 A4 宏观研判简报 (PDF / Markdown)"
+            >
+              <FileText className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden md:inline text-[11px]">投研简报</span>
+            </button>
+          )}
+
+          {/* Econometrics Code Exporter Trigger */}
+          {onOpenCodeExporter && (
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                onOpenCodeExporter();
+              }}
+              className="px-2.5 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:text-white hover:bg-emerald-900/40 flex items-center gap-1.5 text-xs font-mono font-semibold transition-all shadow-sm group cursor-pointer"
+              title="生成 Python / R / Stata 实证计量模型代码"
+            >
+              <Code className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden lg:inline text-[11px]">代码生成</span>
+            </button>
+          )}
+
           {/* Pro Terminal Command Palette Trigger */}
           {onOpenCommandPalette && (
             <button
               onClick={onOpenCommandPalette}
-              className="px-2.5 py-1.5 rounded-xl border border-slate-700/80 bg-slate-900/90 text-slate-300 hover:text-white hover:border-slate-500 flex items-center gap-1.5 text-xs font-mono transition-all shadow-sm group"
+              className="px-2.5 py-1.5 rounded-xl border border-slate-700/80 bg-slate-900/90 text-slate-300 hover:text-white hover:border-slate-500 flex items-center gap-1.5 text-xs font-mono transition-all shadow-sm group cursor-pointer"
               title="快速全局检索与命令面板 (Ctrl+K 或 /)"
             >
               <Command className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform" />

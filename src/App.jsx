@@ -22,6 +22,10 @@ import CountryDrawer from './components/CountryDrawer';
 import CommandPalette from './components/CommandPalette';
 import MacroAiCopilot from './components/MacroAiCopilot';
 import ProjectIntroModal from './components/ProjectIntroModal';
+import HistoricalMilestoneRibbon from './components/HistoricalMilestoneRibbon';
+import EconometricsCodeExporter from './components/EconometricsCodeExporter';
+import MacroShockSandbox from './components/MacroShockSandbox';
+import InstitutionalReportModal from './components/InstitutionalReportModal';
 import soundFx from './utils/soundEffects';
 import { Keyboard, X, Bot, Sparkles } from 'lucide-react';
 
@@ -39,6 +43,10 @@ export default function App() {
   const [isIntroOpen, setIsIntroOpen] = useState(() => {
     return !localStorage.getItem('bis_atlas_intro_seen');
   });
+  const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
+  const [isCodeExporterOpen, setIsCodeExporterOpen] = useState(false);
+  const [isShockSandboxOpen, setIsShockSandboxOpen] = useState(false);
+  const [isInstitutionalReportOpen, setIsInstitutionalReportOpen] = useState(false);
   const [isSoundMuted, setIsSoundMuted] = useState(() => soundFx.isMuted());
   const [contagionConfig, setContagionConfig] = useState(null);
   const [theme, setTheme] = useState(() => {
@@ -135,6 +143,11 @@ export default function App() {
       } else if (e.key === 'Escape') {
         setIsCommandPaletteOpen(false);
         setIsShortcutsOpen(false);
+        setIsMacroAiOpen(false);
+        setIsIntroOpen(false);
+        setIsCodeExporterOpen(false);
+        setIsShockSandboxOpen(false);
+        setIsInstitutionalReportOpen(false);
         setSelectedCountry(null);
       }
     };
@@ -168,8 +181,24 @@ export default function App() {
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
         onOpenMacroAi={() => setIsMacroAiOpen(true)}
         onOpenIntro={() => setIsIntroOpen(true)}
+        onOpenCodeExporter={() => setIsCodeExporterOpen(true)}
+        onOpenShockSandbox={() => setIsShockSandboxOpen(true)}
+        onOpenInstitutionalReport={() => setIsInstitutionalReportOpen(true)}
+        onToggleMilestones={() => setIsMilestonesOpen(prev => !prev)}
+        isMilestonesOpen={isMilestonesOpen}
         isSoundMuted={isSoundMuted}
         onToggleSound={toggleSound}
+      />
+
+      {/* Historical Macro Milestones Ribbon (2018-2026 Epochs) */}
+      <HistoricalMilestoneRibbon
+        selectedQuarter={selectedQuarter}
+        onSelectQuarter={(q) => {
+          setSelectedQuarter(q);
+          setIsPlaying(false);
+        }}
+        isOpen={isMilestonesOpen}
+        onToggle={() => setIsMilestonesOpen(prev => !prev)}
       />
 
       {/* Main Analysis Viewport */}
@@ -360,6 +389,34 @@ export default function App() {
         }}
       />
 
+      {/* Econometrics Code Exporter Modal */}
+      <EconometricsCodeExporter
+        isOpen={isCodeExporterOpen}
+        onClose={() => setIsCodeExporterOpen(false)}
+        selectedQuarter={selectedQuarter}
+        countries={bisDataset.countries}
+      />
+
+      {/* Macro Shock Sandbox Modal */}
+      <MacroShockSandbox
+        isOpen={isShockSandboxOpen}
+        onClose={() => setIsShockSandboxOpen(false)}
+        dataset={bisDataset}
+        selectedQuarter={selectedQuarter}
+        onApplyShock={(shock) => {
+          setContagionConfig(shock);
+          setActiveTab('contagion');
+        }}
+      />
+
+      {/* Institutional Intelligence Briefing Report Modal */}
+      <InstitutionalReportModal
+        isOpen={isInstitutionalReportOpen}
+        onClose={() => setIsInstitutionalReportOpen(false)}
+        dataset={bisDataset}
+        selectedQuarter={selectedQuarter}
+      />
+
       {/* BIS Macro AI Copilot Modal Window */}
       <MacroAiCopilot
         isOpen={isMacroAiOpen}
@@ -388,6 +445,26 @@ export default function App() {
         onSelectCountry={(code) => setSelectedCountry(code)}
         theme={theme}
         onToggleTheme={toggleTheme}
+        onOpenIntro={() => {
+          setIsCommandPaletteOpen(false);
+          setIsIntroOpen(true);
+        }}
+        onOpenCodeExporter={() => {
+          setIsCommandPaletteOpen(false);
+          setIsCodeExporterOpen(true);
+        }}
+        onOpenShockSandbox={() => {
+          setIsCommandPaletteOpen(false);
+          setIsShockSandboxOpen(true);
+        }}
+        onOpenInstitutionalReport={() => {
+          setIsCommandPaletteOpen(false);
+          setIsInstitutionalReportOpen(true);
+        }}
+        onToggleMilestones={() => {
+          setIsCommandPaletteOpen(false);
+          setIsMilestonesOpen(prev => !prev);
+        }}
       />
 
       {/* Keyboard Shortcuts Reference Modal */}
@@ -418,7 +495,7 @@ export default function App() {
                 { key: 'Ctrl + K / ⌘K / /', desc: '打开全局命令检索面板 (Command Palette)' },
                 { key: 'Space (空格键)', desc: '播放 / 暂停历史季度演进时间轴' },
                 { key: '← / → (方向键)', desc: '步退 / 步进一个季度 (2018Q1 - 2026Q4 全36季)' },
-                { key: 'Esc', desc: '关闭弹窗 / 退出经济体抽屉' },
+                { key: 'Esc', desc: '关闭所有弹窗 / 退出经济体抽屉' },
                 { key: '?', desc: '显示 / 隐藏此键盘快捷键指引' }
               ].map((sc, i) => (
                 <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800">
