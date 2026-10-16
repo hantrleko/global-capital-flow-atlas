@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { 
   PlayCircle, AlertTriangle, ShieldCheck, ArrowRight, 
-  ExternalLink, Layers, TrendingUp, TrendingDown, Clock, CheckCircle2 
+  ExternalLink, Layers, TrendingUp, TrendingDown, Clock, CheckCircle2,
+  Zap, Compass
 } from 'lucide-react';
+import soundFx from '../utils/soundEffects';
 
 export const CRISIS_EPISODES = [
   {
@@ -12,6 +14,7 @@ export const CRISIS_EPISODES = [
     subtitle: '离岸银行间美元流动性冻结与美联储无限量央行流动性互换启动',
     stressLevel: 82,
     stressColor: 'rose',
+    contagionPreset: { epicenter: 'GB', haircut: 35, deleveraging: 2.2, dollarSqueeze: 25 },
     summary: '新冠疫情暴发初期的数周内，跨国企业、银行及对冲基金同时争夺美元现金头寸。国际掉期基差 (FX Swap Basis) 极度走阔，连美国国债亦遭遇非理性抛售变现。美联储紧急对 14 家全球主要央行开启无限量流动性互换协议与 FIMA 回购便利。',
     bisObservations: [
       '全球跨境银行信贷环比单季萎缩创次贷危机以来最快纪录；',
@@ -33,6 +36,7 @@ export const CRISIS_EPISODES = [
     subtitle: '通胀爆表下美联储连续 75bps 加息，美元指数破 114，外围债务大收缩',
     stressLevel: 75,
     stressColor: 'rose',
+    contagionPreset: { epicenter: 'TR', haircut: 45, deleveraging: 1.8, dollarSqueeze: 18 },
     summary: '美联储以 40 年未见之速度将联邦基金利率自 0% 暴拉至 4% 以上并持续收紧。美元指数飙升至 20 年高点 114.7，欧元与英镑汇率相继跌破平价或历史低点。外围新兴市场面临剧烈资本外流与美元债务滚续利差惩罚。',
     bisObservations: [
       '对新兴市场经济体 (EMEs) 的跨境美元银行信贷连续四个季度负增长；',
@@ -51,9 +55,10 @@ export const CRISIS_EPISODES = [
     id: 'svb_cs_2023q1',
     quarter: '2023Q1',
     title: '2023Q1 欧美银行业风暴与瑞士信贷 AT1 归零 (SVB & Credit Suisse)',
-    subtitle: '硅谷银行挤兑破产与百年瑞信被瑞银紧急吞并，AT1 债券 170 亿美元全额减记',
+    subtitle: '硅谷银行挤兑破长与百年瑞信被瑞银紧急吞并，AT1 债券 170 亿美元全额减记',
     stressLevel: 78,
     stressColor: 'amber',
+    contagionPreset: { epicenter: 'CH', haircut: 40, deleveraging: 2.0, dollarSqueeze: 20 },
     summary: '美国硅谷银行 (SVB) 因巨额未实现持债亏损在 36 小时内遭遇 420 亿美元闪电挤兑并破产倒闭；随后瑞士信贷陷入信心崩溃，瑞士当局促成瑞银紧急收购并史无前例全额减记 170 亿美元 AT1 应急可转债，引发跨国同业拆借对对手方信用审查的急剧收紧。',
     bisObservations: [
       '欧洲主要商业银行间隔夜与定期无抵押拆借利差短暂冲高；',
@@ -75,6 +80,7 @@ export const CRISIS_EPISODES = [
     subtitle: '美联储大步降息 50bps，日本央行走出负利率，离岸非银私人信贷突破 2 万亿美元',
     stressLevel: 32,
     stressColor: 'cyan',
+    contagionPreset: { epicenter: 'JP', haircut: 25, deleveraging: 1.5, dollarSqueeze: 12 },
     summary: '美联储正式开启降息周期（首次降息 50bps），欧洲央行同步降息；但日本央行逆势加息促成日元套息交易巨震。在传统商业银行受限于巴塞尔协议的背景下，以开曼群岛、卢森堡为中枢的离岸私人信贷 (Private Credit) 资产规模突破 2.1 万亿美元，成为跨国资金融通新支柱。',
     bisObservations: [
       '跨境私人信贷与表外基金中介占比创历史新高；',
@@ -95,12 +101,30 @@ export default function CrisisPlaybook({
   dataset,
   selectedQuarter,
   onSelectQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onSelectTab,
+  onSetContagionConfig
 }) {
   const [activeEpisodeId, setActiveEpisodeId] = useState('covid_2020q1');
   const activeEpisode = CRISIS_EPISODES.find(e => e.id === activeEpisodeId) || CRISIS_EPISODES[0];
 
   const isCurrentQuarter = selectedQuarter === activeEpisode.quarter;
+
+  const handleTimeTravel = (quarter) => {
+    soundFx.playChime();
+    onSelectQuarter(quarter);
+  };
+
+  const handleReplayInContagion = () => {
+    soundFx.playShockwave();
+    onSelectQuarter(activeEpisode.quarter);
+    if (onSetContagionConfig) {
+      onSetContagionConfig(activeEpisode.contagionPreset);
+    }
+    if (onSelectTab) {
+      onSelectTab('contagion');
+    }
+  };
 
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-2xl space-y-5">
@@ -120,18 +144,29 @@ export default function CrisisPlaybook({
           </div>
         </div>
 
-        {/* Action Button: Jump to Episode Quarter */}
-        <button
-          onClick={() => onSelectQuarter(activeEpisode.quarter)}
-          className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shadow-md ${
-            isCurrentQuarter
-              ? 'bg-emerald-600 text-white shadow-emerald-600/30 font-bold'
-              : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30'
-          }`}
-        >
-          {isCurrentQuarter ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-          <span>{isCurrentQuarter ? `当前正在演播：${activeEpisode.quarter}` : `一键装载该危机截面 (${activeEpisode.quarter})`}</span>
-        </button>
+        {/* Action Buttons: Jump to Episode Quarter & Contagion Replay */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => handleTimeTravel(activeEpisode.quarter)}
+            className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shadow-md ${
+              isCurrentQuarter
+                ? 'bg-emerald-600 text-white shadow-emerald-600/30 font-bold'
+                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30'
+            }`}
+          >
+            {isCurrentQuarter ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+            <span>{isCurrentQuarter ? `正在演播：${activeEpisode.quarter}` : `一键装载截面 (${activeEpisode.quarter})`}</span>
+          </button>
+
+          <button
+            onClick={handleReplayInContagion}
+            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30 flex items-center gap-1.5 transition-all shadow-md group"
+            title="将该风暴参数注入传染清算引擎重演级联扩散"
+          >
+            <Zap className="w-4 h-4 text-yellow-300 group-hover:scale-110 transition-transform" />
+            <span>在模拟器中重演此危机</span>
+          </button>
+        </div>
       </div>
 
       {/* Episode Selection Tabs */}
@@ -141,7 +176,10 @@ export default function CrisisPlaybook({
           return (
             <div
               key={ep.id}
-              onClick={() => setActiveEpisodeId(ep.id)}
+              onClick={() => {
+                soundFx.playTick();
+                setActiveEpisodeId(ep.id);
+              }}
               className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                 isSel
                   ? 'bg-blue-950/40 border-blue-500/70 shadow-lg shadow-blue-950/50'

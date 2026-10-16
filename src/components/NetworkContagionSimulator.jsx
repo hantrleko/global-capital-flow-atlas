@@ -4,11 +4,13 @@ import {
   AlertOctagon, Play, RotateCcw, ShieldAlert, ArrowRight, 
   TrendingDown, Layers, Zap, Download, Info 
 } from 'lucide-react';
+import soundFx from '../utils/soundEffects';
 
 export default function NetworkContagionSimulator({
   dataset,
   selectedQuarter,
-  onSelectCountry
+  onSelectCountry,
+  contagionConfig
 }) {
   const countries = dataset.countries || [];
   const currentLinks = (dataset.bilateral_matrix || {})[selectedQuarter] || [];
@@ -34,10 +36,22 @@ export default function NetworkContagionSimulator({
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
 
+  // Sync external configuration if passed from CountryDrawer or CrisisPlaybook
+  useEffect(() => {
+    if (contagionConfig) {
+      if (contagionConfig.epicenter) setEpicenter(contagionConfig.epicenter);
+      if (contagionConfig.haircut) setHaircutPct(contagionConfig.haircut);
+      if (contagionConfig.deleveraging) setDeleveragingMultiplier(contagionConfig.deleveraging);
+      if (contagionConfig.dollarSqueeze) setDollarSqueezePct(contagionConfig.dollarSqueeze);
+      if (contagionConfig.presetId) setActivePreset(contagionConfig.presetId);
+    }
+  }, [contagionConfig]);
+
   const epicenterCountry = countries.find(c => c.code === epicenter) || countries[0];
 
   // Apply preset
   const handleSelectPreset = (p) => {
+    soundFx.playTick();
     setActivePreset(p.id);
     setEpicenter(p.epicenter);
     setHaircutPct(p.haircut);
@@ -47,6 +61,7 @@ export default function NetworkContagionSimulator({
 
   // Run Multi-Round Contagion Simulation (Eisenberg-Noe / Upper-Worms network cascade model)
   const runSimulation = () => {
+    soundFx.playShockwave();
     // 1. Direct creditors to epicenter
     const directCreditorLinks = currentLinks.filter(l => l.target === epicenter);
     

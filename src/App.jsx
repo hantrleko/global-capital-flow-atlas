@@ -20,7 +20,9 @@ import CrisisPlaybook from './components/CrisisPlaybook';
 import ResearchDossier from './components/ResearchDossier';
 import CountryDrawer from './components/CountryDrawer';
 import CommandPalette from './components/CommandPalette';
-import { Keyboard, X } from 'lucide-react';
+import MacroAiCopilot from './components/MacroAiCopilot';
+import soundFx from './utils/soundEffects';
+import { Keyboard, X, Bot, Sparkles } from 'lucide-react';
 
 export default function App() {
   const quarters = bisDataset.quarters || [];
@@ -32,9 +34,17 @@ export default function App() {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [isMacroAiOpen, setIsMacroAiOpen] = useState(false);
+  const [isSoundMuted, setIsSoundMuted] = useState(() => soundFx.isMuted());
+  const [contagionConfig, setContagionConfig] = useState(null);
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('bis_atlas_theme') || 'dark';
   });
+
+  const toggleSound = () => {
+    const next = soundFx.toggleMute();
+    setIsSoundMuted(next);
+  };
 
   const toggleTheme = () => {
     setTheme(prev => {
@@ -102,15 +112,18 @@ export default function App() {
         setIsShortcutsOpen(prev => !prev);
       } else if (e.key === ' ') {
         e.preventDefault();
+        soundFx.playChime();
         setIsPlaying(prev => !prev);
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
+        soundFx.playTick();
         setSelectedQuarter(prev => {
           const curIdx = quarters.indexOf(prev);
           return curIdx > 0 ? quarters[curIdx - 1] : prev;
         });
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
+        soundFx.playTick();
         setSelectedQuarter(prev => {
           const curIdx = quarters.indexOf(prev);
           return curIdx < quarters.length - 1 ? quarters[curIdx + 1] : prev;
@@ -149,6 +162,9 @@ export default function App() {
         onToggleTheme={toggleTheme}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
+        onOpenMacroAi={() => setIsMacroAiOpen(true)}
+        isSoundMuted={isSoundMuted}
+        onToggleSound={toggleSound}
       />
 
       {/* Main Analysis Viewport */}
@@ -210,6 +226,7 @@ export default function App() {
             dataset={bisDataset}
             selectedQuarter={selectedQuarter}
             onSelectCountry={(code) => setSelectedCountry(code)}
+            contagionConfig={contagionConfig}
           />
         )}
 
@@ -283,6 +300,8 @@ export default function App() {
             selectedQuarter={selectedQuarter}
             onSelectQuarter={(q) => setSelectedQuarter(q)}
             onSelectCountry={(code) => setSelectedCountry(code)}
+            onSelectTab={setActiveTab}
+            onSetContagionConfig={setContagionConfig}
           />
         )}
 
@@ -294,15 +313,49 @@ export default function App() {
         )}
       </main>
 
-      {/* Country Detailed Drawer (Overlay) */}
+      {/* Sovereign 360° Detailed Profile Drawer (Overlay) */}
       {selectedCountry && (
         <CountryDrawer
           dataset={bisDataset}
           countryCode={selectedCountry}
           selectedQuarter={selectedQuarter}
           onClose={() => setSelectedCountry(null)}
+          onSelectTab={setActiveTab}
+          onSelectQuarter={setSelectedQuarter}
+          onSelectCountry={setSelectedCountry}
+          onSetContagionEpicenter={(code) => {
+            setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
+          }}
         />
       )}
+
+      {/* BIS Macro AI Copilot Floating Quick Trigger */}
+      <div className="fixed bottom-6 right-6 z-30">
+        <button
+          onClick={() => {
+            soundFx.playChime();
+            setIsMacroAiOpen(true);
+          }}
+          className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white text-xs font-bold shadow-[0_0_25px_rgba(59,130,246,0.6)] flex items-center gap-2 transition-all hover:scale-105 group border border-blue-400/40 cursor-pointer"
+          title="打开 BIS 宏观 AI 决策推演智能体 (Macro Copilot 2.0)"
+        >
+          <Bot className="w-4 h-4 group-hover:rotate-12 transition-transform animate-pulse-subtle" />
+          <span className="hidden sm:inline">宏观 AI 大脑</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-ping" />
+        </button>
+      </div>
+
+      {/* BIS Macro AI Copilot Modal Window */}
+      <MacroAiCopilot
+        isOpen={isMacroAiOpen}
+        onClose={() => setIsMacroAiOpen(false)}
+        dataset={bisDataset}
+        selectedQuarter={selectedQuarter}
+        onSelectQuarter={setSelectedQuarter}
+        onSelectTab={setActiveTab}
+        onSelectCountry={setSelectedCountry}
+        activeTab={activeTab}
+      />
 
       {/* Command Palette Modal */}
       <CommandPalette

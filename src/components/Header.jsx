@@ -3,8 +3,9 @@ import {
   Play, Pause, SkipBack, SkipForward, Globe, ShieldAlert, 
   DollarSign, Activity, Database, Calendar, TrendingUp, Layers,
   Search, Coins, X, Sun, Moon, ArrowRightLeft, Clock, Sparkles,
-  Zap, Radio, Command, HelpCircle, Split
+  Zap, Radio, Command, HelpCircle, Split, Volume2, VolumeX, Bot
 } from 'lucide-react';
+import soundFx from '../utils/soundEffects';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
 
 export const NAVIGATION_DOMAINS = [
@@ -78,7 +79,10 @@ export default function Header({
   theme = 'dark',
   onToggleTheme,
   onOpenCommandPalette,
-  onOpenShortcuts
+  onOpenShortcuts,
+  onOpenMacroAi,
+  isSoundMuted = false,
+  onToggleSound
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const currentMacro = globalMacroMap[selectedQuarter] || {};
@@ -109,12 +113,14 @@ export default function Header({
 
   const prevQuarter = () => {
     if (currentQuarterIdx > 0) {
+      soundFx.playTick();
       onSelectQuarter(quarters[currentQuarterIdx - 1]);
     }
   };
 
   const nextQuarter = () => {
     if (currentQuarterIdx < quarters.length - 1) {
+      soundFx.playTick();
       onSelectQuarter(quarters[currentQuarterIdx + 1]);
     }
   };
@@ -159,6 +165,37 @@ export default function Header({
               <Command className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform" />
               <span className="hidden sm:inline text-[11px]">命令面板</span>
               <kbd className="px-1 py-0.2 rounded bg-slate-800 text-[10px] text-slate-400 border border-slate-700">⌘K</kbd>
+            </button>
+          )}
+
+          {/* BIS Macro AI Copilot Trigger */}
+          {onOpenMacroAi && (
+            <button
+              onClick={() => {
+                soundFx.playChime();
+                onOpenMacroAi();
+              }}
+              className="px-2.5 py-1.5 rounded-xl border border-blue-500/50 bg-gradient-to-r from-blue-900/60 to-indigo-900/60 text-sky-200 hover:text-white hover:border-blue-400 flex items-center gap-1.5 text-xs font-semibold transition-all shadow-[0_0_15px_rgba(59,130,246,0.25)] group cursor-pointer"
+              title="打开 BIS 宏观 AI 决策推演智能体 (Macro Copilot 2.0)"
+            >
+              <Bot className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform animate-pulse-subtle" />
+              <span className="hidden md:inline text-[11px]">宏观 AI 大脑</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+            </button>
+          )}
+
+          {/* Sound Mute / Unmute Toggle */}
+          {onToggleSound && (
+            <button
+              onClick={onToggleSound}
+              className={`p-2 rounded-xl border flex items-center justify-center text-xs transition-all shadow-sm ${
+                isSoundMuted
+                  ? 'bg-slate-900/90 border-slate-700/80 text-slate-500 hover:text-slate-300'
+                  : 'bg-blue-950/40 border-blue-500/40 text-sky-400 hover:bg-blue-900/40'
+              }`}
+              title={isSoundMuted ? '开启彭博终端机械原声音效' : '已开启彭博音效 (点击静音)'}
+            >
+              {isSoundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-sky-400" />}
             </button>
           )}
 
@@ -314,6 +351,7 @@ export default function Header({
                   <button
                     key={dom.id}
                     onClick={() => {
+                      soundFx.playTick();
                       setSelectedDomainId(dom.id);
                       if (!hasCurrentTab) {
                         onSelectTab(dom.tabs[0].id);
@@ -342,7 +380,10 @@ export default function Header({
               {HISTORICAL_REGIMES.map(reg => (
                 <button
                   key={reg.quarter}
-                  onClick={() => onSelectQuarter(reg.quarter)}
+                  onClick={() => {
+                    soundFx.playTick();
+                    onSelectQuarter(reg.quarter);
+                  }}
                   className={`px-2 py-0.5 rounded text-[11px] font-mono transition-all border cursor-pointer ${
                     selectedQuarter === reg.quarter
                       ? 'bg-blue-500/25 text-blue-300 border-blue-400/60 font-bold shadow-[0_0_8px_rgba(59,130,246,0.3)]'
@@ -367,7 +408,10 @@ export default function Header({
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => onSelectTab(tab.id)}
+                    onClick={() => {
+                      soundFx.playTick();
+                      onSelectTab(tab.id);
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                       isTabActive
                         ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.45)] font-semibold scale-[1.02]'
