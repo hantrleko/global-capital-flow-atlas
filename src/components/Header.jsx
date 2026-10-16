@@ -3,7 +3,8 @@ import {
   Play, Pause, SkipBack, SkipForward, Globe, ShieldAlert, 
   DollarSign, Activity, Database, Calendar, TrendingUp, Layers,
   Search, Coins, X, Sun, Moon, ArrowRightLeft, Clock, Sparkles,
-  Zap, Radio, Command, HelpCircle, Split, Volume2, VolumeX, Bot
+  Zap, Radio, Command, HelpCircle, Split, Volume2, VolumeX, Bot,
+  BookOpen
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
@@ -81,6 +82,7 @@ export default function Header({
   onOpenCommandPalette,
   onOpenShortcuts,
   onOpenMacroAi,
+  onOpenIntro,
   isSoundMuted = false,
   onToggleSound
 }) {
@@ -155,6 +157,21 @@ export default function Header({
 
         {/* Global Country Search & Key Metrics Badges */}
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Platform Brief / Intro Trigger */}
+          {onOpenIntro && (
+            <button
+              onClick={() => {
+                soundFx.playChime();
+                onOpenIntro();
+              }}
+              className="px-2.5 py-1.5 rounded-xl border border-sky-500/40 bg-sky-950/40 text-sky-300 hover:text-white hover:bg-sky-900/40 flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer"
+              title="查看项目创立初衷、核心意义与平台导读"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline text-[11px]">平台导读</span>
+            </button>
+          )}
+
           {/* Pro Terminal Command Palette Trigger */}
           {onOpenCommandPalette && (
             <button

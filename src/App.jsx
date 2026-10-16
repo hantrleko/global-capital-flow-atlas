@@ -21,13 +21,14 @@ import ResearchDossier from './components/ResearchDossier';
 import CountryDrawer from './components/CountryDrawer';
 import CommandPalette from './components/CommandPalette';
 import MacroAiCopilot from './components/MacroAiCopilot';
+import ProjectIntroModal from './components/ProjectIntroModal';
 import soundFx from './utils/soundEffects';
 import { Keyboard, X, Bot, Sparkles } from 'lucide-react';
 
 export default function App() {
   const quarters = bisDataset.quarters || [];
-  // Default to the latest quarter 2024Q4
-  const [selectedQuarter, setSelectedQuarter] = useState(quarters[quarters.length - 1] || '2024Q4');
+  // Default to the latest quarter (2026Q4)
+  const [selectedQuarter, setSelectedQuarter] = useState(quarters[quarters.length - 1] || '2026Q4');
   const [isPlaying, setIsPlaying] = useState(false);
   const [playSpeed, setPlaySpeed] = useState(1);
   const [activeTab, setActiveTab] = useState('map');
@@ -35,6 +36,9 @@ export default function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isMacroAiOpen, setIsMacroAiOpen] = useState(false);
+  const [isIntroOpen, setIsIntroOpen] = useState(() => {
+    return !localStorage.getItem('bis_atlas_intro_seen');
+  });
   const [isSoundMuted, setIsSoundMuted] = useState(() => soundFx.isMuted());
   const [contagionConfig, setContagionConfig] = useState(null);
   const [theme, setTheme] = useState(() => {
@@ -163,6 +167,7 @@ export default function App() {
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
         onOpenMacroAi={() => setIsMacroAiOpen(true)}
+        onOpenIntro={() => setIsIntroOpen(true)}
         isSoundMuted={isSoundMuted}
         onToggleSound={toggleSound}
       />
@@ -344,6 +349,16 @@ export default function App() {
           <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-ping" />
         </button>
       </div>
+
+      {/* BIS Atlas Project Brief & Institutional Onboarding Modal */}
+      <ProjectIntroModal
+        isOpen={isIntroOpen}
+        onClose={() => setIsIntroOpen(false)}
+        onExploreFeature={(tab) => {
+          setActiveTab(tab);
+          setIsIntroOpen(false);
+        }}
+      />
 
       {/* BIS Macro AI Copilot Modal Window */}
       <MacroAiCopilot
