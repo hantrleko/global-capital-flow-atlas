@@ -528,10 +528,15 @@ def build_dataset():
             "pboc_swap_active_lines_bn": macro_info["pboc_swap"]
         })
 
-        # Generate LBS for each country strictly partitioned from global total
-        for c in COUNTRIES:
+        # Generate LBS for each country strictly partitioned from global total with exact conservation
+        target_claims_tot = round(tot_claims, 1)
+        raw_claims = [round((c["global_share"] / total_share) * target_claims_tot, 1) for c in COUNTRIES]
+        diff_claims = round(target_claims_tot - sum(raw_claims), 1)
+        raw_claims[0] = round(raw_claims[0] + diff_claims, 1) # Conserve exact macro claims sum
+
+        for idx_c, c in enumerate(COUNTRIES):
             code = c["code"]
-            c_claims = round((c["global_share"] / total_share) * tot_claims, 1)
+            c_claims = raw_claims[idx_c]
             c_liab = round(c_claims * c["liab_ratio"], 1)
             net_pos = round(c_claims - c_liab, 1)
 
@@ -633,6 +638,16 @@ def build_dataset():
         if not converged:
             raise RuntimeError(f"FATAL: RAS balancing failed to converge for quarter {q_name}! Max residual={max_residual:.6f}")
 
+        # Exact row conservation & rounding adjustment
+        rounded_X = [[round(balanced_X[i][j], 1) if i != j else 0.0 for j in range(n_countries)] for i in range(n_countries)]
+        for i in range(n_countries):
+            r_sum = sum(rounded_X[i])
+            r_target = row_targets[i]
+            r_diff = round(r_target - r_sum, 1)
+            if abs(r_diff) > 1e-4:
+                max_j = max((j for j in range(n_countries) if i != j), key=lambda j: rounded_X[i][j])
+                rounded_X[i][max_j] = round(rounded_X[i][max_j] + r_diff, 1)
+
         ras_metrics[q_name] = {
             "iterations": iters,
             "max_marginal_residual_bn": round(max_residual, 6),
@@ -645,9 +660,8 @@ def build_dataset():
             s_code = src_c["code"]
             for j, dst_c in enumerate(COUNTRIES):
                 d_code = dst_c["code"]
-                val = balanced_X[i][j]
-                if val >= 1.0 and i != j:
-                    weight = round(val, 1)
+                weight = rounded_X[i][j]
+                if i != j and weight > 0.0:
                     usd_share = (src_c["default_usd_share"] + dst_c["default_usd_share"]) / 2.0
                     usd_vol = round(weight * (usd_share / 100.0), 1)
 
