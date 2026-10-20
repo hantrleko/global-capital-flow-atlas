@@ -114,7 +114,13 @@ export function formatValueInCurrency(usdBn, targetCurrency = 'USD', quarter = '
 
   // USD, EUR, CNY
   if (Math.abs(converted) >= 1000) {
+    if (targetCurrency === 'USD') {
+      return `$${(converted / 1000).toFixed(2)}T`;
+    }
     return `${curMeta.symbol}${(converted / 1000).toFixed(2)}万亿`;
+  }
+  if (targetCurrency === 'USD') {
+    return `$${converted >= 10 ? converted.toFixed(1) : converted.toFixed(2)}B`;
   }
   return `${curMeta.symbol}${Math.round(converted)}亿`;
 }

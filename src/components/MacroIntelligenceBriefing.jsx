@@ -134,7 +134,16 @@ export default function MacroIntelligenceBriefing({
             <div className="flex items-baseline justify-between text-xs font-mono">
               <span className="text-slate-400 font-sans">环比净变动:</span>
               <span className={`font-semibold ${claimsQoqDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {claimsQoqDelta >= 0 ? '+' : ''}{claimsQoqDelta} 亿美元 ({currentMacro.global_qoq_growth_pct || 0}%)
+                {claimsQoqDelta >= 0 ? '+' : ''}${claimsQoqDelta}B ({claimsQoqDelta >= 0 ? '+' : ''}{Math.round(claimsQoqDelta * 10)} 亿美元)
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between text-xs font-mono">
+              <span className="text-slate-400 font-sans">季度增速:</span>
+              <span className="font-semibold text-sky-300">
+                环比 {currentMacro.global_qoq_growth_pct >= 0 ? '+' : ''}{currentMacro.global_qoq_growth_pct}%
+                <span className="text-slate-400 font-normal ml-1 text-[10px]">
+                  (折年率 {currentMacro.global_qoq_saar_pct >= 0 ? '+' : ''}{currentMacro.global_qoq_saar_pct}%)
+                </span>
               </span>
             </div>
             <div className="flex items-baseline justify-between text-xs font-mono">
@@ -149,9 +158,9 @@ export default function MacroIntelligenceBriefing({
 
           <p className="text-[11px] text-slate-400 leading-relaxed font-sans pt-1 border-t border-white/[0.04]">
             {isNowcast ? (
-              <span>模型外推显示跨境债权小幅扩张，多极清算与主权基建信贷维持低波动温和增长。</span>
+              <span>动态引力临近预报：预计跨境信贷延续温和扩张，主权与多极基础设施结算保持稳健。</span>
             ) : selectedQuarter === '2026Q2' ? (
-              <span>BIS 官方基准确立全球债权达 <strong>$47.82T</strong> 历史新高，离岸避税与非银中枢扩容。</span>
+              <span>BIS 官方基准确立全球债权达 <strong>$47.82T</strong> 历史高位，离岸与非银资金池平稳运行。</span>
             ) : (currentMacro.bis_usd_funding_stress_index || 0) > 65 ? (
               <span className="text-rose-300">离岸美元流动性显著紧缩，跨境掉期基差走阔，非美跨国银行外债滚续承压。</span>
             ) : (
@@ -182,7 +191,7 @@ export default function MacroIntelligenceBriefing({
                   <div key={i} className="flex justify-between items-center text-[11px] text-slate-200 pl-4 py-0.5">
                     <span>{c.fromName} → {c.toName}</span>
                     <span className="text-emerald-400 font-semibold">
-                      +{c.change} 亿 <span className="text-[10px] text-slate-400 font-normal">({c.changePct}%)</span>
+                      +{c.change} 亿美元 <span className="text-[10px] text-slate-400 font-normal">({c.changePct}%)</span>
                     </span>
                   </div>
                 ))}
@@ -198,7 +207,7 @@ export default function MacroIntelligenceBriefing({
                   <div key={i} className="flex justify-between items-center text-[11px] text-slate-200 pl-4 py-0.5">
                     <span>{c.fromName} → {c.toName}</span>
                     <span className="text-rose-400 font-semibold">
-                      {c.change} 亿 <span className="text-[10px] text-slate-400 font-normal">({c.changePct}%)</span>
+                      {c.change} 亿美元 <span className="text-[10px] text-slate-400 font-normal">({c.changePct}%)</span>
                     </span>
                   </div>
                 ))}
