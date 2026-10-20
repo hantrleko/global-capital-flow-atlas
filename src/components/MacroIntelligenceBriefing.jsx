@@ -160,11 +160,11 @@ export default function MacroIntelligenceBriefing({
             {isNowcast ? (
               <span>前瞻情景推演（非官方统计）：假定跨境信贷维持稳健温和扩张路径，情景假定范围 $47.90T–$49.30T。</span>
             ) : selectedQuarter === '2026Q2' ? (
-              <span>待核实估算存量达 <strong>$47.82T</strong>（根据 BIS 官方统计日历，官方发布日为 2026-10-30，待官方数据入库后核准）。</span>
+              <span>待核实估算存量达 <strong>{totalClaimsFormatted}</strong>（根据 BIS 官方统计日历，官方发布日为 2026-10-30，待官方数据入库后核准）。</span>
             ) : (currentMacro.bis_usd_funding_stress_index || 0) > 65 ? (
               <span className="text-rose-300">离岸美元流动性显著紧缩，跨境掉期基差走阔，非美跨国银行外债滚续承压。</span>
             ) : (
-              <span>BIS 官方 SDMX 核准确立全球债权达 <strong>$47.62T</strong>，主要货币互换通道运行畅通，跨境敞口保持稳健。</span>
+              <span>BIS 官方 SDMX 统计核准确立当期全球跨国总债权为 <strong>{totalClaimsFormatted}</strong>，主要货币互换通道运行畅通，跨境敞口保持稳健。</span>
             )}
           </p>
         </div>
@@ -191,7 +191,7 @@ export default function MacroIntelligenceBriefing({
                   <div key={i} className="flex justify-between items-center text-[11px] text-slate-200 pl-4 py-0.5">
                     <span>{c.fromName} → {c.toName}</span>
                     <span className="text-emerald-400 font-semibold">
-                      +{c.change} 亿美元 <span className="text-[10px] text-slate-400 font-normal">({c.changePct}%)</span>
+                      +${c.change}B (+{Math.round(c.change * 10)} 亿美元) <span className="text-[10px] text-slate-400 font-normal">({c.changePct >= 0 ? '+' : ''}{c.changePct}%)</span>
                     </span>
                   </div>
                 ))}
@@ -207,7 +207,7 @@ export default function MacroIntelligenceBriefing({
                   <div key={i} className="flex justify-between items-center text-[11px] text-slate-200 pl-4 py-0.5">
                     <span>{c.fromName} → {c.toName}</span>
                     <span className="text-rose-400 font-semibold">
-                      {c.change} 亿美元 <span className="text-[10px] text-slate-400 font-normal">({c.changePct}%)</span>
+                      -${Math.abs(c.change)}B (-{Math.round(Math.abs(c.change) * 10)} 亿美元) <span className="text-[10px] text-slate-400 font-normal">({c.changePct}%)</span>
                     </span>
                   </div>
                 ))}
@@ -256,8 +256,21 @@ export default function MacroIntelligenceBriefing({
               <div className="text-sky-300 text-[10px] leading-relaxed">
                 {isNowcast 
                   ? '情景假定范围: $47.90T – $49.30T (情景范围 ±1.44%)' 
-                  : '全球总量锚定官方，国别与双边走廊由双比例最大熵 RAS 模型平衡重构 (已收敛至 1e-4)'}
+                  : '全球总量锚定官方，双边网络经 RAS 最大熵求解与 0.1B 整点守恒调校 (导出残差 0.0 Bn USD)'}
               </div>
+            </div>
+
+            {/* Indicator-Level Provenance Tags */}
+            <div className="flex flex-wrap gap-1 pt-1 border-t border-white/[0.04] text-[9px] font-mono">
+              <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60" title="总量锚定 BIS SDMX Table A6.2">
+                总量: {isNowcast ? '情景推演' : selectedQuarter === '2026Q2' ? '待核实估算' : '官方观测'}
+              </span>
+              <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60" title="微观网络经双比例最大熵 RAS 算法求解，行和/列和完全守恒">
+                网络: RAS重构 (残差0.0B)
+              </span>
+              <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60" title="美元融资压力指数由货币掉期基差与央行互换合成">
+                压力: 掉期/基差合成
+              </span>
             </div>
 
             <div className="pt-1 border-t border-white/[0.04] flex items-center justify-between">

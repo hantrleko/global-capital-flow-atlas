@@ -534,10 +534,17 @@ def build_dataset():
         diff_claims = round(target_claims_tot - sum(raw_claims), 1)
         raw_claims[0] = round(raw_claims[0] + diff_claims, 1) # Conserve exact macro claims sum
 
+        # Partition liabilities to strictly equal global total cross-border credit (Accounting Identity: Total Claims == Total Liabilities)
+        raw_liab_weights = [c["global_share"] * c["liab_ratio"] for c in COUNTRIES]
+        tot_liab_weight = sum(raw_liab_weights)
+        raw_liabs = [round((w / tot_liab_weight) * target_claims_tot, 1) for w in raw_liab_weights]
+        diff_liab = round(target_claims_tot - sum(raw_liabs), 1)
+        raw_liabs[0] = round(raw_liabs[0] + diff_liab, 1) # Conserve exact macro liabilities sum
+
         for idx_c, c in enumerate(COUNTRIES):
             code = c["code"]
             c_claims = raw_claims[idx_c]
-            c_liab = round(c_claims * c["liab_ratio"], 1)
+            c_liab = raw_liabs[idx_c]
             net_pos = round(c_claims - c_liab, 1)
 
             # Currency breakdown
@@ -638,21 +645,61 @@ def build_dataset():
         if not converged:
             raise RuntimeError(f"FATAL: RAS balancing failed to converge for quarter {q_name}! Max residual={max_residual:.6f}")
 
-        # Exact row conservation & rounding adjustment
-        rounded_X = [[round(balanced_X[i][j], 1) if i != j else 0.0 for j in range(n_countries)] for i in range(n_countries)]
+        # Exact integer quantization in 0.1 Bn units with row-neutral column shift
+        target_r = [int(round(r * 10)) for r in row_targets]
+        target_c = [int(round(c * 10)) for c in col_targets]
+
+        M = [[int(round(balanced_X[i][j] * 10)) if i != j else 0 for j in range(n_countries)] for i in range(n_countries)]
+
+        # 1. Exact row sum calibration
         for i in range(n_countries):
-            r_sum = sum(rounded_X[i])
-            r_target = row_targets[i]
-            r_diff = round(r_target - r_sum, 1)
-            if abs(r_diff) > 1e-4:
-                max_j = max((j for j in range(n_countries) if i != j), key=lambda j: rounded_X[i][j])
-                rounded_X[i][max_j] = round(rounded_X[i][max_j] + r_diff, 1)
+            diff = sum(M[i]) - target_r[i]
+            while diff > 0:
+                j_cand = max((j for j in range(n_countries) if i != j and M[i][j] > 1), key=lambda j: M[i][j])
+                M[i][j_cand] -= 1
+                diff -= 1
+            while diff < 0:
+                j_cand = max((j for j in range(n_countries) if i != j), key=lambda j: M[i][j])
+                M[i][j_cand] += 1
+                diff += 1
+
+        # 2. Row-neutral column shift to eliminate all column residuals
+        for _ in range(200):
+            c_err = [sum(M[i][j] for i in range(n_countries)) - target_c[j] for j in range(n_countries)]
+            pos_cols = [j for j in range(n_countries) if c_err[j] > 0]
+            neg_cols = [j for j in range(n_countries) if c_err[j] < 0]
+            if not pos_cols or not neg_cols:
+                break
+            j_pos = pos_cols[0]
+            j_neg = neg_cols[0]
+            shifted = False
+            for i in range(n_countries):
+                if i != j_pos and i != j_neg and M[i][j_pos] > 1:
+                    M[i][j_pos] -= 1
+                    M[i][j_neg] += 1
+                    shifted = True
+                    break
+            if not shifted:
+                break
+
+        # Verification: Exact post-export zero residual assertion
+        r_residuals = [abs(sum(M[i]) - target_r[i]) / 10.0 for i in range(n_countries)]
+        c_residuals = [abs(sum(M[i][j] for i in range(n_countries)) - target_c[j]) / 10.0 for j in range(n_countries)]
+        max_r_err = max(r_residuals)
+        max_c_err = max(c_residuals)
+        if max_r_err > 1e-4 or max_c_err > 1e-4:
+            raise RuntimeError(f"FATAL: Exact matrix conservation failed for {q_name}! Row err={max_r_err}, Col err={max_c_err}")
+
+        rounded_X = [[round(M[i][j] / 10.0, 1) if i != j else 0.0 for j in range(n_countries)] for i in range(n_countries)]
 
         ras_metrics[q_name] = {
             "iterations": iters,
-            "max_marginal_residual_bn": round(max_residual, 6),
+            "solver_continuous_max_residual_bn": round(max_residual, 6),
+            "solver_tolerance": 1e-4,
+            "post_export_max_row_residual_bn": round(max_r_err, 4),
+            "post_export_max_col_residual_bn": round(max_c_err, 4),
             "converged": converged,
-            "tolerance": 1e-4
+            "conservation_status": "EXACT_CONSERVED"
         }
 
         q_links = []
@@ -936,9 +983,45 @@ def build_dataset():
                 "algorithm": "Biproportional Iterative Proportional Fitting (IPF / RAS)",
                 "row_marginal_constraint": "Reporting Country Total Claims (LBS Table A6.2)",
                 "column_marginal_constraint": "Counterparty Total Cross-Border Liabilities / Borrowings",
-                "convergence_tolerance": 0.0001,
-                "status": "ALL_QUARTERS_CONVERGED",
+                "continuous_convergence_tolerance": 0.0001,
+                "post_export_discretization_step_bn": 0.1,
+                "post_export_max_row_residual_bn": 0.0,
+                "post_export_max_col_residual_bn": 0.0,
+                "status": "ALL_QUARTERS_EXACT_CONSERVED",
                 "metrics_by_quarter": ras_metrics
+            },
+            "indicator_provenance": {
+                "global_cross_border_claims": {
+                    "source": "BIS SDMX 2.1 API (WS_LBS_D_PUB Table A6.2)",
+                    "status_le_2026Q1": "OFFICIAL_OBSERVED (API verified)",
+                    "status_2026Q2": "CACHED_PENDING_RELEASE (BIS calendar release: 2026-10-30)",
+                    "status_2026Q3_2026Q4": "SCENARIO_PROJECTION (Heuristic trend range $47.90T-$49.30T)"
+                },
+                "country_lbs_claims_and_liabilities": {
+                    "source": "Model-allocated from global macro anchor using BIS reporting participation shares",
+                    "status": "MODEL_ALLOCATED",
+                    "accounting_identity": "Strict sum equality: sum(claims) == sum(liabilities) == total_claims"
+                },
+                "bilateral_corridors": {
+                    "source": "Biproportional Iterative Proportional Fitting (RAS / Maximum Entropy)",
+                    "status": "MODEL_RECONSTRUCTED",
+                    "marginal_constraints": "Row totals match country claims; Column totals match country liabilities",
+                    "continuous_solver_tol": 1e-4,
+                    "post_export_discretization": "0.1 Bn exact integer apportionment with row-neutral column shift",
+                    "post_export_max_row_residual_bn": 0.0,
+                    "post_export_max_col_residual_bn": 0.0,
+                    "corridors_exported": 506
+                },
+                "usd_funding_stress_index": {
+                    "source": "Synthetic composite stress indicator (0-100)",
+                    "status": "MODEL_SYNTHESIZED",
+                    "components": ["3M Cross-Currency Basis (EUR/JPY/CNY)", "Fed Liquidity Swap Draws", "Implied FX Volatility Proxy"]
+                },
+                "cbs_early_warning_and_capital": {
+                    "source": "Stylized indicators calibrated to Basel III regulatory guidelines",
+                    "status": "REGULATORY_STYLIZED",
+                    "components": ["Credit-to-GDP Gap", "Debt Service Ratio (DSR)", "Guidotti-Greenspan Ratio", "CCyB Buffer"]
+                }
             },
             "academic_citations": [
                 "BIS Locational Banking Statistics (Table A6.2) & Consolidated Banking Statistics (Table B4)",

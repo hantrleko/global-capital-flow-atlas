@@ -36,8 +36,8 @@ export default function ResearchDossier({
         { 'Attribute': 'Official Verified Quarters', 'Specification': '2018Q1 – 2026Q1 (BIS SDMX WS_LBS_D_PUB Table A6.2 Verified)' },
         { 'Attribute': 'Cached Benchmark Quarter', 'Specification': '2026Q2 ($47.82T cached baseline — pending BIS official release on Oct 30)' },
         { 'Attribute': 'Scenario Projection Quarters', 'Specification': '2026Q3 – 2026Q4 (Forward momentum scenario paths: $47.90T–$49.30T)' },
-        { 'Attribute': 'Mathematical Conservation', 'Specification': 'Sum(Outgoing Corridors for Country i) == Node Claims for Country i; Sum(All Corridors) == Global Macro Claims (Conserved to 0.00 Bn)' },
-        { 'Attribute': 'Matrix Balancing Method', 'Specification': 'Biproportional RAS (Iterative Proportional Fitting) with Maximum Entropy (Residual < 1e-4)' }
+        { 'Attribute': 'Mathematical Conservation', 'Specification': 'Sum(Outgoing Corridors for Country i) == Node Claims; Sum(Incoming Corridors for Country j) == Node Liabilities; Sum(All Corridors) == Global Macro Total (Conserved to 0.00 Bn)' },
+        { 'Attribute': 'Matrix Balancing Method', 'Specification': 'Biproportional RAS (IPF) with Maximum Entropy (Continuous Residual < 1e-4; Exported Rounded Residual = 0.00 Bn across all 506 corridors)' }
       ];
       const wsMeta = XLSX.utils.json_to_sheet(metaRows);
       XLSX.utils.book_append_sheet(wb, wsMeta, '0_Methodology_and_Units');

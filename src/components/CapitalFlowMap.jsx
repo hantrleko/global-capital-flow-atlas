@@ -947,7 +947,7 @@ export default function CapitalFlowMap({
                 methodText={
                   selectedQuarter > '2026Q2' 
                     ? '情景探索范围: $47.90T–$49.30T' 
-                    : '双比例 RAS 模型平衡 (已收敛至 1e-4)'
+                    : '双比例 RAS 重构 (导出残差 0.0B 守恒)'
                 }
                 onOpenAppendix={onOpenAppendix}
               />

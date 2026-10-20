@@ -137,6 +137,58 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                   </div>
                 </div>
 
+                {/* Indicator-Level Provenance Table */}
+                <div className="p-4 rounded-xl border border-slate-700 bg-slate-950/70 space-y-3">
+                  <div className="text-xs font-semibold text-white flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-sky-400" />
+                    指标级数据来源与可信度分层表 (Indicator-Level Provenance Table)
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-mono text-slate-300 border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-400 text-[11px]">
+                          <th className="py-2 pr-3">指标类别</th>
+                          <th className="py-2 pr-3">数据源 / 计算方法</th>
+                          <th className="py-2 pr-3">可信度定性</th>
+                          <th className="py-2">核查依据 / 容差</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 text-[11px]">
+                        <tr>
+                          <td className="py-2 font-bold text-white font-sans">全球跨境总债权</td>
+                          <td className="py-2">BIS SDMX 2.1 API (WS_LBS_D_PUB Table A6.2)</td>
+                          <td className="py-2 text-emerald-400 font-sans">官方观测 (≤2026Q1) / 待核实估算 (2026Q2)</td>
+                          <td className="py-2 text-slate-400">stats.bis.org API 实时核验</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-bold text-white font-sans">国别资产与负债</td>
+                          <td className="py-2">LBS 申报国历史参与份额 + 宏观总量恒等分配</td>
+                          <td className="py-2 text-sky-400 font-sans">模型分配 (Model Allocated)</td>
+                          <td className="py-2 text-slate-400">∑Claims = ∑Liab = 全球总量 (残差 0.0B)</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-bold text-white font-sans">双边微观信贷走廊</td>
+                          <td className="py-2">双比例最大熵 RAS 算法 (Iterative Proportional Fitting)</td>
+                          <td className="py-2 text-sky-400 font-sans">模型重构 (Model Reconstructed)</td>
+                          <td className="py-2 text-emerald-400">506 条全量导出，行差=0.0B，列差=0.0B</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-bold text-white font-sans">美元融资压力指数</td>
+                          <td className="py-2">交叉货币掉期基差 (EUR/JPY/CNY) + 央行互换用量</td>
+                          <td className="py-2 text-amber-400 font-sans">合成指数 (Synthetic Composite)</td>
+                          <td className="py-2 text-slate-400">0–100 综合离岸美元流动性紧张度</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-bold text-white font-sans">早期预警与资本缓冲</td>
+                          <td className="py-2">Credit-to-GDP Gap / DSR / Guidotti 比率</td>
+                          <td className="py-2 text-purple-400 font-sans">监管标定 (Regulatory Stylized)</td>
+                          <td className="py-2 text-slate-400">巴塞尔协议 III (Basel III) 监测规则</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
                 <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-950/20 space-y-2">
                   <div className="text-xs font-semibold text-sky-300 flex items-center gap-2">
                     <Database className="w-4 h-4" />
@@ -216,6 +268,17 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                   <p className="text-slate-400 text-[11px] leading-relaxed">
                     算法通过迭代双比例平衡因子 (r_i, s_j)，使得双边矩阵 <code className="text-sky-300">X_ij = r_i * X_ij^0 * s_j</code> 在极小化信息相对熵的条件下精确收敛于各国官方边际总量，保障总资产与总负债的会计一致性。
                   </p>
+                </div>
+
+                <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-2 text-xs">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                    <CheckCircle className="w-4 h-4" />
+                    两阶段守恒与实测检验 (Two-Stage Verification)
+                  </div>
+                  <div className="space-y-1.5 text-slate-300">
+                    <p>• <strong>阶段一（连续空间 RAS 求解）：</strong>迭代求解双比例乘子，直至最大边际残差 &lt; 1e-4 Bn USD，确保数学上最大熵分布收敛；</p>
+                    <p>• <strong>阶段二（离散整点调校与全量导出）：</strong>为防止四舍五入或截断丢额，采用 0.1B 离散整点分配算法与行中性列对齐，所有 506 条双边走廊全量保留无截断，<strong>导出矩阵实测行差 = 0.0 Bn USD，列差 = 0.0 Bn USD</strong>，与各国 LBS 节点头寸绝对一致。</p>
+                  </div>
                 </div>
               </div>
             )}
