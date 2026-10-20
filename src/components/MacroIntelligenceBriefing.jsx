@@ -160,7 +160,7 @@ export default function MacroIntelligenceBriefing({
             {isNowcast ? (
               <span>动态引力临近预报：预计跨境信贷延续温和扩张，主权与多极基础设施结算保持稳健。</span>
             ) : selectedQuarter === '2026Q2' ? (
-              <span>BIS 官方基准确立全球债权达 <strong>$47.82T</strong> 历史高位，离岸与非银资金池平稳运行。</span>
+              <span>基准预估全球跨境债权存量达 <strong>$47.82T</strong>（待 BIS 官方 10 月底正式发布核验），离岸与非银资金池平稳运行。</span>
             ) : (currentMacro.bis_usd_funding_stress_index || 0) > 65 ? (
               <span className="text-rose-300">离岸美元流动性显著紧缩，跨境掉期基差走阔，非美跨国银行外债滚续承压。</span>
             ) : (

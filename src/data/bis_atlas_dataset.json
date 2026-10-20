@@ -6,32 +6,37 @@
     "coverage_quarters": 36,
     "start_quarter": "2018Q1",
     "end_quarter": "2026Q4",
-    "observed_end": "2026Q2",
+    "observed_end": "2026Q1",
+    "sdmx_verified_end": "2026Q1",
+    "pending_release_quarters": [
+      "2026Q2"
+    ],
     "nowcast_quarters": [
       "2026Q3",
       "2026Q4"
     ],
-    "total_observed_cross_border_claims_usd_bn": 47820.0,
-    "end_2025_cross_border_claims_usd_bn": 46120.0,
-    "latest_nowcast_claims_usd_bn": 48600.0,
+    "total_observed_cross_border_claims_usd_bn": 47621.9,
+    "end_2025_cross_border_claims_usd_bn": 45971.9,
+    "q2_2026_cached_estimate_claims_usd_bn": 47820.0,
+    "latest_scenario_claims_usd_bn": 48600.0,
     "unit": "USD Billions",
-    "methodology_status": "Hybrid Calibration Framework: Global Aggregates Ingested via BIS SDMX 2.1 REST API (2018Q1-2026Q2); Country Totals and Bilateral Corridors Model-Allocated via Iterative Proportional Fitting RAS Balancing; Forward Quarters (2026Q3-Q4) Econometrically Nowcast.",
-    "data_allocation_policy": "全球总量锚定 BIS 官方公布值，国别总额与双边走廊基于 RAS 最大熵算法求解 (Global Totals Anchored to BIS Official Releases, Corridors Solved via Biproportional RAS)",
+    "methodology_status": "Hybrid Calibration Framework: Global Aggregates Ingested via BIS SDMX 2.1 REST API (2018Q1-2026Q1 verified); 2026Q2 is a Cached Estimate pending official BIS Oct 30 release; 2026Q3-Q4 are Scenario Projections; Country and Bilateral Corridors Model-Allocated via Iterative Proportional Fitting RAS Balancing.",
+    "data_allocation_policy": "全球总量锚定 BIS 官方公布值 (2026Q1 及之前) / 待发布估算 (2026Q2)，国别总额与双边走廊基于 RAS 最大熵算法求解",
     "sdmx_ingestion_api": {
       "endpoint": "https://stats.bis.org/api/v1/data/BIS,WS_LBS_D_PUB,1.0/Q.S.C.A.TO1.A.5J.A.5A.A.5J.N?startPeriod=2018-Q1&format=csv",
       "dataflow": "WS_LBS_D_PUB (Locational Banking Statistics)",
-      "series_description": "Cross-border bank claims on all sectors in all currencies (amounts outstanding)"
+      "series_description": "Cross-border bank claims on all sectors in all currencies (amounts outstanding)",
+      "verified_end_quarter": "2026Q1",
+      "bis_next_release_date": "2026-10-30"
     },
-    "nowcast_econometric_model": {
-      "specification": "ARX(1) Dynamic Panel Gravity with Momentum Drift",
-      "observed_benchmark_quarter": "2026Q2",
+    "scenario_projection_model": {
+      "specification": "Heuristic Trend Scenario Range (Not formal ARX econometrics)",
       "point_estimate_2026q4_bn": 48600.0,
-      "residual_standard_error_pct": 0.734,
-      "confidence_interval_95_pct": [
+      "scenario_range_pct": [
         -1.44,
         1.44
       ],
-      "confidence_interval_95_range_trillion": [
+      "scenario_range_trillion": [
         47.9,
         49.3
       ]
@@ -41,7 +46,225 @@
       "row_marginal_constraint": "Reporting Country Total Claims (LBS Table A6.2)",
       "column_marginal_constraint": "Counterparty Total Cross-Border Liabilities / Borrowings",
       "convergence_tolerance": 0.0001,
-      "status": "CONVERGED"
+      "status": "ALL_QUARTERS_CONVERGED",
+      "metrics_by_quarter": {
+        "2018Q1": {
+          "iterations": 40,
+          "max_marginal_residual_bn": 9.7e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2018Q2": {
+          "iterations": 39,
+          "max_marginal_residual_bn": 7.6e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2018Q3": {
+          "iterations": 38,
+          "max_marginal_residual_bn": 8.9e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2018Q4": {
+          "iterations": 38,
+          "max_marginal_residual_bn": 9.6e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2019Q1": {
+          "iterations": 41,
+          "max_marginal_residual_bn": 7.8e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2019Q2": {
+          "iterations": 42,
+          "max_marginal_residual_bn": 7.8e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2019Q3": {
+          "iterations": 42,
+          "max_marginal_residual_bn": 8.2e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2019Q4": {
+          "iterations": 42,
+          "max_marginal_residual_bn": 7.5e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2020Q1": {
+          "iterations": 44,
+          "max_marginal_residual_bn": 7.7e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2020Q2": {
+          "iterations": 43,
+          "max_marginal_residual_bn": 8.7e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2020Q3": {
+          "iterations": 44,
+          "max_marginal_residual_bn": 9.7e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2020Q4": {
+          "iterations": 46,
+          "max_marginal_residual_bn": 7.9e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2021Q1": {
+          "iterations": 46,
+          "max_marginal_residual_bn": 8.6e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2021Q2": {
+          "iterations": 46,
+          "max_marginal_residual_bn": 8.6e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2021Q3": {
+          "iterations": 46,
+          "max_marginal_residual_bn": 8.1e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2021Q4": {
+          "iterations": 46,
+          "max_marginal_residual_bn": 8.5e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2022Q1": {
+          "iterations": 47,
+          "max_marginal_residual_bn": 7.9e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2022Q2": {
+          "iterations": 46,
+          "max_marginal_residual_bn": 9.1e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2022Q3": {
+          "iterations": 46,
+          "max_marginal_residual_bn": 8.9e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2022Q4": {
+          "iterations": 47,
+          "max_marginal_residual_bn": 7.6e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2023Q1": {
+          "iterations": 47,
+          "max_marginal_residual_bn": 8.7e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2023Q2": {
+          "iterations": 47,
+          "max_marginal_residual_bn": 9.8e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2023Q3": {
+          "iterations": 48,
+          "max_marginal_residual_bn": 8e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2023Q4": {
+          "iterations": 48,
+          "max_marginal_residual_bn": 9.2e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2024Q1": {
+          "iterations": 49,
+          "max_marginal_residual_bn": 7.9e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2024Q2": {
+          "iterations": 48,
+          "max_marginal_residual_bn": 9.8e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2024Q3": {
+          "iterations": 49,
+          "max_marginal_residual_bn": 0.0001,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2024Q4": {
+          "iterations": 49,
+          "max_marginal_residual_bn": 9e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2025Q1": {
+          "iterations": 50,
+          "max_marginal_residual_bn": 9.1e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2025Q2": {
+          "iterations": 52,
+          "max_marginal_residual_bn": 8.4e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2025Q3": {
+          "iterations": 52,
+          "max_marginal_residual_bn": 9.6e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2025Q4": {
+          "iterations": 53,
+          "max_marginal_residual_bn": 8.6e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2026Q1": {
+          "iterations": 54,
+          "max_marginal_residual_bn": 8.6e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2026Q2": {
+          "iterations": 54,
+          "max_marginal_residual_bn": 8.9e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2026Q3": {
+          "iterations": 54,
+          "max_marginal_residual_bn": 9.4e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        },
+        "2026Q4": {
+          "iterations": 55,
+          "max_marginal_residual_bn": 7.8e-05,
+          "converged": true,
+          "tolerance": 0.0001
+        }
+      }
     },
     "academic_citations": [
       "BIS Locational Banking Statistics (Table A6.2) & Consolidated Banking Statistics (Table B4)",
@@ -606,8 +829,9 @@
     {
       "quarter": "2018Q1",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2018Q1",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 31288.0,
       "total_usd_cross_border_bn": 16019.5,
       "global_usd_share_pct": 51.2,
@@ -625,8 +849,9 @@
     {
       "quarter": "2018Q2",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2018Q2",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 30410.3,
       "total_usd_cross_border_bn": 15661.3,
       "global_usd_share_pct": 51.5,
@@ -644,8 +869,9 @@
     {
       "quarter": "2018Q3",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2018Q3",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 30187.8,
       "total_usd_cross_border_bn": 15637.3,
       "global_usd_share_pct": 51.8,
@@ -663,8 +889,9 @@
     {
       "quarter": "2018Q4",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2018Q4",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 30384.4,
       "total_usd_cross_border_bn": 15830.3,
       "global_usd_share_pct": 52.1,
@@ -682,8 +909,9 @@
     {
       "quarter": "2019Q1",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2019Q1",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 31457.5,
       "total_usd_cross_border_bn": 16326.4,
       "global_usd_share_pct": 51.9,
@@ -701,8 +929,9 @@
     {
       "quarter": "2019Q2",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2019Q2",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 32135.1,
       "total_usd_cross_border_bn": 16581.7,
       "global_usd_share_pct": 51.6,
@@ -720,8 +949,9 @@
     {
       "quarter": "2019Q3",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2019Q3",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 32407.1,
       "total_usd_cross_border_bn": 16657.2,
       "global_usd_share_pct": 51.4,
@@ -739,8 +969,9 @@
     {
       "quarter": "2019Q4",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2019Q4",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 32074.7,
       "total_usd_cross_border_bn": 16390.2,
       "global_usd_share_pct": 51.1,
@@ -758,8 +989,9 @@
     {
       "quarter": "2020Q1",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2020Q1",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 34651.2,
       "total_usd_cross_border_bn": 18503.7,
       "global_usd_share_pct": 53.4,
@@ -777,8 +1009,9 @@
     {
       "quarter": "2020Q2",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2020Q2",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 33733.6,
       "total_usd_cross_border_bn": 17811.3,
       "global_usd_share_pct": 52.8,
@@ -796,8 +1029,9 @@
     {
       "quarter": "2020Q3",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2020Q3",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 34489.5,
       "total_usd_cross_border_bn": 17900.1,
       "global_usd_share_pct": 51.9,
@@ -815,8 +1049,9 @@
     {
       "quarter": "2020Q4",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2020Q4",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 35763.8,
       "total_usd_cross_border_bn": 18311.1,
       "global_usd_share_pct": 51.2,
@@ -834,8 +1069,9 @@
     {
       "quarter": "2021Q1",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2021Q1",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 36082.7,
       "total_usd_cross_border_bn": 18330.0,
       "global_usd_share_pct": 50.8,
@@ -853,8 +1089,9 @@
     {
       "quarter": "2021Q2",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2021Q2",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 36005.9,
       "total_usd_cross_border_bn": 18147.0,
       "global_usd_share_pct": 50.4,
@@ -872,8 +1109,9 @@
     {
       "quarter": "2021Q3",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2021Q3",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 35803.7,
       "total_usd_cross_border_bn": 17937.7,
       "global_usd_share_pct": 50.1,
@@ -891,8 +1129,9 @@
     {
       "quarter": "2021Q4",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2021Q4",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 36065.0,
       "total_usd_cross_border_bn": 17960.4,
       "global_usd_share_pct": 49.8,
@@ -910,8 +1149,9 @@
     {
       "quarter": "2022Q1",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2022Q1",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 37482.8,
       "total_usd_cross_border_bn": 18966.3,
       "global_usd_share_pct": 50.6,
@@ -929,8 +1169,9 @@
     {
       "quarter": "2022Q2",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2022Q2",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 36979.7,
       "total_usd_cross_border_bn": 19044.5,
       "global_usd_share_pct": 51.5,
@@ -948,8 +1189,9 @@
     {
       "quarter": "2022Q3",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2022Q3",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 36976.2,
       "total_usd_cross_border_bn": 19523.4,
       "global_usd_share_pct": 52.8,
@@ -967,8 +1209,9 @@
     {
       "quarter": "2022Q4",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2022Q4",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 37358.6,
       "total_usd_cross_border_bn": 19501.2,
       "global_usd_share_pct": 52.2,
@@ -986,8 +1229,9 @@
     {
       "quarter": "2023Q1",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2023Q1",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 38180.1,
       "total_usd_cross_border_bn": 19777.3,
       "global_usd_share_pct": 51.8,
@@ -1005,8 +1249,9 @@
     {
       "quarter": "2023Q2",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2023Q2",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 38387.6,
       "total_usd_cross_border_bn": 19654.5,
       "global_usd_share_pct": 51.2,
@@ -1024,8 +1269,9 @@
     {
       "quarter": "2023Q3",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2023Q3",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 38567.0,
       "total_usd_cross_border_bn": 19553.5,
       "global_usd_share_pct": 50.7,
@@ -1043,8 +1289,9 @@
     {
       "quarter": "2023Q4",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2023Q4",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 39055.1,
       "total_usd_cross_border_bn": 19605.7,
       "global_usd_share_pct": 50.2,
@@ -1062,8 +1309,9 @@
     {
       "quarter": "2024Q1",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2024Q1",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 39546.2,
       "total_usd_cross_border_bn": 19654.5,
       "global_usd_share_pct": 49.7,
@@ -1081,8 +1329,9 @@
     {
       "quarter": "2024Q2",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2024Q2",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 39210.7,
       "total_usd_cross_border_bn": 19330.9,
       "global_usd_share_pct": 49.3,
@@ -1100,8 +1349,9 @@
     {
       "quarter": "2024Q3",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2024Q3",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 41134.0,
       "total_usd_cross_border_bn": 20114.5,
       "global_usd_share_pct": 48.9,
@@ -1119,8 +1369,9 @@
     {
       "quarter": "2024Q4",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2024Q4",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 40086.9,
       "total_usd_cross_border_bn": 19402.1,
       "global_usd_share_pct": 48.4,
@@ -1138,8 +1389,9 @@
     {
       "quarter": "2025Q1",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2025Q1",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 41629.5,
       "total_usd_cross_border_bn": 19940.5,
       "global_usd_share_pct": 47.9,
@@ -1157,8 +1409,9 @@
     {
       "quarter": "2025Q2",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2025Q2",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 44296.9,
       "total_usd_cross_border_bn": 20996.7,
       "global_usd_share_pct": 47.4,
@@ -1176,8 +1429,9 @@
     {
       "quarter": "2025Q3",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2025Q3",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 45067.1,
       "total_usd_cross_border_bn": 21136.5,
       "global_usd_share_pct": 46.9,
@@ -1195,8 +1449,9 @@
     {
       "quarter": "2025Q4",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2025Q4",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 45971.9,
       "total_usd_cross_border_bn": 21376.9,
       "global_usd_share_pct": 46.5,
@@ -1214,8 +1469,9 @@
     {
       "quarter": "2026Q1",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "BIS SDMX WS_LBS_D_PUB verified 2026Q1",
+      "observation_status": "OFFICIAL_OBSERVED",
+      "sdmx_verified": true,
       "total_cross_border_claims_usd_bn": 47621.9,
       "total_usd_cross_border_bn": 21810.8,
       "global_usd_share_pct": 45.8,
@@ -1233,8 +1489,9 @@
     {
       "quarter": "2026Q2",
       "is_nowcast": false,
-      "data_vintage": "2026-10-14 BIS SDMX Release",
-      "observation_status": "OBSERVED",
+      "data_vintage": "Cached estimate — pending BIS official release (not yet in SDMX)",
+      "observation_status": "CACHED_PENDING_RELEASE",
+      "sdmx_verified": false,
       "total_cross_border_claims_usd_bn": 47820.0,
       "total_usd_cross_border_bn": 21614.6,
       "global_usd_share_pct": 45.2,
@@ -1252,8 +1509,9 @@
     {
       "quarter": "2026Q3",
       "is_nowcast": true,
-      "data_vintage": "Atlas Dynamic Nowcast v2.4 (95% CI: $47.90T-$49.30T, +/-1.4%)",
-      "observation_status": "NOWCAST_ESTIMATE",
+      "data_vintage": "Atlas Scenario Projection (range: $47.90T-$49.30T)",
+      "observation_status": "SCENARIO_PROJECTION",
+      "sdmx_verified": false,
       "total_cross_border_claims_usd_bn": 48200.0,
       "total_usd_cross_border_bn": 21593.6,
       "global_usd_share_pct": 44.8,
@@ -1271,8 +1529,9 @@
     {
       "quarter": "2026Q4",
       "is_nowcast": true,
-      "data_vintage": "Atlas Dynamic Nowcast v2.4 (95% CI: $47.90T-$49.30T, +/-1.4%)",
-      "observation_status": "NOWCAST_ESTIMATE",
+      "data_vintage": "Atlas Scenario Projection (range: $47.90T-$49.30T)",
+      "observation_status": "SCENARIO_PROJECTION",
+      "sdmx_verified": false,
       "total_cross_border_claims_usd_bn": 48600.0,
       "total_usd_cross_border_bn": 21529.8,
       "global_usd_share_pct": 44.3,

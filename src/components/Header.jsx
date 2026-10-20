@@ -159,12 +159,17 @@ export default function Header({
               {selectedQuarter > '2026Q2' ? (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(168,85,247,0.25)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                  [NOWCAST 临近预报] 动态引力外推 · 95% CI: $47.90T–$49.30T (±1.4%)
+                  [前瞻情景推演] 情景假定范围: $47.90T–$49.30T (±1.4%)
+                </span>
+              ) : selectedQuarter === '2026Q2' ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.25)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  [待核实估算 · 缓存预估] BIS 官方发布日预定为 2026-10-30: ~$47.82T (待官方入库)
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(16,185,129,0.25)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  [总量锚定 BIS 公布值 · 国别模型分配] SDMX 2.1 (至 2026Q2)
+                  [BIS 官方观测核准 · 国别模型分配] SDMX 2.1 (最新公布至 2026Q1: $47.62T)
                 </span>
               )}
             </div>
@@ -445,9 +450,17 @@ export default function Header({
               <span className="flex items-center gap-1">
                 <TrendingUp className="w-3 h-3 text-sky-400" /> 全球跨境总债权
               </span>
-              {selectedQuarter > '2026Q2' && (
+              {selectedQuarter > '2026Q2' ? (
                 <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/25 text-purple-300 font-bold border border-purple-500/40">
-                  NOWCAST
+                  SCENARIO
+                </span>
+              ) : selectedQuarter === '2026Q2' ? (
+                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/25 text-amber-300 font-bold border border-amber-500/40">
+                  待核实估算
+                </span>
+              ) : (
+                <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-bold border border-emerald-500/40">
+                  OFFICIAL
                 </span>
               )}
             </div>

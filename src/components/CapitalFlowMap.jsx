@@ -407,7 +407,7 @@ export default function CapitalFlowMap({
                       <span class="text-slate-300 font-semibold">${Math.round((data.usdVol / Math.max(1, data.value)) * 100)}%</span>
                     </div>
                     <div class="text-[10px] text-slate-500 border-t border-white/5 pt-1 mt-1 font-sans">
-                      口径: 经汇率及断点调整后期间净金融流向 (Flows)
+                      口径: 相邻季度未调整存量变化 ΔClaims (未剔除汇率与断点)
                     </div>
                   </div>
                 </div>
@@ -807,8 +807,9 @@ export default function CapitalFlowMap({
     { label: '日元套息巨震', quarter: '2024Q3', tag: 'BOJ加息' },
     { label: '全球降息周期', quarter: '2024Q4', tag: '官方审计' },
     { label: '跨境信贷破46T', quarter: '2025Q4', tag: '基准审计' },
-    { label: '峰值47.8T', quarter: '2026Q2', tag: '官方最新' },
-    { label: '多极清算网络', quarter: '2026Q4', tag: 'Nowcast' }
+    { label: 'SDMX确证47.6T', quarter: '2026Q1', tag: '官方最新' },
+    { label: '预估基准47.8T', quarter: '2026Q2', tag: '待官方发布' },
+    { label: '多极情景推演', quarter: '2026Q4', tag: '前瞻推演' }
   ];
 
   useEffect(() => {
@@ -928,9 +929,26 @@ export default function CapitalFlowMap({
                 {selectedQuarter}
               </span>
               <DataClassificationBadge
-                classification={selectedQuarter > '2026Q2' ? 'NOWCAST_PREDICTION' : 'MODEL_RECONSTRUCTED'}
-                sourceText={selectedQuarter > '2026Q2' ? '动态引力外推' : '总量锚定 BIS LBS Table A6.2'}
-                methodText={selectedQuarter > '2026Q2' ? '95% CI: ±1.4%' : '最大熵 RAS 模型平衡重构'}
+                classification={
+                  selectedQuarter > '2026Q2' 
+                    ? 'SCENARIO_PROJECTION' 
+                    : selectedQuarter === '2026Q2' 
+                      ? 'CACHED_PENDING_RELEASE' 
+                      : 'MODEL_RECONSTRUCTED'
+                }
+                quarter={selectedQuarter}
+                sourceText={
+                  selectedQuarter > '2026Q2' 
+                    ? '前瞻探索情景 (非官方统计)' 
+                    : selectedQuarter === '2026Q2' 
+                      ? '待核实估算 (BIS 预定10月30日发布)' 
+                      : '总量锚定 BIS 官方核准发布'
+                }
+                methodText={
+                  selectedQuarter > '2026Q2' 
+                    ? '情景探索范围: $47.90T–$49.30T' 
+                    : '双比例 RAS 模型平衡 (已收敛至 1e-4)'
+                }
                 onOpenAppendix={onOpenAppendix}
               />
             </div>
@@ -938,7 +956,7 @@ export default function CapitalFlowMap({
               <span>
                 {flowMode === 'positions' 
                   ? '当前模式: 期末未偿存量 (Amounts Outstanding) · 呈现总资产与敞口深度' 
-                  : '当前模式: 季度调整后变化 (Adjusted Net Flows) · 绿色为净借出，红色为偿还去杠杆'}
+                  : '当前模式: 未调整存量变化 (Unadjusted Stock Changes) · 绿为扩张/红为回流'}
               </span>
               <span className="text-slate-600 hidden sm:inline">·</span>
               <span className="text-slate-500 hidden sm:inline">双向曲率测地线防重叠</span>
@@ -948,7 +966,7 @@ export default function CapitalFlowMap({
 
         {/* Refined Functional Controls */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Mode Switcher: Positions (Stocks) vs Flows */}
+          {/* Mode Switcher: Positions (Stocks) vs Unadjusted Stock Changes */}
           <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-xl p-1 text-xs shadow-sm">
             <button
               onClick={() => {
@@ -975,10 +993,10 @@ export default function CapitalFlowMap({
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
-              title="BIS LBS 经汇率及断点调整后净变动 (Adjusted Changes / Flows) · 呈现当季净扩张或收缩流向"
+              title="相邻季度未偿存量差分 ΔClaims = Claims(t) - Claims(t-1) (未剔除汇率与断点变动)"
             >
               <Zap className="w-3.5 h-3.5 text-amber-300" />
-              <span>季度调整后变化 (Flows)</span>
+              <span>未调整存量变化 (Stock Changes)</span>
             </button>
           </div>
 
@@ -1273,7 +1291,7 @@ export default function CapitalFlowMap({
                   {flowMode === 'flows' ? <Zap className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                 </span>
                 <h4 className="text-xs font-bold text-white tracking-wide">
-                  {flowMode === 'flows' ? '当季最大变动走廊 Top 5 (净流量)' : '当季核心信贷动脉 Top 5 (存量)'}
+                  {flowMode === 'flows' ? '当季存量变动走廊 Top 5 (一阶差分)' : '当季核心信贷动脉 Top 5 (存量)'}
                 </h4>
               </div>
               <span className="text-[10px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/30">
@@ -1429,9 +1447,11 @@ export default function CapitalFlowMap({
                 <span className={`text-[11px] font-mono px-2 py-0.5 rounded border ${
                   selectedQuarter > '2026Q2' 
                     ? 'text-purple-300 bg-purple-500/15 border-purple-500/35 shadow-[0_0_8px_rgba(168,85,247,0.25)]' 
-                    : 'text-sky-300 bg-sky-500/10 border-sky-500/30'
+                    : selectedQuarter === '2026Q2'
+                      ? 'text-amber-300 bg-amber-500/15 border-amber-500/35'
+                      : 'text-sky-300 bg-sky-500/10 border-sky-500/30'
                 }`}>
-                  当前处于: {selectedQuarter} {selectedQuarter > '2026Q2' ? '[NOWCAST 临近预测]' : '[官方总量锚定 · 模型分配]'}
+                  当前处于: {selectedQuarter} {selectedQuarter > '2026Q2' ? '[NOWCAST 情景推演]' : selectedQuarter === '2026Q2' ? '[待官方发布 · 缓存预估基准]' : '[BIS 官方确证存量 · 模型重构]'}
                 </span>
               </h3>
               <p className="text-[11px] text-slate-400 mt-0.5">
@@ -1443,9 +1463,11 @@ export default function CapitalFlowMap({
           <div className="flex items-center gap-2 text-xs font-mono text-slate-400 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
             <span>总跨度: 9 年 / 36 季</span>
             <span className="text-slate-600">·</span>
-            <span className="text-emerald-400 font-semibold">2026Q2 官方: $47.82T</span>
+            <span className="text-emerald-400 font-semibold">2026Q1 官方最新: $47.62T</span>
             <span className="text-slate-600">·</span>
-            <span className="text-purple-400 font-semibold">2026Q4 Nowcast: ~$48.60T (95% CI: $47.90T–$49.30T)</span>
+            <span className="text-amber-400 font-semibold">2026Q2 待发布预估: $47.82T</span>
+            <span className="text-slate-600">·</span>
+            <span className="text-purple-400 font-semibold">2026Q4 情景推演: ~$48.60T (范围: $47.90T–$49.30T)</span>
           </div>
         </div>
 
@@ -1493,9 +1515,9 @@ export default function CapitalFlowMap({
               </p>
             </div>
             <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
-              <strong className="text-emerald-300 font-mono">🌊 季度调整后变化 (Break- and FX-Adjusted Changes):</strong>
+              <strong className="text-emerald-300 font-mono">📈 未调整存量变化 (Unadjusted Stock Changes):</strong>
               <p className="mt-0.5 text-slate-400 leading-relaxed">
-                剔除各币种汇率剧烈波动及样本统计断点影响后的净金融交易流量（Net Flows）。绿色代表信贷扩张，红色代表偿还去杠杆。
+                采用相邻季度存量一阶差分 ΔClaims = Claims(t) - Claims(t-1) 作为头寸扩张/收缩的代理指标。注意：由于当前切片未做多币种汇率波动与统计断点剔除，不可等同于正式的调整后资金流动 (Break- & FX-adjusted Flows)。
               </p>
             </div>
           </div>

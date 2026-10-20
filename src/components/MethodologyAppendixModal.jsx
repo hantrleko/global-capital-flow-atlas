@@ -119,22 +119,34 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                       <CheckCircle className="w-4 h-4" />
                       官方观测区间 (Observed Periods)
                     </div>
-                    <div className="text-xl font-bold font-mono text-white">2018Q1 – 2026Q2 (34 季度)</div>
+                    <div className="text-xl font-bold font-mono text-white">2018Q1 – 2026Q1 官方确证 / 2026Q2 待发布预估</div>
                     <p className="text-xs text-slate-300">
-                      <strong>全球总量锚定 BIS 官方公布值</strong>（2025 年末全球跨境银行总债权收于 <strong>$46.12T</strong>，2026Q2 官方最新基准公布值为 <strong>$47.82T</strong>）；国别总额与双边信贷走廊在满足该总量硬约束下，基于申报国权重与最大熵矩阵平衡 (RAS) 进行模型校准分配。
+                      <strong>全球总量锚定 BIS 官方公布值</strong>（2025 年末全球跨境银行总债权收于 <strong>$46.12T</strong>，2026Q1 SDMX 官方最新确证值为 <strong>$47.62T</strong>，2026Q2 待官方发布估算基准值为 <strong>$47.82T</strong>）；国别总额与双边信贷走廊在满足该总量硬约束下，基于申报国权重与双比例最大熵矩阵平衡 (RAS) 进行模型重构校准。
                     </p>
                   </div>
 
                   <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 space-y-2">
                     <div className="flex items-center gap-2 text-purple-400 font-semibold text-xs">
                       <Activity className="w-4 h-4" />
-                      临近预报区间 (Econometric Nowcasts)
+                      前瞻情景推演区间 (Scenario Projections)
                     </div>
                     <div className="text-xl font-bold font-mono text-white">2026Q3 – 2026Q4 (2 季度)</div>
                     <p className="text-xs text-slate-300">
-                      由于 BIS 官方统计每季度滞后约 1 个季度发布（如 Q2 数据于当年 9 月底公布），对当期和正在进行的季度（2026Q3/Q4）采用<strong>动态引力计量模型</strong>进行临近预报，并显式标注 <code>[NOWCAST]</code> 徽标与 95% 置信区间。
+                      由于 BIS 官方统计每季度滞后约 1 个季度发布（如 Q2 数据于当年 10 月底公布），对远端季度（2026Q3/Q4）采用锚定近期动量的<strong>趋势情景推演</strong>，显式标注 <code>[SCENARIO PROJECTION]</code> 徽标与合理情景范围 ($47.90T–$49.30T)。
                     </p>
                   </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-950/20 space-y-2">
+                  <div className="text-xs font-semibold text-sky-300 flex items-center gap-2">
+                    <Database className="w-4 h-4" />
+                    核心计量口径：期末存量 (Positions) 与 期间流量 (Flows)
+                  </div>
+                  <p className="text-xs text-slate-300 leading-normal">
+                    本项目严格遵循 BIS 国际银行统计准则：<br />
+                    • <strong>未清偿存量资产 (Amounts Outstanding / Positions)</strong>：反映期末全球跨境银行债权总额（如 2026Q1 $47.62T）。不可将其称为单季“资本流动量”；<br />
+                    • <strong>季度净流动额 (Net Flows / Adjusted Changes)</strong>：反映相邻季度间经汇率折算与断点调整后的跨国信贷净扩张或收缩额（可在“季度调整后变化”模式下查看）。
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-xl border border-slate-700 bg-slate-950/60 space-y-2">

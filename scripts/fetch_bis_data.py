@@ -326,29 +326,30 @@ def fetch_bis_sdmx_official_data() -> Dict[str, float]:
     return claims_by_quarter
 
 def compute_dynamic_gravity_nowcast(historical_series: Dict[str, Dict[str, Any]], 
-                                    observed_end: str = "2026Q2", 
+                                    observed_end: str = "2026Q1", 
                                     nowcast_quarters: List[str] = ["2026Q3", "2026Q4"]) -> Dict[str, Any]:
     """
-    Dynamic Econometric Gravity Nowcast Model:
-    Formulation:
-      ln(Claims_t) = alpha + beta * ln(Claims_{t-1}) + gamma * Delta(Stress_t) + epsilon_t
+    Scenario Projection for forward quarters beyond BIS official release coverage.
     
-    Fits the autoregressive process on observed historical quarters up to observed_end.
-    Recursively computes point estimates for nowcast quarters.
-    Calculates residual variance sigma^2 and 2-step forecast standard error sigma_f(h=2).
-    Derives 95% confidence interval half-width = 1.96 * sigma_f.
+    NOTE: These are hand-set scenario paths anchored to trend momentum,
+    NOT outputs of a calibrated econometric model. The range reflects
+    plausible bounds, not a formal confidence interval.
+    
+    When a validated econometric model with out-of-sample backtesting is
+    implemented, this function should be replaced.
     """
     observed_keys = [q for q in sorted(historical_series.keys()) if q <= observed_end]
     claims_history = [historical_series[q]["claims"] for q in observed_keys]
     d_ln = [math.log(claims_history[i] / claims_history[i-1]) for i in range(1, len(claims_history))]
     
     phi = 0.42
-    # Econometric drift calibrated to credit stabilization cycle
+    # Scenario drift anchored to recent trend momentum — NOT a fitted model parameter
     growth_drifts = {
         "2026Q3": math.log(48200.0 / claims_history[-1]), # ~0.79% QoQ
         "2026Q4": math.log(48600.0 / 48200.0)             # ~0.83% QoQ
     }
-    forecast_se = 0.00734       # 0.734% residual standard error
+    # Scenario range half-width — hand-set plausible bounds, NOT a formal confidence interval
+    scenario_range_pct = {"2026Q3": 1.25, "2026Q4": 1.44}
 
     nowcast_results = {}
     prev_c = claims_history[-1]
@@ -357,27 +358,25 @@ def compute_dynamic_gravity_nowcast(historical_series: Dict[str, Dict[str, Any]]
         g_step = growth_drifts.get(q, 0.0081)
         pred_claims = round(prev_c * math.exp(g_step), 1)
 
-        # 95% Confidence Interval Half-Width: 1.96 * se
-        ci_half_pct = 1.44 if q == "2026Q4" else 1.25
-        ci_lower = round(pred_claims * (1.0 - (ci_half_pct / 100.0)), 1)
-        ci_upper = round(pred_claims * (1.0 + (ci_half_pct / 100.0)), 1)
+        range_half_pct = scenario_range_pct.get(q, 1.44)
+        range_lower = round(pred_claims * (1.0 - (range_half_pct / 100.0)), 1)
+        range_upper = round(pred_claims * (1.0 + (range_half_pct / 100.0)), 1)
 
         nowcast_results[q] = {
             "claims": pred_claims,
             "qoq_growth_pct": round((math.exp(g_step) - 1.0) * 100.0, 2),
-            "forecast_se_pct": round(forecast_se * 100.0, 3),
-            "ci_95_half_pct": ci_half_pct,
-            "ci_95_lower_bn": ci_lower,
-            "ci_95_upper_bn": ci_upper,
-            "ci_95_lower_trillion": round(ci_lower / 1000.0, 2),
-            "ci_95_upper_trillion": round(ci_upper / 1000.0, 2)
+            "scenario_range_half_pct": range_half_pct,
+            "scenario_range_lower_bn": range_lower,
+            "scenario_range_upper_bn": range_upper,
+            "scenario_range_lower_trillion": round(range_lower / 1000.0, 2),
+            "scenario_range_upper_trillion": round(range_upper / 1000.0, 2)
         }
         prev_c = pred_claims
         
-    print(f"[Econometric Nowcast] Dynamic ARX Gravity Model estimated:")
+    print(f"[Scenario Projection] Forward scenario paths estimated:")
     print(f"  Observed End: {observed_end} (${claims_history[-1]:.1f}B)")
     for q, res in nowcast_results.items():
-        print(f"  {q}: ${res['claims']:.1f}B (${res['claims']/1000.0:.2f}T), 95% CI: [${res['ci_95_lower_trillion']}T, ${res['ci_95_upper_trillion']}T] (±{res['ci_95_half_pct']}%)")
+        print(f"  {q}: ${res['claims']:.1f}B (${res['claims']/1000.0:.2f}T), Scenario Range: [${res['scenario_range_lower_trillion']}T, ${res['scenario_range_upper_trillion']}T] (±{res['scenario_range_half_pct']}%)")
         
     return nowcast_results
 
@@ -441,12 +440,29 @@ def build_dataset():
     """Generates the verified, mathematically balanced, and academically annotated BIS dataset."""
     # 1. Official BIS SDMX Live Data Ingestion
     live_sdmx_data = fetch_bis_sdmx_official_data()
+    
+    # Track which quarters have verified SDMX observations vs cached fallback
+    sdmx_verified_quarters = set(live_sdmx_data.keys())
+    latest_sdmx_quarter = max(sdmx_verified_quarters) if sdmx_verified_quarters else None
+    
     for q_code, live_val in live_sdmx_data.items():
-        if q_code in HISTORICAL_MACRO_SERIES and q_code <= "2026Q2":
+        if q_code in HISTORICAL_MACRO_SERIES and q_code <= "2026Q4":
             HISTORICAL_MACRO_SERIES[q_code]["claims"] = live_val
+    
+    if latest_sdmx_quarter:
+        print(f"[Data Provenance] Latest official SDMX observation: {latest_sdmx_quarter}")
+        print(f"[Data Provenance] SDMX-verified quarters: {len(sdmx_verified_quarters)}")
+        # Identify observed quarters beyond API coverage that still use cached values
+        cached_observed = [q for q in OBSERVED_QUARTERS if q not in sdmx_verified_quarters]
+        if cached_observed:
+            print(f"[Data Provenance] Cached (pending BIS release): {', '.join(cached_observed)}")
+    else:
+        print(f"[Data Provenance] SDMX offline — all observed quarters use cached fallback values")
 
-    # 2. Dynamic Econometric Gravity Nowcasting for 2026Q3 - 2026Q4
-    nowcast_estimates = compute_dynamic_gravity_nowcast(HISTORICAL_MACRO_SERIES, "2026Q2", NOWCAST_QUARTERS)
+    # 2. Scenario Projection for 2026Q3 - 2026Q4 (hand-set paths, not econometric model output)
+    nowcast_estimates = compute_dynamic_gravity_nowcast(HISTORICAL_MACRO_SERIES, 
+                                                        latest_sdmx_quarter or "2026Q1", 
+                                                        NOWCAST_QUARTERS)
     for q_code, est in nowcast_estimates.items():
         if q_code in HISTORICAL_MACRO_SERIES:
             HISTORICAL_MACRO_SERIES[q_code]["claims"] = est["claims"]
@@ -469,6 +485,17 @@ def build_dataset():
         yr = int(q_name[:4])
         is_nowcast = q_name in NOWCAST_QUARTERS
 
+        # Determine observation status with granular provenance
+        if is_nowcast:
+            obs_status = "SCENARIO_PROJECTION"
+            vintage_str = f"Atlas Scenario Projection (range: $47.90T-$49.30T)"
+        elif q_name in sdmx_verified_quarters:
+            obs_status = "OFFICIAL_OBSERVED"
+            vintage_str = f"BIS SDMX WS_LBS_D_PUB verified {q_name}"
+        else:
+            obs_status = "CACHED_PENDING_RELEASE"
+            vintage_str = f"Cached estimate — pending BIS official release (not yet in SDMX)"
+
         # Calculate True QoQ growth and Compound Annualized Growth (SAAR)
         if q_idx == 0:
             qoq_pct = 2.1
@@ -480,13 +507,12 @@ def build_dataset():
 
         tot_usd_credit = round(tot_claims * (usd_share / 100.0), 1)
 
-        vintage_str = "2026-10-14 BIS SDMX Release" if not is_nowcast else f"Atlas Dynamic Nowcast v2.4 (95% CI: $47.90T-$49.30T, +/-1.4%)"
-
         global_macro.append({
             "quarter": q_name,
             "is_nowcast": is_nowcast,
             "data_vintage": vintage_str,
-            "observation_status": "OBSERVED" if not is_nowcast else "NOWCAST_ESTIMATE",
+            "observation_status": obs_status,
+            "sdmx_verified": q_name in sdmx_verified_quarters,
             "total_cross_border_claims_usd_bn": round(tot_claims, 1),
             "total_usd_cross_border_bn": tot_usd_credit,
             "global_usd_share_pct": round(usd_share, 1),
@@ -566,6 +592,7 @@ def build_dataset():
 
     # 4. Bilateral Corridor Matrix via Authentic RAS Biproportional Balancing
     bilateral_matrix: Dict[str, List[Dict[str, Any]]] = {}
+    ras_metrics: Dict[str, Any] = {}
     n_countries = len(COUNTRIES)
     base_corridor_dict = {(s, t): w for s, t, w in BASE_CORRIDOR_WEIGHTS}
 
@@ -602,6 +629,16 @@ def build_dataset():
         balanced_X, iters, max_residual, converged = run_ras_biproportional_balancing(
             prior_matrix, row_targets, col_targets, max_iter=100, tol=1e-4
         )
+
+        if not converged:
+            raise RuntimeError(f"FATAL: RAS balancing failed to converge for quarter {q_name}! Max residual={max_residual:.6f}")
+
+        ras_metrics[q_name] = {
+            "iterations": iters,
+            "max_marginal_residual_bn": round(max_residual, 6),
+            "converged": converged,
+            "tolerance": 1e-4
+        }
 
         q_links = []
         for i, src_c in enumerate(COUNTRIES):
@@ -857,33 +894,37 @@ def build_dataset():
             "coverage_quarters": len(QUARTERS),
             "start_quarter": "2018Q1",
             "end_quarter": "2026Q4",
-            "observed_end": "2026Q2",
+            "observed_end": latest_sdmx_quarter or "2026Q1",
+            "sdmx_verified_end": latest_sdmx_quarter or "2026Q1",
+            "pending_release_quarters": ["2026Q2"] if "2026Q2" not in sdmx_verified_quarters else [],
             "nowcast_quarters": NOWCAST_QUARTERS,
-            "total_observed_cross_border_claims_usd_bn": 47820.0,
-            "end_2025_cross_border_claims_usd_bn": 46120.0,
-            "latest_nowcast_claims_usd_bn": 48600.0,
+            "total_observed_cross_border_claims_usd_bn": HISTORICAL_MACRO_SERIES[latest_sdmx_quarter or "2026Q1"]["claims"],
+            "end_2025_cross_border_claims_usd_bn": HISTORICAL_MACRO_SERIES["2025Q4"]["claims"],
+            "q2_2026_cached_estimate_claims_usd_bn": HISTORICAL_MACRO_SERIES["2026Q2"]["claims"],
+            "latest_scenario_claims_usd_bn": HISTORICAL_MACRO_SERIES["2026Q4"]["claims"],
             "unit": "USD Billions",
-            "methodology_status": "Hybrid Calibration Framework: Global Aggregates Ingested via BIS SDMX 2.1 REST API (2018Q1-2026Q2); Country Totals and Bilateral Corridors Model-Allocated via Iterative Proportional Fitting RAS Balancing; Forward Quarters (2026Q3-Q4) Econometrically Nowcast.",
-            "data_allocation_policy": "全球总量锚定 BIS 官方公布值，国别总额与双边走廊基于 RAS 最大熵算法求解 (Global Totals Anchored to BIS Official Releases, Corridors Solved via Biproportional RAS)",
+            "methodology_status": "Hybrid Calibration Framework: Global Aggregates Ingested via BIS SDMX 2.1 REST API (2018Q1-2026Q1 verified); 2026Q2 is a Cached Estimate pending official BIS Oct 30 release; 2026Q3-Q4 are Scenario Projections; Country and Bilateral Corridors Model-Allocated via Iterative Proportional Fitting RAS Balancing.",
+            "data_allocation_policy": "全球总量锚定 BIS 官方公布值 (2026Q1 及之前) / 待发布估算 (2026Q2)，国别总额与双边走廊基于 RAS 最大熵算法求解",
             "sdmx_ingestion_api": {
                 "endpoint": "https://stats.bis.org/api/v1/data/BIS,WS_LBS_D_PUB,1.0/Q.S.C.A.TO1.A.5J.A.5A.A.5J.N?startPeriod=2018-Q1&format=csv",
                 "dataflow": "WS_LBS_D_PUB (Locational Banking Statistics)",
-                "series_description": "Cross-border bank claims on all sectors in all currencies (amounts outstanding)"
+                "series_description": "Cross-border bank claims on all sectors in all currencies (amounts outstanding)",
+                "verified_end_quarter": latest_sdmx_quarter or "2026Q1",
+                "bis_next_release_date": "2026-10-30"
             },
-            "nowcast_econometric_model": {
-                "specification": "ARX(1) Dynamic Panel Gravity with Momentum Drift",
-                "observed_benchmark_quarter": "2026Q2",
+            "scenario_projection_model": {
+                "specification": "Heuristic Trend Scenario Range (Not formal ARX econometrics)",
                 "point_estimate_2026q4_bn": 48600.0,
-                "residual_standard_error_pct": 0.734,
-                "confidence_interval_95_pct": [-1.44, 1.44],
-                "confidence_interval_95_range_trillion": [47.90, 49.30]
+                "scenario_range_pct": [-1.44, 1.44],
+                "scenario_range_trillion": [47.90, 49.30]
             },
             "ras_matrix_balancing": {
                 "algorithm": "Biproportional Iterative Proportional Fitting (IPF / RAS)",
                 "row_marginal_constraint": "Reporting Country Total Claims (LBS Table A6.2)",
                 "column_marginal_constraint": "Counterparty Total Cross-Border Liabilities / Borrowings",
                 "convergence_tolerance": 0.0001,
-                "status": "CONVERGED"
+                "status": "ALL_QUARTERS_CONVERGED",
+                "metrics_by_quarter": ras_metrics
             },
             "academic_citations": [
                 "BIS Locational Banking Statistics (Table A6.2) & Consolidated Banking Statistics (Table B4)",
