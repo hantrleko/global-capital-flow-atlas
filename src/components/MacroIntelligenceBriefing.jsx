@@ -158,13 +158,13 @@ export default function MacroIntelligenceBriefing({
 
           <p className="text-[11px] text-slate-400 leading-relaxed font-sans pt-1 border-t border-white/[0.04]">
             {isNowcast ? (
-              <span>动态引力临近预报：预计跨境信贷延续温和扩张，主权与多极基础设施结算保持稳健。</span>
+              <span>前瞻情景推演（非官方统计）：假定跨境信贷维持稳健温和扩张路径，情景假定范围 $47.90T–$49.30T。</span>
             ) : selectedQuarter === '2026Q2' ? (
-              <span>基准预估全球跨境债权存量达 <strong>$47.82T</strong>（待 BIS 官方 10 月底正式发布核验），离岸与非银资金池平稳运行。</span>
+              <span>待核实估算存量达 <strong>$47.82T</strong>（根据 BIS 官方统计日历，官方发布日为 2026-10-30，待官方数据入库后核准）。</span>
             ) : (currentMacro.bis_usd_funding_stress_index || 0) > 65 ? (
               <span className="text-rose-300">离岸美元流动性显著紧缩，跨境掉期基差走阔，非美跨国银行外债滚续承压。</span>
             ) : (
-              <span>全球银行间信贷平稳运转，主要货币互换通道运行畅通，跨境敞口保持稳健。</span>
+              <span>BIS 官方 SDMX 核准确立全球债权达 <strong>$47.62T</strong>，主要货币互换通道运行畅通，跨境敞口保持稳健。</span>
             )}
           </p>
         </div>
@@ -231,9 +231,11 @@ export default function MacroIntelligenceBriefing({
             <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
               isNowcast 
                 ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' 
-                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                : selectedQuarter === '2026Q2'
+                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
             }`}>
-              {isNowcast ? '前瞻推演' : '总量锚+重构'}
+              {isNowcast ? '前瞻情景' : selectedQuarter === '2026Q2' ? '待核实估算' : '官方核准'}
             </span>
           </div>
 
@@ -241,7 +243,11 @@ export default function MacroIntelligenceBriefing({
             <div className="text-[11px] font-mono text-slate-300 space-y-0.5">
               <div className="text-slate-400">数据源定位:</div>
               <div className="text-white font-semibold truncate">
-                {isNowcast ? '动态空间引力外推模型 v2.4' : 'BIS LBS Table A6.2 官方发布截面'}
+                {isNowcast 
+                  ? '前瞻宏观探索情景 (Heuristic Scenario)' 
+                  : selectedQuarter === '2026Q2'
+                    ? '待核实估算 (BIS 发布日: 2026-10-30)'
+                    : 'BIS SDMX WS_LBS_D_PUB Table A6.2 官方序列'}
               </div>
             </div>
 
@@ -249,14 +255,18 @@ export default function MacroIntelligenceBriefing({
               <div className="text-slate-400">校准与分配方法:</div>
               <div className="text-sky-300 text-[10px] leading-relaxed">
                 {isNowcast 
-                  ? '95% 置信区间: $47.90T – $49.30T (预测中值 ±1.44%)' 
-                  : '全球总量锚定官方，国别与双边走廊由最大熵 RAS 模型平衡重构'}
+                  ? '情景假定范围: $47.90T – $49.30T (情景范围 ±1.44%)' 
+                  : '全球总量锚定官方，国别与双边走廊由双比例最大熵 RAS 模型平衡重构 (已收敛至 1e-4)'}
               </div>
             </div>
 
             <div className="pt-1 border-t border-white/[0.04] flex items-center justify-between">
               <span className="text-[10px] text-slate-500 font-mono">
-                {isNowcast ? '模型置信带' : '数据 Vintage: 2026-10-14'}
+                {isNowcast 
+                  ? '探索情景边界' 
+                  : selectedQuarter === '2026Q2'
+                    ? '待公布日: 2026-10-30'
+                    : 'SDMX 实时核验: 2026Q1'}
               </span>
               {onOpenAppendix && (
                 <button

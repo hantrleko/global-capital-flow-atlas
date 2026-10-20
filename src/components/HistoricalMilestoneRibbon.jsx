@@ -44,7 +44,7 @@ export default function HistoricalMilestoneRibbon({
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-950/60 hover:bg-blue-900/60 border border-blue-500/40 text-sky-300 font-semibold cursor-pointer transition-all shadow-sm group"
           >
             <History className="w-3.5 h-3.5 text-sky-400 group-hover:rotate-12 transition-transform" />
-            <span>宏观历史转折期 (2018-2026Q2 官方观测) & 前瞻推演 (2026Q3-Q4 Nowcast)</span>
+            <span>宏观历史转折期 (2018-2026Q1 官方观测 · 2026Q2 待公布 · 2026Q3-Q4 前瞻情景)</span>
             {isOpen ? <ChevronDown className="w-3.5 h-3.5 ml-1" /> : <ChevronRight className="w-3.5 h-3.5 ml-1" />}
           </button>
 

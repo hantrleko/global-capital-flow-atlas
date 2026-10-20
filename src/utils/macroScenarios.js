@@ -118,19 +118,19 @@ export const HISTORICAL_REGIMES = [
   },
   {
     quarter: "2026Q2",
-    name: "离岸美元总债权突破 47.8 万亿美元 (Record Cross-Border Scale)",
-    description: "根据最新 BIS 官方基准统计，全球跨国银行跨境债权存量首次攀升突破 47.82 万亿美元历史峰值，非银与数字资产对冲通道扩容。",
+    name: "【待核实估算】全球跨国信贷预估达 ~$47.82T (Pending BIS Oct 30 Release)",
+    description: "当前为待核实估算存量（约 47.82 万亿美元）。根据 BIS 官方统计日历 (data.bis.org/release-calendar)，2026Q2 官方数据定于 2026 年 10 月 30 日公布。在官方序列正式入库前降级标注为待核实估算，杜绝冒充官方统计事实。",
     stress: 33.0,
-    badgeColor: "emerald",
-    tag: "官方基准"
+    badgeColor: "amber",
+    tag: "待核实估算"
   },
   {
     quarter: "2026Q4",
-    name: "【前瞻预测与推演】主权 AI 基础设施与多极结算演进 (Nowcast Scenario)",
-    description: "基于动态空间引力计量模型的前瞻推演：预估全球跨国银行总债权向 ~$48.60T 演进 (95% 置信区间: $47.90T – $49.30T，±1.4%)。模拟金砖多极本币清算试跑与跨国银团对 AI 算力集群绿色信贷的前瞻分布。注：本季度尚未截止，系前瞻模型外推预测，非已发生统计事实。",
+    name: "【前瞻情景推演】主权 AI 基础设施与多极结算演进 (Scenario Projection)",
+    description: "前瞻探索情景推演（非已校准计量预测事实）：假定全球跨国银行总债权向 ~$48.60T 演进，情景假定范围为 $47.90T – $49.30T (±1.4%)。模拟金砖多极本币清算试跑与跨国银团对 AI 算力集群绿色信贷的宏观分布。注：本季度尚未截止，系前瞻探索情景，非官方统计事实。",
     stress: 30.5,
     badgeColor: "purple",
-    tag: "Nowcast预测",
+    tag: "情景推演",
     isNowcast: true
   }
 ];

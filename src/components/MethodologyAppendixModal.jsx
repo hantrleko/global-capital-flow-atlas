@@ -140,12 +140,12 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                 <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-950/20 space-y-2">
                   <div className="text-xs font-semibold text-sky-300 flex items-center gap-2">
                     <Database className="w-4 h-4" />
-                    核心计量口径：期末存量 (Positions) 与 期间流量 (Flows)
+                    核心计量口径：期末存量 (Positions) 与 未调整存量变化 (Stock Changes)
                   </div>
                   <p className="text-xs text-slate-300 leading-normal">
                     本项目严格遵循 BIS 国际银行统计准则：<br />
-                    • <strong>未清偿存量资产 (Amounts Outstanding / Positions)</strong>：反映期末全球跨境银行债权总额（如 2026Q1 $47.62T）。不可将其称为单季“资本流动量”；<br />
-                    • <strong>季度净流动额 (Net Flows / Adjusted Changes)</strong>：反映相邻季度间经汇率折算与断点调整后的跨国信贷净扩张或收缩额（可在“季度调整后变化”模式下查看）。
+                    • <strong>未清偿存量资产 (Amounts Outstanding / Positions)</strong>：反映期末全球跨境银行债权总额（如 2026Q1 官方确证值 $47.62T）。不可将其称为单季“资本流动量”；<br />
+                    • <strong>未调整存量变化 (Unadjusted Stock Changes)</strong>：反映相邻季度间存量资产一阶差分 ΔClaims = Claims(t) - Claims(t-1)。注意：由于切片未做多币种汇率波动与统计断点剔除，不可等同于正式的调整后资金净流动 (Break- & FX-adjusted Flows)。
                   </p>
                 </div>
 
@@ -255,23 +255,20 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
                     <Activity className="w-4 h-4 text-purple-400" />
-                    五、临近预报 (Nowcast) 与动态引力模型
+                    五、前瞻情景推演 (Scenario Projections) 与探索路径
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
-                    对于 2026Q3 及 2026Q4 尚未完整发布终审公报的期间，提供透明可复现的模型预测。
+                    对于 2026Q3 及 2026Q4 尚未完整发布终审公报的期间，提供透明设定的探索情景路径。
                   </p>
                 </div>
 
                 <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3 text-xs">
-                  <div className="font-semibold text-white">模型规范：动态时变面板引力方程 (Dynamic Panel Gravity Specification)</div>
-                  <div className="p-3 bg-slate-900 rounded-lg font-mono text-sky-300 overflow-x-auto text-[11px]">
-                    ln(Claims_ijt) = α_0 + α_1*ln(GDP_it) + α_2*ln(GDP_jt) - α_3*ln(Dist_ij) + β*Δ(InterestDiff_t) + γ*SanctionIndex_t + ε_ijt
-                  </div>
+                  <div className="font-semibold text-white">情景设定与假定范围说明 (Scenario Scope)</div>
                   <div className="space-y-1.5 text-slate-300">
-                    <p>• <strong>2026Q3 临近预测值：</strong>约 $48.20T (95% 置信区间: $47.60T – $48.80T，预测中值 ±1.25%)</p>
-                    <p>• <strong>2026Q4 临近预测值：</strong>约 $48.60T (95% 置信区间: $47.90T – $49.30T，预测中值 ±1.44% / ±$0.70T)</p>
+                    <p>• <strong>2026Q3 情景设定值：</strong>约 $48.20T (情景范围: $47.60T – $48.80T，±1.25%)</p>
+                    <p>• <strong>2026Q4 情景设定值：</strong>约 $48.60T (情景范围: $47.90T – $49.30T，±1.44% / ±$0.70T)</p>
                     <p className="text-slate-400 text-[11px] mt-2">
-                      注：在全站界面中所有 2026Q3/Q4 数据均显式标有 <code>[NOWCAST]</code> 徽标与动态置信带，明确为模型前瞻推演，禁止与 BIS 官方发布之统计观测值混淆。
+                      注：Q3、Q4 目前设定为宏观前瞻探索情景（非已校准 ARX 计量确定性预测或正式置信区间）。全站界面均显式标有 <code>[SCENARIO PROJECTION]</code> 徽标，禁止与 BIS 官方发布之统计观测值混淆。
                     </p>
                   </div>
                 </div>
