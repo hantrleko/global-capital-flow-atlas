@@ -23,8 +23,12 @@ export default function MacroShockSandbox({
 
   if (!isOpen) return null;
 
-  const currentMacro = (dataset.global_macro || {})[selectedQuarter] || {};
-  const totalClaims = currentMacro.total_cross_border_claims_usd_bn || 47600;
+  const globalMacroList = Array.isArray(dataset.global_macro) ? dataset.global_macro : [];
+  const currentMacro = globalMacroList.find(m => m.quarter === selectedQuarter) 
+    || globalMacroList[globalMacroList.length - 1] 
+    || {};
+  const totalClaims = currentMacro.total_cross_border_claims_usd_bn || 47620;
+  const globalUsdShare = (currentMacro.global_usd_share_pct || 48.0) / 100.0;
   const countries = dataset.countries || [];
 
   // Presets definition
@@ -93,24 +97,33 @@ export default function MacroShockSandbox({
     const directLoss = totalClaims * (creditContractionPct / 100);
 
     // 2. Dollar basis funding spread distress ($B)
-    const basisDistressLoss = (totalClaims * 0.54) * (fxSwapBasisBps / 10000) * 1.8;
+    const basisDistressLoss = (totalClaims * globalUsdShare) * (fxSwapBasisBps / 10000) * 1.8;
 
     // 3. Sovereign debt haircut loss ($B)
     const sovereignLoss = (totalClaims * 0.28) * (sovereignHaircutPct / 100);
 
-    // 4. Shadow run amplifier
+    // 4. Fed Rate Hike mark-to-market valuation loss & debt service shock ($B)
+    // Applied to dollar cross-border credit with average asset duration ~2.5 years
+    const rateHikeLoss = fedHikeBps > 0 
+      ? (totalClaims * globalUsdShare) * (fedHikeBps / 10000) * 2.5 
+      : 0;
+
+    // 5. Shadow run amplifier
     const totalSimulatedLoss = Math.round(
-      (directLoss + basisDistressLoss + sovereignLoss) * (offshoreRunFactor > 1 ? 1 + (offshoreRunFactor - 1) * 0.35 : 1)
+      (directLoss + basisDistressLoss + sovereignLoss + rateHikeLoss) * (offshoreRunFactor > 1 ? 1 + (offshoreRunFactor - 1) * 0.35 : 1)
     );
 
-    // 5. Global Tier-1 Capital depletion (assumed $12T global Tier-1 bank capital)
+    // 6. Global Tier-1 Capital depletion (assumed $12T global Tier-1 bank capital)
     const tier1DepletionBps = Math.min(650, Math.round((totalSimulatedLoss / 12000) * 10000));
 
-    // 6. Insolvent / distressed nodes evaluation
+    // 7. Insolvent / distressed nodes evaluation
     const distressedList = [];
     countries.forEach(c => {
       let riskScore = 0;
-      if (c.tier === 'EM' || c.tier === 'FRONTIER') riskScore += 30;
+      if (c.tier === 'EM' || c.tier === 'FRONTIER') riskScore += 25;
+      if (fedHikeBps > 50 && (c.tier === 'EM' || c.code === 'TR' || c.code === 'BR' || c.code === 'MX' || c.code === 'ZA')) {
+        riskScore += Math.round(fedHikeBps / 15);
+      }
       if (c.type === 'offshore_conduit') riskScore += offshoreRunFactor * 18;
       if (sovereignHaircutPct > 15 && (c.tier === 'EM' || c.code === 'IT' || c.code === 'GR' || c.code === 'TR' || c.code === 'AR')) riskScore += 35;
       if (fxSwapBasisBps > 100 && (c.code === 'JP' || c.code === 'KR' || c.code === 'TW' || c.code === 'BR')) riskScore += 25;
@@ -134,7 +147,7 @@ export default function MacroShockSandbox({
       cascadeRounds,
       distressedList: distressedList.sort((a, b) => b.riskScore - a.riskScore)
     };
-  }, [totalClaims, creditContractionPct, fxSwapBasisBps, sovereignHaircutPct, offshoreRunFactor, countries]);
+  }, [totalClaims, globalUsdShare, fedHikeBps, creditContractionPct, fxSwapBasisBps, sovereignHaircutPct, offshoreRunFactor, countries]);
 
   const handleApplyToPlatform = () => {
     soundFx.playChime();

@@ -62,10 +62,84 @@ export default function NetworkContagionSimulator({
     setDollarSqueezePct(p.dollarSqueeze);
   };
 
-  // Run Multi-Round Contagion Simulation (Eisenberg-Noe / Upper-Worms network cascade model)
+  // Run Eisenberg-Noe (2001) Fixed-Point Clearing & Multi-Round Stress Cascade
   const runSimulation = () => {
     soundFx.playShockwave();
-    // 1. Direct creditors to epicenter
+
+    // 1. Authentic Eisenberg-Noe (2001) Clearing Vector Fixed Point p* = min(pbar, Pi^T * p + e)
+    const n = countries.length;
+    const codeToIndex = Object.fromEntries(countries.map((c, idx) => [c.code, idx]));
+    
+    // Matrix of interbank cross-border obligations L[j][i]: claims of creditor j on debtor i
+    const L = Array.from({ length: n }, () => new Float64Array(n));
+    currentLinks.forEach(l => {
+      const j = codeToIndex[l.source]; // creditor
+      const i = codeToIndex[l.target]; // debtor
+      if (j !== undefined && i !== undefined) {
+        L[j][i] = l.claims_usd_bn;
+      }
+    });
+
+    // Nominal cross-border debt pbar[i] of debtor i: sum of obligations of i to all foreign creditors j
+    const pbar = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      let sum = 0;
+      for (let j = 0; j < n; j++) sum += L[j][i];
+      pbar[i] = sum;
+    }
+
+    // Relative liabilities Pi[i][j]: proportion of debtor i's payments due to creditor j
+    const Pi = Array.from({ length: n }, () => new Float64Array(n));
+    for (let i = 0; i < n; i++) {
+      if (pbar[i] > 0) {
+        for (let j = 0; j < n; j++) {
+          Pi[i][j] = L[j][i] / pbar[i];
+        }
+      }
+    }
+
+    // Operating capital / buffer e: banking equity / reserves (minus initial epicenter haircut shock)
+    const e = new Float64Array(n);
+    const epiIdx = codeToIndex[epicenter];
+    for (let i = 0; i < n; i++) {
+      const c = countries[i];
+      const cap = (c.fx_reserves || 50) * 1.5;
+      if (i === epiIdx) {
+        e[i] = Math.max(-pbar[i], cap - pbar[i] * (haircutPct / 100));
+      } else {
+        e[i] = cap;
+      }
+    }
+
+    // Picard iteration to find maximal clearing vector p*
+    let p = new Float64Array(pbar);
+    for (let iter = 0; iter < 100; iter++) {
+      const pNext = new Float64Array(n);
+      let diff = 0;
+      for (let i = 0; i < n; i++) {
+        let inflows = 0;
+        for (let j = 0; j < n; j++) {
+          inflows += Pi[j][i] * p[j];
+        }
+        const available = Math.max(0, inflows + e[i]);
+        pNext[i] = Math.min(pbar[i], available);
+        diff = Math.max(diff, Math.abs(pNext[i] - p[i]));
+      }
+      p = pNext;
+      if (diff < 1e-4) break;
+    }
+
+    // Compute Eisenberg-Noe clearing shortfalls and passed losses
+    const enLossesReceived = {};
+    for (let j = 0; j < n; j++) {
+      let loss = 0;
+      for (let i = 0; i < n; i++) {
+        loss += Pi[i][j] * (pbar[i] - p[i]);
+      }
+      enLossesReceived[countries[j].code] = Math.round(loss * 10) / 10;
+    }
+
+    // 2. Multi-Round Behavioral Spillover Simulation
     const directCreditorLinks = currentLinks.filter(l => l.target === epicenter);
     
     // Round 1: Direct Losses
@@ -117,6 +191,7 @@ export default function NetworkContagionSimulator({
         const r1 = round1Losses[c.code] || 0;
         const r2 = round2Spillovers[c.code] || 0;
         const r3 = round3DollarSqueeze[c.code] || 0;
+        const enLoss = enLossesReceived[c.code] || 0;
         const totalImpact = r1 + r2 + r3;
         const reserves = c.fx_reserves || 1;
         const impactToReservesPct = parseFloat(((totalImpact / reserves) * 100).toFixed(1));
@@ -130,6 +205,7 @@ export default function NetworkContagionSimulator({
           r1Loss: r1,
           r2Spillover: r2,
           r3Dollar: r3,
+          enLoss,
           totalImpact,
           impactToReservesPct
         };
@@ -194,11 +270,12 @@ export default function NetworkContagionSimulator({
                 ${item.name_zh} (${item.code}) 传染冲击损益
               </div>
               <div class="space-y-1 text-xs">
-                <div>第一轮：直接资产减记损失: <b class="font-mono text-rose-400">$${item.r1Loss} 亿</b></div>
-                <div>第二轮：去杠杆流动性抽离: <b class="font-mono text-amber-400">$${item.r2Spillover} 亿</b></div>
-                <div>第三轮：离岸美元再融资挤压: <b class="font-mono text-sky-400">$${item.r3Dollar} 亿</b></div>
+                <div>第一轮：直接资产减记损失: <b class="font-mono text-rose-400">$${item.r1Loss}B (${Math.round(item.r1Loss * 10).toLocaleString()} 亿美元)</b></div>
+                <div>第二轮：去杠杆流动性抽离: <b class="font-mono text-amber-400">$${item.r2Spillover}B (${Math.round(item.r2Spillover * 10).toLocaleString()} 亿美元)</b></div>
+                <div>第三轮：离岸美元再融资挤压: <b class="font-mono text-sky-400">$${item.r3Dollar}B (${Math.round(item.r3Dollar * 10).toLocaleString()} 亿美元)</b></div>
+                <div>Eisenberg-Noe 不动点清算短缺: <b class="font-mono text-purple-400">$${item.enLoss || 0}B</b></div>
                 <div class="border-t border-slate-800 pt-1">
-                  综合受损总额: <b class="font-mono text-white text-sm font-bold">$${item.totalImpact} 亿</b>
+                  综合受损总额: <b class="font-mono text-white text-sm font-bold">$${item.totalImpact}B (${Math.round(item.totalImpact * 10).toLocaleString()} 亿美元)</b>
                 </div>
                 <div class="text-[10px] text-slate-400">冲击占外汇储备比: <b class="font-mono text-rose-400">${item.impactToReservesPct}%</b></div>
               </div>
@@ -219,9 +296,9 @@ export default function NetworkContagionSimulator({
       },
       xAxis: {
         type: 'value',
-        name: '受损规模 ($ 10亿)',
+        name: '受损规模 (USD Bn)',
         splitLine: { lineStyle: { color: '#1e293b' } },
-        axisLabel: { color: '#94a3b8' }
+        axisLabel: { color: '#94a3b8', formatter: '${value}B' }
       },
       yAxis: {
         type: 'category',

@@ -190,9 +190,9 @@ export default function CountryRiskMatrix({
               <div class="space-y-1">
                 <div>外债/外储比: <b class="font-mono text-white">${r.debtToReserves}x</b></div>
                 <div>综合脆弱性得分: <b class="font-mono text-amber-400">${r.vulnerability_score} / 100</b></div>
-                <div>外债本金规模: <b class="font-mono text-slate-200">$${r.borrowings} 亿</b></div>
+                <div>外债本金规模: <b class="font-mono text-slate-200">${r.borrowings >= 1000 ? `$${(r.borrowings / 1000).toFixed(2)}T` : `$${r.borrowings}B`} (${Math.round(r.borrowings * 10).toLocaleString()} 亿美元)</b></div>
                 <div>美元债务份额: <b class="font-mono text-emerald-400">${r.usdShare}%</b></div>
-                ${r.refGap > 0 ? `<div class="text-rose-400">预计展期缺口: <b>$${r.refGap} 亿</b></div>` : ''}
+                ${r.refGap > 0 ? `<div class="text-rose-400">预计展期缺口: <b>$${r.refGap}B (${Math.round(r.refGap * 10).toLocaleString()} 亿美元)</b></div>` : ''}
               </div>
             </div>
           `;
@@ -347,20 +347,23 @@ export default function CountryRiskMatrix({
 
         {/* Offshore Conduit Piercing Ledger Banner */}
         {riskBasis === 'ultimate' && (
-          <div className="mb-3 p-3 bg-emerald-950/25 border border-emerald-500/40 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="mb-3 p-3.5 bg-emerald-950/30 border border-emerald-500/40 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <span className="p-1 rounded-lg bg-emerald-500/20 text-emerald-400">
                   <ShieldCheck className="w-4 h-4" />
                 </span>
                 <span className="font-bold text-emerald-300">
-                  国际清算银行 CBS 最终风险穿透透镜已启动 (Offshore Conduit Veil Piercer Active)
+                  CBS 最终风险穿透情景模拟已启动 [启发式母国重分配 · 非官方逐笔担保合同]
                 </span>
               </div>
-              <span className="text-[11px] font-mono text-emerald-400 hidden sm:inline">
-                已剥离离岸虚高外壳，将实质债务回溯穿透至实际母公司所在国
+              <span className="text-[11px] font-mono text-emerald-400/90 hidden sm:inline">
+                剥离离岸虚高外壳，将实质债务按学术假定权重穿透至实际母公司所在国
               </span>
             </div>
+            <p className="text-[11px] text-emerald-200/80 leading-normal font-sans">
+              方法论说明：由于 BIS 官方公开 CBS 统计按保密法脱敏、不公开离岸实体逐笔商业担保人名单，本模式基于学术文献设定的启发式重分配权重（如开曼离岸债务按 62% 美国 / 22% 中国 / 8% 英国穿透回溯），作为结构性穿透情景演示，非官方担保人实测数据。
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-[11px] font-mono pt-1">
               {Object.entries(OFFSHORE_REALLOCATIONS).map(([code, conduit]) => (
                 <div key={code} className="bg-slate-900/80 p-2 rounded-lg border border-white/5">
@@ -439,7 +442,9 @@ export default function CountryRiskMatrix({
           </div>
           <div className="flex items-center gap-4 shrink-0 font-mono text-[11px]">
             <span className="text-slate-400">
-              全球外债展期缺口估算: <b className="text-rose-400 text-sm font-bold">${riskTable.reduce((s, r) => s + r.refGap, 0)} 亿</b>
+              全球外债展期缺口估算: <b className="text-rose-400 text-sm font-bold">
+                ${riskTable.reduce((s, r) => s + r.refGap, 0)}B ({Math.round(riskTable.reduce((s, r) => s + r.refGap, 0) * 10).toLocaleString()} 亿美元)
+              </b>
             </span>
             <span className="text-slate-400">
               高危预警国数: <b className="text-amber-400 text-sm font-bold">{riskTable.filter(r => r.rating === 'HIGH').length} 个</b>

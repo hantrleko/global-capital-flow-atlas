@@ -8,7 +8,7 @@ export const CURRENCY_LIST = [
   { id: 'USD', symbol: '$', name: '美元 (USD)', shortName: 'USD', flag: '🇺🇸', unitTrillion: '万亿 USD', unitBillion: '亿 USD' },
   { id: 'EUR', symbol: '€', name: '欧元 (EUR)', shortName: 'EUR', flag: '🇪🇺', unitTrillion: '万亿 EUR', unitBillion: '亿 EUR' },
   { id: 'CNY', symbol: '¥', name: '人民币 (RMB)', shortName: 'RMB', flag: '🇨🇳', unitTrillion: '万亿 RMB', unitBillion: '亿 RMB' },
-  { id: 'JPY', symbol: '¥', name: '日元 (JPY)', shortName: 'JPY', flag: '🇯🇵', unitTrillion: '万亿 JPY', unitBillion: '万亿 JPY' },
+  { id: 'JPY', symbol: '¥', name: '日元 (JPY)', shortName: 'JPY', flag: '🇯🇵', unitTrillion: '兆 JPY', unitBillion: '1000 亿 JPY' },
   { id: 'GOLD', symbol: '🪙', name: '黄金等价 (盎司)', shortName: '黄金', flag: '🪙', unitTrillion: '亿盎司', unitBillion: '万盎司' }
 ];
 
@@ -98,29 +98,36 @@ export function formatValueInCurrency(usdBn, targetCurrency = 'USD', quarter = '
   const curMeta = CURRENCY_LIST.find(c => c.id === targetCurrency) || CURRENCY_LIST[0];
 
   if (targetCurrency === 'GOLD') {
-    // converted is in million ounces
-    if (converted >= 1000) {
-      return `${(converted / 1000).toFixed(2)} 亿盎司`;
+    // converted is in million ounces (M oz)
+    // 1 亿盎司 = 100 百万盎司 (100M oz)
+    if (Math.abs(converted) >= 100) {
+      return `${(converted / 100).toFixed(2)} 亿盎司`;
     }
     return `${converted.toFixed(1)} 百万盎司`;
   }
 
   if (targetCurrency === 'JPY') {
-    // JPY numbers are large: 1 USD Bn * 140 = 140 Bn JPY
-    // Total trillions of JPY
-    const jpyTrillion = (converted / 1000) * 1000; // in trillion yen
-    return `${curMeta.symbol}${(converted / 10).toFixed(0)} 兆円`;
+    // converted is in Billion JPY (10^9 JPY)
+    // 1 兆日元 (Trillion JPY) = 10^12 JPY = 1,000 Billion JPY (1000 十亿日元)
+    // 1 亿日元 = 10^8 JPY = 0.1 Billion JPY
+    if (Math.abs(converted) >= 1000) {
+      return `${curMeta.symbol}${(converted / 1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 兆円`;
+    }
+    return `${curMeta.symbol}${Math.round(converted * 10).toLocaleString('en-US')} 億円`;
   }
 
-  // USD, EUR, CNY
-  if (Math.abs(converted) >= 1000) {
-    if (targetCurrency === 'USD') {
+  // USD
+  if (targetCurrency === 'USD') {
+    if (Math.abs(converted) >= 1000) {
       return `$${(converted / 1000).toFixed(2)}T`;
     }
-    return `${curMeta.symbol}${(converted / 1000).toFixed(2)}万亿`;
-  }
-  if (targetCurrency === 'USD') {
     return `$${converted >= 10 ? converted.toFixed(1) : converted.toFixed(2)}B`;
   }
-  return `${curMeta.symbol}${Math.round(converted)}亿`;
+
+  // EUR, CNY
+  if (Math.abs(converted) >= 1000) {
+    return `${curMeta.symbol}${(converted / 1000).toFixed(2)}万亿`;
+  }
+  // 1 Billion local currency = 10 亿元
+  return `${curMeta.symbol}${Math.round(converted * 10)}亿`;
 }

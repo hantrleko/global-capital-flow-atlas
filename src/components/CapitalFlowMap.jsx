@@ -3,6 +3,7 @@ import * as echarts from 'echarts';
 import GlobalFlowGlobe3D from './GlobalFlowGlobe3D';
 import MethodologyFootnote from './MethodologyFootnote';
 import DataClassificationBadge from './DataClassificationBadge';
+import soundFx from '../utils/soundEffects';
 import { 
   Layers, Eye, Filter, ArrowUpRight, ArrowDownLeft, 
   Info, Download, Target, Compass, Maximize2, Sparkles,
@@ -391,7 +392,7 @@ export default function CapitalFlowMap({
                     <div class="flex justify-between font-sans">
                       <span class="text-slate-400">季度净变动:</span>
                       <span class="font-bold ${isExp ? 'text-emerald-400' : 'text-rose-400'}">
-                        ${sign}$${data.netChange} 亿美元
+                        ${sign}$${Math.abs(data.netChange)}B (${sign}${Math.round(Math.abs(data.netChange) * 10).toLocaleString()} 亿美元)
                       </span>
                     </div>
                     <div class="flex justify-between font-sans">
@@ -400,7 +401,10 @@ export default function CapitalFlowMap({
                     </div>
                     <div class="flex justify-between font-sans">
                       <span class="text-slate-400">当期未偿存量:</span>
-                      <span class="text-white font-bold">$${data.value} 亿</span>
+                      <span class="text-white font-bold">
+                        ${data.value >= 1000 ? `$${(data.value / 1000).toFixed(2)}T` : `$${data.value}B`}
+                        <span class="text-[10px] text-slate-400 font-normal">(${Math.round(data.value * 10).toLocaleString()} 亿美元)</span>
+                      </span>
                     </div>
                     <div class="flex justify-between font-sans">
                       <span class="text-slate-400">美元计价份额:</span>
@@ -423,15 +427,21 @@ export default function CapitalFlowMap({
                 <div class="space-y-1 text-xs font-mono">
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">债权存量规模:</span>
-                    <span class="text-white font-bold">$${data.value} 亿</span>
+                    <span class="text-white font-bold">
+                      ${data.value >= 1000 ? `$${(data.value / 1000).toFixed(2)}T` : `$${data.value}B`}
+                      <span class="text-[10px] text-slate-400 font-normal">(${Math.round(data.value * 10).toLocaleString()} 亿美元)</span>
+                    </span>
                   </div>
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">美元计价总额:</span>
-                    <span class="text-emerald-400 font-semibold">$${data.usdVol} 亿</span>
+                    <span class="text-emerald-400 font-semibold">
+                      ${data.usdVol >= 1000 ? `$${(data.usdVol / 1000).toFixed(2)}T` : `$${data.usdVol}B`}
+                      <span class="text-[10px] text-slate-400 font-normal">(${Math.round(data.usdVol * 10).toLocaleString()} 亿美元)</span>
+                    </span>
                   </div>
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">美元计价份额:</span>
-                    <span class="text-slate-300 font-semibold">${Math.round((data.usdVol / data.value) * 100)}%</span>
+                    <span class="text-slate-300 font-semibold">${Math.round((data.usdVol / Math.max(1, data.value)) * 100)}%</span>
                   </div>
                   <div class="text-[10px] text-slate-500 border-t border-white/5 pt-1 mt-1 font-sans">
                     口径: BIS LBS 申报国未偿跨境债权存量资产 (Positions)
@@ -452,16 +462,23 @@ export default function CapitalFlowMap({
                 <div class="space-y-1 text-xs border-t border-white/5 pt-1.5 font-mono">
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">跨国银行总债权:</span>
-                    <span class="text-white font-bold">$${d.claims} 亿</span>
+                    <span class="text-white font-bold">
+                      ${d.claims >= 1000 ? `$${(d.claims / 1000).toFixed(2)}T` : `$${d.claims}B`}
+                      <span class="text-[10px] text-slate-400 font-normal">(${Math.round(d.claims * 10).toLocaleString()} 亿美元)</span>
+                    </span>
                   </div>
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">跨国银行总负债:</span>
-                    <span class="text-white font-bold">$${d.liab} 亿</span>
+                    <span class="text-white font-bold">
+                      ${d.liab >= 1000 ? `$${(d.liab / 1000).toFixed(2)}T` : `$${d.liab}B`}
+                      <span class="text-[10px] text-slate-400 font-normal">(${Math.round(d.liab * 10).toLocaleString()} 亿美元)</span>
+                    </span>
                   </div>
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">净外部头寸 (Net):</span>
                     <span class="font-bold ${d.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
-                      ${netSign}$${d.net} 亿
+                      ${netSign}${Math.abs(d.net) >= 1000 ? `$${(d.net / 1000).toFixed(2)}T` : `$${d.net}B`}
+                      <span class="text-[10px] font-normal">(${netSign}${Math.round(d.net * 10).toLocaleString()} 亿美元)</span>
                     </span>
                   </div>
                   <div class="flex justify-between font-sans">
@@ -842,8 +859,8 @@ export default function CapitalFlowMap({
           const uVal = params[1]?.value || 0;
           return `
             <div class="font-bold text-white mb-1">${q}</div>
-            <div class="text-xs text-sky-400">总债权: $${cVal} 亿</div>
-            <div class="text-xs text-emerald-400">美元计价: $${uVal} 亿 (${Math.round((uVal / Math.max(1, cVal)) * 100)}%)</div>
+            <div class="text-xs text-sky-400">总债权: $${cVal >= 1000 ? `${(cVal / 1000).toFixed(2)}T` : `${cVal}B`} (${Math.round(cVal * 10).toLocaleString()} 亿美元)</div>
+            <div class="text-xs text-emerald-400">美元计价: $${uVal >= 1000 ? `${(uVal / 1000).toFixed(2)}T` : `${uVal}B`} (${Math.round(uVal * 10).toLocaleString()} 亿美元, ${Math.round((uVal / Math.max(1, cVal)) * 100)}%)</div>
           `;
         }
       },
@@ -1325,11 +1342,12 @@ export default function CapitalFlowMap({
                     </div>
                     {flowMode === 'flows' ? (
                       <span className={`font-mono font-bold text-xs ${c.netChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {c.netChange >= 0 ? '+' : ''}${c.netChange} <span className="text-[10px] text-slate-400 font-normal">亿 ({c.netChangePct >= 0 ? '+' : ''}{c.netChangePct}%)</span>
+                        {c.netChange >= 0 ? '+' : ''}${Math.abs(c.netChange)}B <span className="text-[10px] text-slate-400 font-normal">({c.netChangePct >= 0 ? '+' : ''}{c.netChangePct}%)</span>
                       </span>
                     ) : (
                       <span className="font-mono font-bold text-white text-xs">
-                        ${c.claims_usd_bn} <span className="text-[10px] text-slate-400 font-normal">亿</span>
+                        {c.claims_usd_bn >= 1000 ? `$${(c.claims_usd_bn / 1000).toFixed(2)}T` : `$${c.claims_usd_bn}B`}
+                        <span className="text-[10px] text-slate-400 font-normal ml-1">({Math.round(c.claims_usd_bn * 10).toLocaleString()} 亿美元)</span>
                       </span>
                     )}
                   </div>
@@ -1337,9 +1355,12 @@ export default function CapitalFlowMap({
                   <div className="flex items-center justify-between mt-1.5 text-[10px] text-slate-400 font-mono">
                     <span className="flex items-center gap-1">
                       <DollarSign className="w-2.5 h-2.5 text-emerald-400" /> 
-                      {flowMode === 'flows' ? `存量基数: $${c.claims_usd_bn} 亿` : `美元占比: ${c.usdShare}%`}
+                      {flowMode === 'flows' ? `存量基数: $${c.claims_usd_bn >= 1000 ? `${(c.claims_usd_bn / 1000).toFixed(2)}T` : `${c.claims_usd_bn}B`}` : `美元占比: ${c.usdShare}%`}
                     </span>
-                    <span className="text-emerald-400 font-semibold">${c.usd_denominated_bn} 亿</span>
+                    <span className="text-emerald-400 font-semibold">
+                      ${c.usd_denominated_bn >= 1000 ? `${(c.usd_denominated_bn / 1000).toFixed(2)}T` : `${c.usd_denominated_bn}B`}
+                      <span className="text-[9px] text-slate-500 font-normal ml-0.5">({Math.round(c.usd_denominated_bn * 10).toLocaleString()} 亿)</span>
+                    </span>
                   </div>
                   <div className="w-full h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
                     <div 
@@ -1375,7 +1396,9 @@ export default function CapitalFlowMap({
                 {netPositions.creditors.map(c => (
                   <div key={c.code} className="flex justify-between items-center text-[11px]">
                     <span className="text-slate-300 truncate">{c.name}</span>
-                    <span className="font-mono text-emerald-400 font-semibold">+${(c.net / 10).toFixed(0)}B</span>
+                    <span className="font-mono text-emerald-400 font-semibold">
+                      +{Math.abs(c.net) >= 1000 ? `$${(c.net / 1000).toFixed(2)}T` : `$${c.net.toFixed(1)}B`}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1388,7 +1411,9 @@ export default function CapitalFlowMap({
                 {netPositions.debtors.map(c => (
                   <div key={c.code} className="flex justify-between items-center text-[11px]">
                     <span className="text-slate-300 truncate">{c.name}</span>
-                    <span className="font-mono text-rose-400 font-semibold">-${Math.abs(c.net / 10).toFixed(0)}B</span>
+                    <span className="font-mono text-rose-400 font-semibold">
+                      -{Math.abs(c.net) >= 1000 ? `$${(Math.abs(c.net) / 1000).toFixed(2)}T` : `$${Math.abs(c.net).toFixed(1)}B`}
+                    </span>
                   </div>
                 ))}
               </div>

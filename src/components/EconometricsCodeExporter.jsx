@@ -19,104 +19,171 @@ export default function EconometricsCodeExporter({
   const pythonScript = `"""
 =============================================================================
 BIS Global Capital Flow Atlas - Empirical Econometrics Pipeline
-Model: Gravity Model of Cross-Border Banking Claims & Eisenberg-Noe Contagion
+Model: Gravity Model of Cross-Border Banking Claims & Network Centrality
 Target Quarter: ${selectedQuarter}
-Data Standard: BIS Locational Banking Statistics (LBS) & Consolidated (CBS)
+Data Standard: BIS Locational Banking Statistics (LBS) & Model Reconstructed Corridors
+
+[IMPORTANT METHODOLOGY DISCLAIMER]
+This econometric pipeline estimates gravity distance elasticity on the 
+biproportionally balanced (RAS) micro bilateral network for methodological 
+benchmarking and pipeline replication. It does NOT represent proprietary 
+unredacted confidential interbank contracts withheld by central bank regulators.
 =============================================================================
 """
 
+import json
+import math
+import urllib.request
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import networkx as nx
 
-# 1. Load Bilateral Cross-Border Claims Dataset
-# In practice, fetch from BIS SDMX REST API: https://stats.bis.org/api/v1/data/
-url = "https://raw.githubusercontent.com/hantrleko/global-capital-flow-atlas/main/src/data/bis_atlas_dataset.json"
-print(f"[*] Ingesting BIS Banking Claims for Quarter: ${selectedQuarter}...")
+# 1. Ingest Full 506 Bilateral Corridors for Target Quarter
+dataset_url = "https://raw.githubusercontent.com/hantrleko/global-capital-flow-atlas/main/src/data/bis_atlas_dataset.json"
+print(f"[*] Fetching verified Atlas dataset for Quarter: ${selectedQuarter}...")
 
-# Sample Empirical Matrix Dataframe
-data = pd.DataFrame({
-    'origin': ['US', 'US', 'GB', 'JP', 'DE', 'FR', 'CN', 'SG', 'CH', 'KY'],
-    'dest':   ['GB', 'JP', 'US', 'US', 'FR', 'DE', 'HK', 'CN', 'US', 'US'],
-    'claims_usd_bn': [780.5, 620.2, 890.4, 710.0, 480.2, 450.1, 560.3, 310.2, 380.5, 940.0],
-    'usd_share': [0.72, 0.68, 0.81, 0.79, 0.35, 0.32, 0.45, 0.84, 0.76, 0.92],
-    'gdp_origin_bn': [27360, 27360, 3340, 4210, 4460, 3030, 18530, 501, 888, 40],
-    'gdp_dest_bn':   [3340, 4210, 27360, 27360, 3030, 4460, 380, 18530, 27360, 27360],
-    'distance_km':   [5500, 10800, 5500, 10800, 880, 880, 1900, 3800, 6300, 2400],
-    'contiguity':    [0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
-    'common_lang':   [1, 0, 1, 0, 0, 0, 1, 1, 0, 1]
-})
+try:
+    with urllib.request.urlopen(dataset_url) as resp:
+        raw_dataset = json.loads(resp.read().decode('utf-8'))
+except Exception as e:
+    print(f"[!] Remote fetch failed ({e}). Loading from local relative path...")
+    with open("src/data/bis_atlas_dataset.json", "r", encoding="utf-8") as f:
+        raw_dataset = json.load(f)
 
-# 2. Log Transformations for Gravity Equation
-data['ln_claims'] = np.log(data['claims_usd_bn'])
-data['ln_gdp_o'] = np.log(data['gdp_origin_bn'])
-data['ln_gdp_d'] = np.log(data['gdp_dest_bn'])
-data['ln_dist'] = np.log(data['distance_km'])
+quarter = "${selectedQuarter}"
+links = raw_dataset.get("bilateral_matrix", {}).get(quarter, [])
+countries = {c["code"]: c for c in raw_dataset.get("countries", [])}
 
-# 3. Log-Linear Gravity Regression (OLS with Robust Standard Errors)
-# Formula: ln(Claims_ij) = beta_0 + beta_1*ln(GDP_i) + beta_2*ln(GDP_j) - beta_3*ln(Dist_ij) + eps
-model = smf.ols('ln_claims ~ ln_gdp_o + ln_gdp_d + ln_dist + contiguity + common_lang', data=data).fit(cov_type='HC1')
+# 2. Haversine Great-Circle Distance Function (km)
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371.0  # Earth's radius in km
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return max(100.0, R * c)
+
+rows = []
+for link in links:
+    src = countries.get(link["source"])
+    dst = countries.get(link["target"])
+    if not src or not dst:
+        continue
+    dist_km = haversine(src["lat"], src["lng"], dst["lat"], dst["lng"])
+    rows.append({
+        "origin": link["source"],
+        "dest": link["target"],
+        "claims_usd_bn": link["claims_usd_bn"],
+        "usd_volume_bn": link.get("usd_denominated_bn", 0.0),
+        "gdp_origin_bn": src["gdp_usd_bn"],
+        "gdp_dest_bn": dst["gdp_usd_bn"],
+        "distance_km": dist_km,
+        "same_region": int(src["region"] == dst["region"]),
+        "common_bloc": int(src["bloc"] == dst["bloc"])
+    })
+
+data = pd.DataFrame(rows)
+print(f"[*] Ingested {len(data)} bilateral corridors for {quarter}.")
+
+# 3. Log Transformations for Structural Gravity Estimation
+data["ln_claims"] = np.log(data["claims_usd_bn"])
+data["ln_gdp_o"] = np.log(data["gdp_origin_bn"])
+data["ln_gdp_d"] = np.log(data["gdp_dest_bn"])
+data["ln_dist"] = np.log(data["distance_km"])
+
+# 4. Log-Linear Gravity Regression (OLS with Heteroskedasticity-Robust HC1 SE)
+# ln(Claims_ij) = beta_0 + beta_1*ln(GDP_i) + beta_2*ln(GDP_j) - beta_3*ln(Dist_ij) + eps
+model_ols = smf.ols("ln_claims ~ ln_gdp_o + ln_gdp_d + ln_dist + same_region + common_bloc", data=data).fit(cov_type="HC1")
 print("\\n=== OLS Gravity Estimation Results (Robust HC1) ===")
-print(model.summary())
+print(model_ols.summary())
 
-# 4. Eisenberg-Noe Financial Network Cascade Clearing
-print("\\n[*] Initializing Eisenberg-Noe Cascade Clearing Algorithm...")
+# 5. Poisson Pseudo-Maximum Likelihood (PPML) Estimation
+model_ppml = smf.glm("claims_usd_bn ~ ln_gdp_o + ln_gdp_d + ln_dist + same_region + common_bloc", 
+                     data=data, family=sm.families.Poisson()).fit(cov_type="HC1")
+print("\\n=== PPML Gravity Estimation Results (Robust HC1) ===")
+print(model_ppml.summary())
+
+# 6. Global Intermediation Network Centrality
 G = nx.DiGraph()
 for _, row in data.iterrows():
-    G.add_edge(row['origin'], row['dest'], weight=row['claims_usd_bn'])
+    G.add_edge(row["origin"], row["dest"], weight=row["claims_usd_bn"])
 
-# Compute In-Degree, Out-Degree and PageRank Centrality
-pagerank = nx.pagerank(G, weight='weight')
-print("\\n=== Network Hub Centrality (PageRank) ===")
-for node, score in sorted(pagerank.items(), key=lambda x: x[1], reverse=True)[:5]:
-    print(f"Node {node}: Centrality Score = {score:.4f}")
+pagerank = nx.pagerank(G, weight="weight")
+print(f"\\n=== Top 8 Banking Intermediation Hubs (PageRank Centrality, {quarter}) ===")
+for node, score in sorted(pagerank.items(), key=lambda x: x[1], reverse=True)[:8]:
+    print(f"Jurisdiction {node}: Centrality Score = {score:.4f}")
 `;
 
   const rScript = `#' =============================================================================
 #' BIS Global Capital Flow Atlas - Empirical Panel Econometrics in R
 #' Model: Poisson Pseudo-Maximum Likelihood (PPML) with Multi-Way Fixed Effects
-#' Reference: Head & Mayer (2014); Gopinath, Boz, Casas, Díez, Gourinchas & Plagborg-Møller (2020)
 #' Target Quarter: ${selectedQuarter}
+#' Reference: Silva & Tenreyro (2006); Head & Mayer (2014)
+#'
+#' [IMPORTANT METHODOLOGY DISCLAIMER]
+#' Estimates gravity parameters on the RAS-balanced cross-border banking network
+#' for pipeline verification. Uses jsonlite to parse hierarchical JSON cleanly.
 #' =============================================================================
 
-# Install required modern econometrics packages:
-# install.packages(c("fixest", "data.table", "igraph", "marginaleffects"))
+# Install required modern econometrics packages if needed:
+# install.packages(c("jsonlite", "data.table", "fixest", "igraph"))
 
+library(jsonlite)
 library(data.table)
 library(fixest)
 library(igraph)
 
-message("[*] Calibrating BIS LBS/CBS Cross-Border Banking Panel...")
+message("[*] Fetching verified Atlas dataset for Quarter: ${selectedQuarter}...")
+url <- "https://raw.githubusercontent.com/hantrleko/global-capital-flow-atlas/main/src/data/bis_atlas_dataset.json"
 
-# 1. Structural Gravity Equation via PPML (Preserves Zero-Flow Observations)
-# claims_ijt = exp( beta * ln(Dist_ij) + theta * Contig_ij + alpha_it + gamma_jt ) + eps_ijt
-#
-# Note: As demonstrated by Silva & Tenreyro (2006), log-linearized OLS is biased
-# under heteroskedasticity. PPML with origin-time and destination-time fixed effects
-# is the gold standard benchmark in international banking literature.
+tryCatch({
+  dataset <- fromJSON(url)
+}, error = function(e) {
+  message("[!] Remote fetch failed. Loading local file...")
+  dataset <- fromJSON("src/data/bis_atlas_dataset.json")
+})
 
-dt <- fread("https://raw.githubusercontent.com/hantrleko/global-capital-flow-atlas/main/src/data/bis_atlas_dataset.json")
+quarter <- "${selectedQuarter}"
 
-# Structural High-Dimensional Fixed Effects Gravity Estimation
+# Extract corridors and country metadata
+corridors <- as.data.table(dataset$bilateral_matrix[[quarter]])
+countries <- as.data.table(dataset$countries)
+
+# Merge coordinates and economic anchors
+setnames(corridors, c("source", "target"), c("origin", "dest"))
+dt <- merge(corridors, countries[, .(code, lat_o = lat, lng_o = lng, gdp_o = gdp_usd_bn, reg_o = region)], by.x = "origin", by.y = "code")
+dt <- merge(dt, countries[, .(code, lat_d = lat, lng_d = lng, gdp_d = gdp_usd_bn, reg_d = region)], by.x = "dest", by.y = "code")
+
+# Compute Great-Circle Distance via Haversine
+haversine_dist <- function(lat1, lon1, lat2, lon2) {
+  p <- pi / 180
+  a <- 0.5 - cos((lat2 - lat1) * p)/2 + cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2
+  6371 * 2 * asin(sqrt(pmax(0, pmin(1, a))))
+}
+dt[, distance_km := pmax(100, haversine_dist(lat_o, lng_o, lat_d, lng_d))]
+dt[, ln_dist := log(distance_km)]
+dt[, same_region := as.integer(reg_o == reg_d)]
+
+message(sprintf("[*] Ingested %d bilateral corridors for %s.", nrow(dt), quarter))
+
+# 1. High-Dimensional Fixed Effects PPML (Silva & Tenreyro 2006)
 gravity_ppml <- feglm(
-  claims_usd_bn ~ ln_distance + contiguity + common_language | 
-                  origin^quarter + dest^quarter,
+  claims_usd_bn ~ ln_dist + same_region | origin + dest,
   data = dt,
   family = "poisson",
-  cluster = ~origin^dest
+  cluster = ~origin
 )
 
-message("=== Structural PPML High-Dimensional Fixed Effects Output ===")
+message("=== Structural PPML Fixed Effects Output ===")
 summary(gravity_ppml)
 
-# 2. Core-Periphery Network Centrality & Hub Intermediation
-adj_matrix <- as.matrix(dcast(dt[quarter == "${selectedQuarter}"], origin ~ dest, value.var = "claims_usd_bn", fill = 0), rownames = 1)
-g <- graph_from_adjacency_matrix(adj_matrix, mode = "directed", weighted = TRUE)
-
+# 2. Network Hub Centrality (igraph)
+adj_mat <- as.matrix(dcast(dt, origin ~ dest, value.var = "claims_usd_bn", fill = 0), rownames = 1)
+g <- graph_from_adjacency_matrix(adj_mat, mode = "directed", weighted = TRUE)
 hub_scores <- hub_score(g)$vector
-message("\\n=== Top Global Banking Intermediation Hubs (${selectedQuarter}) ===")
+message(sprintf("\\n=== Top Global Banking Intermediation Hubs (%s) ===", quarter))
 print(head(sort(hub_scores, decreasing = TRUE), 8))
 `;
 
@@ -124,12 +191,18 @@ print(head(sort(hub_scores, decreasing = TRUE), 8))
 * BIS Global Capital Flow Atlas - Stata Empirical Do-File
 * Target Quarter: ${selectedQuarter}
 * Command: ppmlhdfe (Correia, Guimarães, Zylkin 2020)
+*
+* [INSTRUCTIONS FOR RUNNING IN STATA]
+* 1. Export the research dataset CSV from the Atlas platform:
+*    (Navigation: Research Dossier / Code Exporter -> "Export CSV")
+*    File name: bis_capital_flow_${selectedQuarter}.csv
+* 2. Place the CSV in your Stata working directory and run this script.
 * =============================================================================
 
 clear all
 set more off
 
-* 1. Check and install ppmlhdfe
+* 1. Check and install ppmlhdfe dependencies
 capture which ppmlhdfe
 if _rc != 0 {
     ssc install ppmlhdfe
@@ -137,22 +210,17 @@ if _rc != 0 {
     ssc install ftools
 }
 
-* 2. Load Cross-Border Bilateral Panel
-import delimited "https://raw.githubusercontent.com/hantrleko/global-capital-flow-atlas/main/src/data/bis_atlas_dataset.json", clear
+* 2. Load Cross-Border Panel CSV Exported from Platform
+capture import delimited "bis_capital_flow_${selectedQuarter}.csv", clear
+if _rc != 0 {
+    display as error "Please export bis_capital_flow_${selectedQuarter}.csv from the web interface first."
+    exit
+}
 
-* Generate Log Transformed Regressors
-gen ln_dist = ln(distance_km)
-gen ln_gdp_o = ln(gdp_origin_bn)
-gen ln_gdp_d = ln(gdp_dest_bn)
-
-* 3. Run Standard PPML Gravity with Exporter-Time and Importer-Time Fixed Effects
-* Absorbing (origin#quarter) and (dest#quarter) fully controls for multilateral resistance terms
-ppmlhdfe claims_usd_bn ln_dist contiguity common_lang, ///
-    absorb(origin#quarter dest#quarter) ///
-    cluster(origin#dest)
-
-esttab using "bis_gravity_results_${selectedQuarter}.txt", replace ///
-    b(3) se(3) star(* 0.10 ** 0.05 *** 0.01) title("BIS Cross-Border Banking Gravity")
+* 3. Model Variable Summary
+display "[*] Dataset loaded successfully for quarter: ${selectedQuarter}"
+describe
+list countrycode claims_usd_bn liabilities_usd_bn in 1/10
 `;
 
   const currentScript = 
@@ -218,6 +286,14 @@ esttab using "bis_gravity_results_${selectedQuarter}.txt", replace ///
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Methodological Disclaimer Banner */}
+        <div className="px-6 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-start gap-2 text-xs text-amber-200">
+          <BookOpen className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+          <span>
+            <strong>方法论说明：</strong> 本脚本基于系统双比例 RAS 重构之 506 条双边信贷走廊进行引力模型回归与中心度计算，用于学术复现与量化流水线验证，非 BIS 官方未公开之商业银行微观原始合同。
+          </span>
         </div>
 
         {/* Language Tabs & Action Bar */}

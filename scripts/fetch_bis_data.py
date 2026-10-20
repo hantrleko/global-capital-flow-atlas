@@ -611,6 +611,7 @@ def build_dataset():
     for q_idx, q_name in enumerate(QUARTERS):
         macro_info = HISTORICAL_MACRO_SERIES[q_name]
         tot_claims = macro_info["claims"]
+        usd_share = macro_info["usd_share"]
         stress = macro_info["stress"]
         is_nowcast = q_name in NOWCAST_QUARTERS
 
@@ -702,27 +703,52 @@ def build_dataset():
             "conservation_status": "EXACT_CONSERVED"
         }
 
-        q_links = []
+        target_macro_usd = round(tot_claims * (usd_share / 100.0), 1)
+
+        raw_corridor_items = []
+        raw_usd_vols = []
         for i, src_c in enumerate(COUNTRIES):
             s_code = src_c["code"]
             for j, dst_c in enumerate(COUNTRIES):
                 d_code = dst_c["code"]
                 weight = rounded_X[i][j]
                 if i != j and weight > 0.0:
-                    usd_share = (src_c["default_usd_share"] + dst_c["default_usd_share"]) / 2.0
-                    usd_vol = round(weight * (usd_share / 100.0), 1)
+                    prior_usd_pct = (src_c["default_usd_share"] + dst_c["default_usd_share"]) / 2.0
+                    raw_usd = weight * (prior_usd_pct / 100.0)
+                    raw_usd_vols.append(raw_usd)
+                    raw_corridor_items.append((i, j, s_code, d_code, weight, src_c, dst_c))
 
-                    q_links.append({
-                        "source": s_code,
-                        "target": d_code,
-                        "claims_usd_bn": weight,
-                        "usd_denominated_bn": usd_vol,
-                        "is_nowcast": is_nowcast,
-                        "corridor_category": "Core-to-Core" if src_c["tier"] == 1 and dst_c["tier"] == 1
-                            else "Core-to-Conduit" if d_code in ["KY", "LU", "SG", "HK"]
-                            else "Core-to-Periphery"
-                    })
+        # Joint Calibration of Corridor Dollar Credit to Exact Macroeconomic USD Aggregate
+        raw_usd_sum = sum(raw_usd_vols)
+        usd_scale = (target_macro_usd / raw_usd_sum) if raw_usd_sum > 0 else 1.0
+        calibrated_usd_vols = [round(min(item[4], max(0.0, u * usd_scale)), 1) for item, u in zip(raw_corridor_items, raw_usd_vols)]
+        diff_usd = round(target_macro_usd - sum(calibrated_usd_vols), 1)
+        if abs(diff_usd) > 1e-4:
+            idx_headroom = max(range(len(raw_corridor_items)), key=lambda k: raw_corridor_items[k][4] - calibrated_usd_vols[k])
+            calibrated_usd_vols[idx_headroom] = round(calibrated_usd_vols[idx_headroom] + diff_usd, 1)
+
+        # Verify joint calibration
+        actual_usd_corridor_sum = round(sum(calibrated_usd_vols), 1)
+        if abs(actual_usd_corridor_sum - target_macro_usd) > 1e-4:
+            raise RuntimeError(f"FATAL: Corridor USD calibration mismatch for {q_name}! Corridor={actual_usd_corridor_sum}, Macro={target_macro_usd}")
+
+        q_links = []
+        for k, (i, j, s_code, d_code, weight, src_c, dst_c) in enumerate(raw_corridor_items):
+            usd_vol = calibrated_usd_vols[k]
+            q_links.append({
+                "source": s_code,
+                "target": d_code,
+                "claims_usd_bn": weight,
+                "usd_denominated_bn": usd_vol,
+                "is_nowcast": is_nowcast,
+                "corridor_category": "Core-to-Core" if src_c["tier"] == 1 and dst_c["tier"] == 1
+                    else "Core-to-Conduit" if d_code in ["KY", "LU", "SG", "HK"]
+                    else "Core-to-Periphery"
+            })
         bilateral_matrix[q_name] = q_links
+        ras_metrics[q_name]["corridor_usd_total_bn"] = actual_usd_corridor_sum
+        ras_metrics[q_name]["macro_usd_total_bn"] = target_macro_usd
+        ras_metrics[q_name]["usd_conservation_status"] = "EXACT_CONSERVED"
         if q_idx % 9 == 0 or is_nowcast:
             print(f"[RAS Balancing] {q_name}: Converged={converged} in {iters} iterations, max residual={max_residual:.6f} Bn USD ({len(q_links)} corridors)")
 
@@ -1010,6 +1036,7 @@ def build_dataset():
                     "post_export_discretization": "0.1 Bn exact integer apportionment with row-neutral column shift",
                     "post_export_max_row_residual_bn": 0.0,
                     "post_export_max_col_residual_bn": 0.0,
+                    "usd_joint_calibration": "Corridor dollar credit scaled and conserved to exact macro total_usd_cross_border_bn (Residual = 0.0 Bn)",
                     "corridors_exported": 506
                 },
                 "usd_funding_stress_index": {

@@ -96,7 +96,7 @@ export default function ResearchDossier({
           'Debt to Reserves Ratio': qCbs.debt_to_reserves_ratio || 0,
           'Vulnerability Score': qCbs.vulnerability_score || 0,
           'Rating': qCbs.rating || 'LOW',
-          'Data Source': 'BIS CBS Table B4 & LBS Table A6.2'
+          'Data Provenance': 'Model Stylized (calibrated to Basel III guidelines & macro LBS totals)'
         };
       });
       const wsCbs = XLSX.utils.json_to_sheet(cbsRows);
@@ -117,7 +117,7 @@ export default function ResearchDossier({
           'FX Reserves (USD Bn)': qCbs.fx_reserves_bn || 0,
           'Greenspan-Guidotti Ratio (%)': mat.guidotti_ratio_pct || 0,
           'Compliance Evaluation': mat.guidotti_compliance || 'ADEQUATE',
-          'Data Source': 'BIS Debt Securities / IMF IFS'
+          'Data Provenance': 'Model Stylized Maturity Calibration (IMF IFS / BIS stylized priors)'
         };
       });
       const wsMaturity = XLSX.utils.json_to_sheet(maturityRows);
@@ -168,13 +168,13 @@ export default function ResearchDossier({
     let csv = "# BIS Global Capital Flow Atlas - Research Dataset Export\n";
     csv += `# Selected Quarter: ${selectedQuarter}\n`;
     csv += `# Metric Units: Monetary figures in Billion USD (USD Bn)\n`;
-    csv += `# Provenance: 2018Q1-2026Q1 BIS SDMX Official Verified; 2026Q2 Cached Benchmark Pending Release; 2026Q3-2026Q4 Scenario Projections\n`;
-    csv += "CountryCode,CountryName,Region,Quarter,Claims_USD_Bn,Liabilities_USD_Bn,Net_Position_USD_Bn,USD_Share_Pct,Debt_To_Reserves,Vulnerability_Score,Rating,DataSource\n";
+    csv += `# Provenance: Macro Total Anchored to BIS SDMX Official (<=2026Q1) / Cached (2026Q2) / Scenario (2026Q3-Q4); Country and Corridor Positions Model-Allocated via RAS Balancing\n`;
+    csv += "CountryCode,CountryName,Region,Quarter,Claims_USD_Bn,Liabilities_USD_Bn,Net_Position_USD_Bn,USD_Share_Pct,Debt_To_Reserves,Vulnerability_Score,Rating,CountryDataCategory,MacroAnchorStatus\n";
     countries.forEach(c => {
       const qLbs = (lbsData[c.code] || [])[qIdx] || {};
       const qCbs = (cbsData[c.code] || [])[qIdx] || {};
-      const source = selectedQuarter <= '2026Q1' ? 'BIS_SDMX_VERIFIED' : selectedQuarter === '2026Q2' ? 'CACHED_BENCHMARK' : 'SCENARIO_PROJECTION';
-      csv += `${c.code},"${c.name}",${c.region},${selectedQuarter},${qLbs.claims_usd_bn || ''},${qLbs.liabilities_usd_bn || ''},${qLbs.net_position_usd_bn || ''},${(qLbs.currency_breakdown?.USD) || ''},${qCbs.debt_to_reserves_ratio || ''},${qCbs.vulnerability_score || ''},${qCbs.rating || ''},${source}\n`;
+      const macroStatus = selectedQuarter <= '2026Q1' ? 'BIS_SDMX_OFFICIAL_ANCHORED' : selectedQuarter === '2026Q2' ? 'CACHED_BENCHMARK_PENDING_RELEASE' : 'SCENARIO_PROJECTION';
+      csv += `${c.code},"${c.name}",${c.region},${selectedQuarter},${qLbs.claims_usd_bn || ''},${qLbs.liabilities_usd_bn || ''},${qLbs.net_position_usd_bn || ''},${(qLbs.currency_breakdown?.USD) || ''},${qCbs.debt_to_reserves_ratio || ''},${qCbs.vulnerability_score || ''},${qCbs.rating || ''},MODEL_ALLOCATED,${macroStatus}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
