@@ -10,6 +10,7 @@ import HistoricalMilestoneRibbon from './components/HistoricalMilestoneRibbon';
 import EconometricsCodeExporter from './components/EconometricsCodeExporter';
 import MacroShockSandbox from './components/MacroShockSandbox';
 import InstitutionalReportModal from './components/InstitutionalReportModal';
+import MacroIntelligenceBriefing from './components/MacroIntelligenceBriefing';
 import soundFx from './utils/soundEffects';
 import { Keyboard, X, Bot, Sparkles } from 'lucide-react';
 
@@ -298,6 +299,15 @@ export default function App() {
 
       {/* Main Analysis Viewport */}
       <main className="flex-1 max-w-[1780px] w-full mx-auto p-4 md:p-6 space-y-6">
+        {/* Executive Macro Intelligence Briefing: 发生了什么 · 哪里变了 · 依据是什么 */}
+        <MacroIntelligenceBriefing
+          dataset={activeDataset}
+          selectedQuarter={selectedQuarter}
+          selectedCurrency={selectedCurrency}
+          onOpenAppendix={() => setIsAppendixOpen(true)}
+          onOpenCodeExporter={() => setIsCodeExporterOpen(true)}
+        />
+
         <Suspense fallback={<LoadingFallback />}>
           {activeTab === 'map' && (
             <CapitalFlowMap
@@ -317,6 +327,7 @@ export default function App() {
               selectedQuarter={selectedQuarter}
               selectedCountry={selectedCountry}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -353,6 +364,7 @@ export default function App() {
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 

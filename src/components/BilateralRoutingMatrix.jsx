@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as echarts from 'echarts';
 import { GitCommit, Grid, Layers, Filter, Info, Download, ArrowRight } from 'lucide-react';
+import DataClassificationBadge from './DataClassificationBadge';
 
 export default function BilateralRoutingMatrix({
   dataset,
   selectedQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const [subView, setSubView] = useState('sankey'); // 'sankey', 'heatmap'
   const [currencyFilter, setCurrencyFilter] = useState('all'); // 'all', 'usd_only'
@@ -284,16 +286,24 @@ export default function BilateralRoutingMatrix({
             {subView === 'sankey' ? <GitCommit className="w-5 h-5" /> : <Grid className="w-5 h-5" />}
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              {subView === 'sankey' 
-                ? '跨国资本多级路由桑基图 (Multi-Tier Capital Routing)' 
-                : '双边借贷敞口全景热力矩阵 (Bilateral Exposure Matrix)'}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                {subView === 'sankey' 
+                  ? '跨国资本多级路由桑基图 (Multi-Tier Capital Routing)' 
+                  : '双边借贷敞口全景热力矩阵 (Bilateral Exposure Matrix)'}
+              </h2>
               <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                 {selectedQuarter}
               </span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              透视「出资母国 → 离岸转口中枢 → 实体借款部门」的资金穿透链路
+              <DataClassificationBadge
+                classification={selectedQuarter > '2026Q2' ? 'NOWCAST_PREDICTION' : 'MODEL_RECONSTRUCTED'}
+                sourceText="BIS LBS / CBS 矩阵分配"
+                methodText="最大熵 RAS 多级穿透分配算法"
+                onOpenAppendix={onOpenAppendix}
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              透视「出资母国 → 离岸转口中枢 → 实体借款部门」的资金穿透链路 · 揭示跨辖区多级转口流向
             </p>
           </div>
         </div>
@@ -367,6 +377,21 @@ export default function BilateralRoutingMatrix({
           <strong className="text-emerald-400">最终借款部门 (Borrower Tier): </strong>
           非银影子银行 (NBFIs) 成为美元信贷最大的最终净吸收方，也是美联储紧缩周期中最脆弱的一环。
         </div>
+      </div>
+
+      <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2 font-mono">
+        <div className="flex items-center gap-1.5 text-slate-300">
+          <Info className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+          <span>穿透方法释义: 桑基图基于宏观国别资产负债分配与转口中枢权重推演，旨在描绘资本跨境多级路由格局，非微观逐笔清算追踪。</span>
+        </div>
+        {onOpenAppendix && (
+          <button
+            onClick={onOpenAppendix}
+            className="text-sky-400 hover:text-sky-300 underline underline-offset-2 shrink-0 cursor-pointer"
+          >
+            查看方法论附录 →
+          </button>
+        )}
       </div>
     </div>
   );

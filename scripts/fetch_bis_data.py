@@ -347,7 +347,7 @@ def build_dataset():
         global_macro.append({
             "quarter": q_name,
             "is_nowcast": is_nowcast,
-            "data_vintage": "2026-10-14 BIS SDMX Release" if not is_nowcast else "Atlas Dynamic Nowcast v2.4 (95% CI: +/-1.2%)",
+            "data_vintage": "2026-10-14 BIS SDMX Release" if not is_nowcast else "Atlas Dynamic Nowcast v2.4 (95% CI: $47.90T-$49.30T, +/-1.4%)",
             "observation_status": "OBSERVED" if not is_nowcast else "NOWCAST_ESTIMATE",
             "total_cross_border_claims_usd_bn": round(tot_claims, 1),
             "total_usd_cross_border_bn": tot_usd_credit,

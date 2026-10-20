@@ -255,11 +255,11 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                   <div className="p-3 bg-slate-900 rounded-lg font-mono text-sky-300 overflow-x-auto text-[11px]">
                     ln(Claims_ijt) = α_0 + α_1*ln(GDP_it) + α_2*ln(GDP_jt) - α_3*ln(Dist_ij) + β*Δ(InterestDiff_t) + γ*SanctionIndex_t + ε_ijt
                   </div>
-                  <div className="space-y-1 text-slate-300">
-                    <p>• <strong>2026Q3 临近预测值：</strong>约 $48.20T (95% 置信区间: $47.60T – $48.80T)</p>
-                    <p>• <strong>2026Q4 临近预测值：</strong>约 $48.60T (95% 置信区间: $47.90T – $49.30T)</p>
+                  <div className="space-y-1.5 text-slate-300">
+                    <p>• <strong>2026Q3 临近预测值：</strong>约 $48.20T (95% 置信区间: $47.60T – $48.80T，预测中值 ±1.25%)</p>
+                    <p>• <strong>2026Q4 临近预测值：</strong>约 $48.60T (95% 置信区间: $47.90T – $49.30T，预测中值 ±1.44% / ±$0.70T)</p>
                     <p className="text-slate-400 text-[11px] mt-2">
-                      注：在界面中所有 2026Q3/Q4 数据均显式标有 <code>[NOWCAST]</code> 徽标，禁止将预测值混同于官方统计事实。
+                      注：在全站界面中所有 2026Q3/Q4 数据均显式标有 <code>[NOWCAST]</code> 徽标与动态置信带，明确为模型前瞻推演，禁止与 BIS 官方发布之统计观测值混淆。
                     </p>
                   </div>
                 </div>

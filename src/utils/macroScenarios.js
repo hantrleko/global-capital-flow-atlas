@@ -118,19 +118,20 @@ export const HISTORICAL_REGIMES = [
   },
   {
     quarter: "2026Q2",
-    name: "离岸美元总债权突破 47 万亿美元 (Record Cross-Border Scale)",
-    description: "根据最新 BIS 官方基准统计，全球跨国银行跨境债权存量首次攀升突破 47.6 万亿美元历史峰值，非银与数字资产对冲通道扩容。",
+    name: "离岸美元总债权突破 47.8 万亿美元 (Record Cross-Border Scale)",
+    description: "根据最新 BIS 官方基准统计，全球跨国银行跨境债权存量首次攀升突破 47.82 万亿美元历史峰值，非银与数字资产对冲通道扩容。",
     stress: 33.0,
     badgeColor: "emerald",
-    tag: "破纪录规模"
+    tag: "官方基准"
   },
   {
     quarter: "2026Q4",
-    name: "主权 AI 基础设施与多极清算新纪元 (Sovereign AI & Multipolar Settlement)",
-    description: "金砖本币清算与央行数字货币 (mBridge/CBDC) 结算网络跨国试跑成熟，跨国银行对全球超算集群与绿色电网的绿色银团信贷达历史新高。",
-    stress: 30.0,
-    badgeColor: "emerald",
-    tag: "AI 与新清算"
+    name: "【前瞻预测与推演】主权 AI 基础设施与多极结算演进 (Nowcast Scenario)",
+    description: "基于动态空间引力计量模型的前瞻推演：预估全球跨国银行总债权向 ~$48.60T 演进 (95% 置信区间: $47.90T – $49.30T，±1.4%)。模拟金砖多极本币清算试跑与跨国银团对 AI 算力集群绿色信贷的前瞻分布。注：本季度尚未截止，系前瞻模型外推预测，非已发生统计事实。",
+    stress: 30.5,
+    badgeColor: "purple",
+    tag: "Nowcast预测",
+    isNowcast: true
   }
 ];
 

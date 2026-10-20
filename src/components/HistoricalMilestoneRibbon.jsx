@@ -44,24 +44,29 @@ export default function HistoricalMilestoneRibbon({
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-950/60 hover:bg-blue-900/60 border border-blue-500/40 text-sky-300 font-semibold cursor-pointer transition-all shadow-sm group"
           >
             <History className="w-3.5 h-3.5 text-sky-400 group-hover:rotate-12 transition-transform" />
-            <span>宏观历史里程碑纪元 (2018-2026 全景大事记)</span>
+            <span>宏观历史转折期 (2018-2026Q2 官方观测) & 前瞻推演 (2026Q3-Q4 Nowcast)</span>
             {isOpen ? <ChevronDown className="w-3.5 h-3.5 ml-1" /> : <ChevronRight className="w-3.5 h-3.5 ml-1" />}
           </button>
 
           <span className="text-[11px] text-slate-400 hidden md:inline">
-            已收录 <span className="text-white font-mono font-bold">{MACRO_TIMELINE_EVENTS.length}</span> 个转折期 · 点击任意卡片秒级穿梭
+            已收录 <span className="text-white font-mono font-bold">{MACRO_TIMELINE_EVENTS.length}</span> 个关键期 · 点击卡片穿梭
           </span>
         </div>
 
         {/* Current Active Milestone Highlight */}
         {(() => {
           const matched = MACRO_TIMELINE_EVENTS.find(e => e.quarter === selectedQuarter);
+          const isNowcast = selectedQuarter > '2026Q2';
           if (matched) {
             return (
               <div className="flex items-center gap-2 overflow-hidden text-right">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping shrink-0" />
-                <span className="text-slate-400 text-[11px] truncate hidden sm:inline">当前处于:</span>
-                <span className="font-bold text-sky-300 font-mono shrink-0">{matched.quarter}</span>
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isNowcast ? 'bg-purple-400 animate-pulse' : 'bg-sky-400 animate-ping'}`} />
+                <span className="text-slate-400 text-[11px] truncate hidden sm:inline">
+                  {isNowcast ? '前瞻预测推演:' : '当前观测周期:'}
+                </span>
+                <span className={`font-bold font-mono shrink-0 ${isNowcast ? 'text-purple-300' : 'text-sky-300'}`}>
+                  {matched.quarter} {isNowcast && '[NOWCAST]'}
+                </span>
                 <span className="text-white truncate max-w-xs text-[11px] font-medium hidden lg:inline">
                   {matched.name.split('(')[0]}
                 </span>

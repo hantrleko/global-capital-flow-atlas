@@ -3,14 +3,16 @@ import * as echarts from 'echarts';
 import { computeNetworkCentrality } from '../utils/macroScenarios';
 import { 
   Share2, CircleDot, Activity, Award, BarChart3, 
-  Shuffle, Download, Sparkles, Zap, Layers 
+  Shuffle, Download, Sparkles, Zap, Layers, Info 
 } from 'lucide-react';
+import DataClassificationBadge from './DataClassificationBadge';
 
 export default function NetworkTopology({
   dataset,
   selectedQuarter,
   selectedCountry,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -280,16 +282,22 @@ export default function NetworkTopology({
             <Share2 className="w-4 h-4 text-indigo-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-sm md:text-base font-semibold text-white tracking-wide">
                 全球银行间跨境金融网络拓扑与中心度剖析
               </h2>
               <span className="text-[11px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
                 {selectedQuarter}
               </span>
+              <DataClassificationBadge
+                classification={selectedQuarter > '2026Q2' ? 'NOWCAST_PREDICTION' : 'MODEL_RECONSTRUCTED'}
+                sourceText="双边重构信贷矩阵"
+                methodText="复杂网络特征向量中心度 (Eigenvector Centrality) 测算"
+                onOpenAppendix={onOpenAppendix}
+              />
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              基于复杂网络图论 (Graph Centrality) 测算各司法管辖区的信贷中介度 (Brokerage) 与网络集聚度
+            <p className="text-xs text-slate-400 mt-1">
+              基于图论测算各司法管辖区的信贷中介度 (Brokerage) 与网络集聚度 · 揭示核心-边缘与离岸转口中枢结构
             </p>
           </div>
         </div>
@@ -436,6 +444,22 @@ export default function NetworkTopology({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Methodology & Structural Note */}
+      <div className="bg-slate-900/60 rounded-xl p-3 border border-slate-800 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2 font-mono">
+        <div className="flex items-center gap-1.5 text-slate-300">
+          <Info className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+          <span>网络结构说明: 本拓扑基于申报国双边总额矩阵进行图论特征提取，用于揭示中介转口枢纽与脆弱节点，不代表官方直接发布的单个银行间逐笔同业借贷。</span>
+        </div>
+        {onOpenAppendix && (
+          <button
+            onClick={onOpenAppendix}
+            className="text-sky-400 hover:text-sky-300 underline underline-offset-2 shrink-0 cursor-pointer"
+          >
+            查看附录特征向量中心度公式 →
+          </button>
+        )}
       </div>
     </div>
   );

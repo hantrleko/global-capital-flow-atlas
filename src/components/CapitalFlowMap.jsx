@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as echarts from 'echarts';
 import GlobalFlowGlobe3D from './GlobalFlowGlobe3D';
 import MethodologyFootnote from './MethodologyFootnote';
+import DataClassificationBadge from './DataClassificationBadge';
 import { 
   Layers, Eye, Filter, ArrowUpRight, ArrowDownLeft, 
   Info, Download, Target, Compass, Maximize2, Sparkles,
@@ -30,6 +31,7 @@ export default function CapitalFlowMap({
   // Density & View controls
   const [mapProjection, setMapProjection] = useState('2d'); // '2d' | '3d'
   const [corridorDensity, setCorridorDensity] = useState('backbone'); // 'backbone' | 'all' | 'usd_dominant'
+  const [flowMode, setFlowMode] = useState('positions'); // 'positions' (期末存量) | 'flows' (季度调整后变动)
   const [metricView, setMetricView] = useState('claims'); // 'claims' | 'net' | 'liab'
   const [focusCountry, setFocusCountry] = useState('ALL'); // 'ALL' or countryCode
   const [geoPreset, setGeoPreset] = useState('global'); // 'global' | 'asia' | 'europe' | 'americas'
@@ -39,6 +41,30 @@ export default function CapitalFlowMap({
   const countryMap = useMemo(() => Object.fromEntries(countries.map(c => [c.code, c])), [countries]);
   const lbsQuarter = dataset.lbs_data || {};
   const currentLinks = (dataset.bilateral_matrix || {})[selectedQuarter] || [];
+
+  // Compute QoQ Flows / Changes relative to prior quarter
+  const quarterIdx = dataset.quarters ? dataset.quarters.indexOf(selectedQuarter) : -1;
+  const prevQuarter = quarterIdx > 0 ? dataset.quarters[quarterIdx - 1] : null;
+  const prevLinks = prevQuarter ? ((dataset.bilateral_matrix || {})[prevQuarter] || []) : [];
+  const prevLinksMap = useMemo(() => {
+    return new Map(prevLinks.map(l => [`${l.source}->${l.target}`, l]));
+  }, [prevLinks]);
+
+  const linksWithFlow = useMemo(() => {
+    return currentLinks.map(l => {
+      const prevL = prevLinksMap.get(`${l.source}->${l.target}`);
+      const prevClaims = prevL ? prevL.claims_usd_bn : l.claims_usd_bn;
+      const netChange = prevL ? Math.round((l.claims_usd_bn - prevClaims) * 10) / 10 : 0;
+      const netChangePct = (prevL && prevClaims > 0) ? Math.round(((l.claims_usd_bn - prevClaims) / prevClaims) * 1000) / 10 : 0;
+      return {
+        ...l,
+        prevClaims,
+        netChange,
+        netChangePct,
+        isExpansion: netChange >= 0
+      };
+    });
+  }, [currentLinks, prevLinksMap]);
 
   // Register world map
   useEffect(() => {
@@ -102,18 +128,27 @@ export default function CapitalFlowMap({
     const quarterIdx = dataset.quarters.indexOf(selectedQuarter);
 
     // Filter and curate bilateral links
-    let filteredLinks = currentLinks.filter(l => {
+    let filteredLinks = linksWithFlow.filter(l => {
       if (focusCountry !== 'ALL') {
         return l.source === focusCountry || l.target === focusCountry;
       }
-      if (corridorDensity === 'backbone') {
-        // High-aesthetic curated backbone (claims >= $160B)
-        return l.claims_usd_bn >= 160;
+      if (flowMode === 'flows') {
+        if (corridorDensity === 'backbone') {
+          return Math.abs(l.netChange) >= 10;
+        }
+        if (corridorDensity === 'usd_dominant') {
+          return (l.usd_denominated_bn / Math.max(1, l.claims_usd_bn)) >= 0.7;
+        }
+        return true;
+      } else {
+        if (corridorDensity === 'backbone') {
+          return l.claims_usd_bn >= 160;
+        }
+        if (corridorDensity === 'usd_dominant') {
+          return (l.usd_denominated_bn / Math.max(1, l.claims_usd_bn)) >= 0.7;
+        }
+        return true;
       }
-      if (corridorDensity === 'usd_dominant') {
-        return (l.usd_denominated_bn / l.claims_usd_bn) >= 0.7;
-      }
-      return true; // 'all'
     });
 
     // Helper: calculate distance and directional curvature so round-trip lines don't collide
@@ -135,20 +170,31 @@ export default function CapitalFlowMap({
 
       const curveness = getCurveness(l.source, l.target, src.lng, src.lat, dst.lng, dst.lat);
       const isFocused = focusCountry !== 'ALL';
-      const isMajor = l.claims_usd_bn >= 400;
 
-      // Color scheme: refined luminous tones
       let strokeColor = '#38bdf8'; // Soft sky cyan
-      if (isFocused) {
-        strokeColor = l.source === focusCountry ? '#34d399' : '#f43f5e'; // Mint green outflow, soft rose inflow
-      } else if (l.usd_denominated_bn / l.claims_usd_bn > 0.75) {
-        strokeColor = '#60a5fa'; // Dollar blue
-      } else {
-        strokeColor = '#a78bfa'; // Soft iris purple
-      }
+      let strokeWidth = 1.0;
+      let strokeOpacity = 0.35;
 
-      const strokeWidth = isMajor ? 2.0 : Math.max(0.9, Math.sqrt(l.claims_usd_bn) / 16);
-      const strokeOpacity = isFocused ? 0.85 : isMajor ? 0.45 : 0.22;
+      if (flowMode === 'flows') {
+        // Flows Mode: Color distinguishes between credit expansion (mint) vs contraction/repayment (rose)
+        const isExp = l.netChange >= 0;
+        strokeColor = isExp ? '#34d399' : '#fb7185';
+        const absChg = Math.abs(l.netChange);
+        strokeWidth = Math.max(1.1, Math.min(3.4, Math.sqrt(absChg) / 2.8));
+        strokeOpacity = isFocused ? 0.9 : absChg >= 25 ? 0.7 : 0.35;
+      } else {
+        // Positions Mode: Color distinguishes currency / focus
+        const isMajor = l.claims_usd_bn >= 400;
+        if (isFocused) {
+          strokeColor = l.source === focusCountry ? '#34d399' : '#f43f5e';
+        } else if (l.usd_denominated_bn / l.claims_usd_bn > 0.75) {
+          strokeColor = '#60a5fa';
+        } else {
+          strokeColor = '#a78bfa';
+        }
+        strokeWidth = isMajor ? 2.0 : Math.max(0.9, Math.sqrt(l.claims_usd_bn) / 16);
+        strokeOpacity = isFocused ? 0.85 : isMajor ? 0.45 : 0.22;
+      }
 
       return {
         id: `${l.source}->${l.target}`,
@@ -163,6 +209,10 @@ export default function CapitalFlowMap({
         ],
         value: l.claims_usd_bn,
         usdVol: l.usd_denominated_bn,
+        netChange: l.netChange,
+        netChangePct: l.netChangePct,
+        isExpansion: l.isExpansion,
+        prevClaims: l.prevClaims,
         lineStyle: {
           color: strokeColor,
           width: strokeWidth,
@@ -172,25 +222,37 @@ export default function CapitalFlowMap({
       };
     }).filter(Boolean);
 
-    // Particle flow data (small pearl photons) - only animate primary arterial corridors to maximize rendering performance
+    // Particle flow data (small pearl photons)
+    // In flows mode, if netChange < 0, particles flow in return direction representing deleveraging/repatriation!
     const particleData = linesData
-      .filter(l => focusCountry !== 'ALL' || l.value >= 240)
-      .map(l => ({
-        id: `particle-${l.sourceCode}->${l.targetCode}`,
-        name: l.name,
-        fromName: l.fromName,
-        toName: l.toName,
-        sourceCode: l.sourceCode,
-        targetCode: l.targetCode,
-        coords: l.coords,
-        value: l.value,
-        usdVol: l.usdVol,
-        lineStyle: {
-          width: 0,
-          opacity: 0,
-          curveness: l.lineStyle.curveness
+      .filter(l => {
+        if (flowMode === 'flows') {
+          return focusCountry !== 'ALL' || Math.abs(l.netChange) >= 12;
         }
-      }));
+        return focusCountry !== 'ALL' || l.value >= 240;
+      })
+      .map(l => {
+        const reverseParticle = flowMode === 'flows' && !l.isExpansion;
+        return {
+          id: `particle-${l.sourceCode}->${l.targetCode}`,
+          name: l.name,
+          fromName: l.fromName,
+          toName: l.toName,
+          sourceCode: l.sourceCode,
+          targetCode: l.targetCode,
+          coords: reverseParticle ? [l.coords[1], l.coords[0]] : l.coords,
+          value: l.value,
+          usdVol: l.usdVol,
+          netChange: l.netChange,
+          netChangePct: l.netChangePct,
+          isExpansion: l.isExpansion,
+          lineStyle: {
+            width: 0,
+            opacity: 0,
+            curveness: reverseParticle ? -l.lineStyle.curveness : l.lineStyle.curveness
+          }
+        };
+      });
 
     // Prepare node scatter data
     const haloNodes = [];
@@ -314,15 +376,53 @@ export default function CapitalFlowMap({
         formatter: (params) => {
           if (params.seriesType === 'lines') {
             const data = params.data;
+            if (flowMode === 'flows') {
+              const isExp = data.isExpansion;
+              const sign = data.netChange >= 0 ? '+' : '';
+              return `
+                <div class="font-sans min-w-[220px]">
+                  <div class="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
+                    <span class="font-semibold text-white">${data.fromName} ⇋ ${data.toName}</span>
+                    <span class="text-[10px] ${isExp ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-400 bg-rose-500/10 border-rose-500/30'} font-mono px-1.5 py-0.5 rounded border">
+                      ${isExp ? '信贷净扩张 (Net Inflow)' : '去杠杆偿还 (Net Outflow)'}
+                    </span>
+                  </div>
+                  <div class="space-y-1.5 text-xs font-mono">
+                    <div class="flex justify-between font-sans">
+                      <span class="text-slate-400">季度净变动:</span>
+                      <span class="font-bold ${isExp ? 'text-emerald-400' : 'text-rose-400'}">
+                        ${sign}$${data.netChange} 亿美元
+                      </span>
+                    </div>
+                    <div class="flex justify-between font-sans">
+                      <span class="text-slate-400">环比变动率:</span>
+                      <span class="text-slate-300 font-semibold">${sign}${data.netChangePct}%</span>
+                    </div>
+                    <div class="flex justify-between font-sans">
+                      <span class="text-slate-400">当期未偿存量:</span>
+                      <span class="text-white font-bold">$${data.value} 亿</span>
+                    </div>
+                    <div class="flex justify-between font-sans">
+                      <span class="text-slate-400">美元计价份额:</span>
+                      <span class="text-slate-300 font-semibold">${Math.round((data.usdVol / Math.max(1, data.value)) * 100)}%</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 border-t border-white/5 pt-1 mt-1 font-sans">
+                      口径: 经汇率及断点调整后期间净金融流向 (Flows)
+                    </div>
+                  </div>
+                </div>
+              `;
+            }
+
             return `
               <div class="font-sans min-w-[200px]">
                 <div class="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
                   <span class="font-semibold text-white">${data.fromName} → ${data.toName}</span>
-                  <span class="text-[10px] text-sky-400 font-mono">双边信贷</span>
+                  <span class="text-[10px] text-sky-400 bg-sky-500/10 border border-sky-500/30 font-mono px-1.5 py-0.5 rounded">未偿存量</span>
                 </div>
                 <div class="space-y-1 text-xs font-mono">
                   <div class="flex justify-between font-sans">
-                    <span class="text-slate-400">债权规模:</span>
+                    <span class="text-slate-400">债权存量规模:</span>
                     <span class="text-white font-bold">$${data.value} 亿</span>
                   </div>
                   <div class="flex justify-between font-sans">
@@ -332,6 +432,9 @@ export default function CapitalFlowMap({
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">美元计价份额:</span>
                     <span class="text-slate-300 font-semibold">${Math.round((data.usdVol / data.value) * 100)}%</span>
+                  </div>
+                  <div class="text-[10px] text-slate-500 border-t border-white/5 pt-1 mt-1 font-sans">
+                    口径: BIS LBS 申报国未偿跨境债权存量资产 (Positions)
                   </div>
                 </div>
               </div>
@@ -446,11 +549,13 @@ export default function CapitalFlowMap({
           silent: true,
           effect: {
             show: true,
-            period: 6.0, // Calm, eased glide
+            period: flowMode === 'flows' ? 5.2 : 6.0, // Calm, eased glide
             trailLength: 0.16, // Subtle meteor tail
             symbol: 'circle',
-            symbolSize: 3.0,
-            color: 'rgba(255, 255, 255, 0.92)'
+            symbolSize: flowMode === 'flows' ? 3.4 : 3.0,
+            color: flowMode === 'flows'
+              ? (p) => (p && p.data && p.data.isExpansion ? '#34d399' : '#fb7185')
+              : 'rgba(255, 255, 255, 0.92)'
           },
           lineStyle: {
             width: 0,
@@ -479,7 +584,7 @@ export default function CapitalFlowMap({
       notMerge: false,
       lazyUpdate: true
     });
-  }, [selectedQuarter, selectedCountry, corridorDensity, metricView, mapLoaded, focusCountry, geoPreset, showLabels]);
+  }, [selectedQuarter, selectedCountry, corridorDensity, metricView, mapLoaded, focusCountry, geoPreset, showLabels, flowMode, linksWithFlow]);
 
   // Full 28-Quarter Macro Historical Scrubber Chart (2018Q1 - 2024Q4)
   useEffect(() => {
@@ -644,8 +749,19 @@ export default function CapitalFlowMap({
     };
   }, [selectedCorridor, currentLinks]);
 
-  // Top 5 Bilateral Corridors for the selected quarter
+  // Top 5 Bilateral Corridors for the selected quarter (Positions vs Flows)
   const topCorridors = useMemo(() => {
+    if (flowMode === 'flows') {
+      return [...linksWithFlow]
+        .sort((a, b) => Math.abs(b.netChange) - Math.abs(a.netChange))
+        .slice(0, 5)
+        .map(l => ({
+          ...l,
+          fromName: countryMap[l.source]?.name_zh || l.source,
+          toName: countryMap[l.target]?.name_zh || l.target,
+          usdShare: Math.round((l.usd_denominated_bn / Math.max(1, l.claims_usd_bn)) * 100)
+        }));
+    }
     return [...currentLinks]
       .sort((a, b) => b.claims_usd_bn - a.claims_usd_bn)
       .slice(0, 5)
@@ -655,7 +771,7 @@ export default function CapitalFlowMap({
         toName: countryMap[l.target]?.name_zh || l.target,
         usdShare: Math.round((l.usd_denominated_bn / Math.max(1, l.claims_usd_bn)) * 100)
       }));
-  }, [currentLinks, countryMap]);
+  }, [flowMode, linksWithFlow, currentLinks, countryMap]);
 
   // Global net creditor and debtor poles
   const netPositions = useMemo(() => {
@@ -804,22 +920,68 @@ export default function CapitalFlowMap({
             <Radio className="w-4 h-4 animate-pulse text-sky-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-sm md:text-base font-semibold text-white tracking-wide">
                 全球双边跨国信贷流向图谱
               </h2>
               <span className="text-[11px] font-mono bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full">
                 {selectedQuarter}
               </span>
+              <DataClassificationBadge
+                classification={selectedQuarter > '2026Q2' ? 'NOWCAST_PREDICTION' : 'MODEL_RECONSTRUCTED'}
+                sourceText={selectedQuarter > '2026Q2' ? '动态引力外推' : '总量锚定 BIS LBS Table A6.2'}
+                methodText={selectedQuarter > '2026Q2' ? '95% CI: ±1.4%' : '最大熵 RAS 模型平衡重构'}
+                onOpenAppendix={onOpenAppendix}
+              />
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              光子速率与测地线弧宽映射 BIS 官方居住地统计 (LBS) · 优雅双向曲率杜绝重叠乱线
+            <p className="text-xs text-slate-400 mt-1 flex items-center gap-2 flex-wrap font-sans">
+              <span>
+                {flowMode === 'positions' 
+                  ? '当前模式: 期末未偿存量 (Amounts Outstanding) · 呈现总资产与敞口深度' 
+                  : '当前模式: 季度调整后变化 (Adjusted Net Flows) · 绿色为净借出，红色为偿还去杠杆'}
+              </span>
+              <span className="text-slate-600 hidden sm:inline">·</span>
+              <span className="text-slate-500 hidden sm:inline">双向曲率测地线防重叠</span>
             </p>
           </div>
         </div>
 
         {/* Refined Functional Controls */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Mode Switcher: Positions (Stocks) vs Flows */}
+          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-xl p-1 text-xs shadow-sm">
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                setFlowMode('positions');
+              }}
+              className={`px-2.5 py-1 rounded-lg transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 ${
+                flowMode === 'positions'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="BIS LBS 期末未偿信贷存量 (Amounts Outstanding) · 呈现总资产与敞口深度"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>期末存量 (Positions)</span>
+            </button>
+            <button
+              onClick={() => {
+                soundFx.playChime();
+                setFlowMode('flows');
+              }}
+              className={`px-2.5 py-1 rounded-lg transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 ${
+                flowMode === 'flows'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="BIS LBS 经汇率及断点调整后净变动 (Adjusted Changes / Flows) · 呈现当季净扩张或收缩流向"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300" />
+              <span>季度调整后变化 (Flows)</span>
+            </button>
+          </div>
+
           {/* 2D Flat vs 3D Globe Projection Switcher */}
           <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-xl p-1 text-xs shadow-sm">
             <button
@@ -1107,11 +1269,11 @@ export default function CapitalFlowMap({
           <div className="glass-panel rounded-2xl p-4 shadow-xl border border-white/[0.06] flex-1">
             <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-3">
               <div className="flex items-center gap-2">
-                <span className="p-1 rounded-lg bg-sky-500/20 text-sky-400">
-                  <ArrowRight className="w-3.5 h-3.5" />
+                <span className={`p-1 rounded-lg ${flowMode === 'flows' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-sky-500/20 text-sky-400'}`}>
+                  {flowMode === 'flows' ? <Zap className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                 </span>
                 <h4 className="text-xs font-bold text-white tracking-wide">
-                  当季核心信贷动脉 Top 5
+                  {flowMode === 'flows' ? '当季最大变动走廊 Top 5 (净流量)' : '当季核心信贷动脉 Top 5 (存量)'}
                 </h4>
               </div>
               <span className="text-[10px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/30">
@@ -1143,21 +1305,28 @@ export default function CapitalFlowMap({
                       <span className="text-slate-500">→</span>
                       <span>{c.toName}</span>
                     </div>
-                    <span className="font-mono font-bold text-white text-xs">
-                      ${c.claims_usd_bn} <span className="text-[10px] text-slate-400 font-normal">亿</span>
-                    </span>
+                    {flowMode === 'flows' ? (
+                      <span className={`font-mono font-bold text-xs ${c.netChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {c.netChange >= 0 ? '+' : ''}${c.netChange} <span className="text-[10px] text-slate-400 font-normal">亿 ({c.netChangePct >= 0 ? '+' : ''}{c.netChangePct}%)</span>
+                      </span>
+                    ) : (
+                      <span className="font-mono font-bold text-white text-xs">
+                        ${c.claims_usd_bn} <span className="text-[10px] text-slate-400 font-normal">亿</span>
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between mt-1.5 text-[10px] text-slate-400 font-mono">
                     <span className="flex items-center gap-1">
-                      <DollarSign className="w-2.5 h-2.5 text-emerald-400" /> 美元占比: {c.usdShare}%
+                      <DollarSign className="w-2.5 h-2.5 text-emerald-400" /> 
+                      {flowMode === 'flows' ? `存量基数: $${c.claims_usd_bn} 亿` : `美元占比: ${c.usdShare}%`}
                     </span>
                     <span className="text-emerald-400 font-semibold">${c.usd_denominated_bn} 亿</span>
                   </div>
                   <div className="w-full h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
                     <div 
-                      className="h-full bg-gradient-to-r from-sky-500 to-emerald-400" 
-                      style={{ width: `${Math.min(100, c.usdShare)}%` }} 
+                      className={`h-full ${flowMode === 'flows' ? (c.netChange >= 0 ? 'bg-emerald-400' : 'bg-rose-400') : 'bg-gradient-to-r from-sky-500 to-emerald-400'}`} 
+                      style={{ width: `${Math.min(100, Math.max(15, c.usdShare))}%` }} 
                     />
                   </div>
                 </div>
@@ -1262,11 +1431,11 @@ export default function CapitalFlowMap({
                     ? 'text-purple-300 bg-purple-500/15 border-purple-500/35 shadow-[0_0_8px_rgba(168,85,247,0.25)]' 
                     : 'text-sky-300 bg-sky-500/10 border-sky-500/30'
                 }`}>
-                  当前处于: {selectedQuarter} {selectedQuarter > '2026Q2' ? '[NOWCAST 临近预测]' : '[BIS 官方观测]'}
+                  当前处于: {selectedQuarter} {selectedQuarter > '2026Q2' ? '[NOWCAST 临近预测]' : '[官方总量锚定 · 模型分配]'}
                 </span>
               </h3>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                点击折线或柱状图任意季度，地图将以 60 FPS 动态重算并变形为该季度的真实双边信贷网络
+                点击折线或柱状图任意季度，地图将动态重算并渲染该季度的双边信贷重构网络
               </p>
             </div>
           </div>
@@ -1276,7 +1445,7 @@ export default function CapitalFlowMap({
             <span className="text-slate-600">·</span>
             <span className="text-emerald-400 font-semibold">2026Q2 官方: $47.82T</span>
             <span className="text-slate-600">·</span>
-            <span className="text-purple-400 font-semibold">2026Q4 Nowcast: ~$48.60T</span>
+            <span className="text-purple-400 font-semibold">2026Q4 Nowcast: ~$48.60T (95% CI: $47.90T–$49.30T)</span>
           </div>
         </div>
 
@@ -1305,11 +1474,38 @@ export default function CapitalFlowMap({
         {/* ECharts Scrubber Chart */}
         <div ref={timelineChartRef} className="w-full h-44" />
 
+        {/* BIS LBS Methodology Positions vs Flows Callout */}
+        <div className="bg-slate-900/70 rounded-xl p-3 border border-slate-800 text-[11px] text-slate-400 space-y-1.5 font-mono">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-slate-300">
+            <span className="font-semibold text-white flex items-center gap-1.5">
+              <Info className="w-3.5 h-3.5 text-sky-400" />
+              BIS LBS 存量与流量口径释义 (Positions vs Flows Methodology):
+            </span>
+            <span className="text-slate-500">
+              参考规范: <a href="https://data.bis.org/topics/LBS" target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">BIS LBS Guidelines</a>
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-400 font-sans">
+            <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+              <strong className="text-sky-300 font-mono">📊 期末未偿存量 (Positions / Amounts Outstanding):</strong>
+              <p className="mt-0.5 text-slate-400 leading-relaxed">
+                代表每季度末申报国跨国银行对对手方的跨境总债权资产余额。反映国际金融网络的总敞口深度与中枢连通度。
+              </p>
+            </div>
+            <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+              <strong className="text-emerald-300 font-mono">🌊 季度调整后变化 (Break- and FX-Adjusted Changes):</strong>
+              <p className="mt-0.5 text-slate-400 leading-relaxed">
+                剔除各币种汇率剧烈波动及样本统计断点影响后的净金融交易流量（Net Flows）。绿色代表信贷扩张，红色代表偿还去杠杆。
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Methodology & Data Attribution Footnote */}
         <MethodologyFootnote
           source="BIS LBS Table A6.2 (Locational Banking Statistics by Residence)"
           accounting="常住地即时交易对手原则 (Immediate Counterparty Basis)"
-          model="最大熵矩阵平衡 (RAS Entropy Balancing)"
+          model={selectedQuarter > '2026Q2' ? "动态空间引力外推 (Gravity Nowcast v2.4)" : "最大熵矩阵平衡 (RAS Entropy Balancing)"}
           onOpenAppendix={onOpenAppendix}
         />
       </div>

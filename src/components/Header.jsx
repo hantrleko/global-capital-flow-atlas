@@ -159,7 +159,7 @@ export default function Header({
               {selectedQuarter > '2026Q2' ? (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(168,85,247,0.25)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                  [NOWCAST 临近预报] 动态引力外推 (95% CI: ±1.2%)
+                  [NOWCAST 临近预报] 动态引力外推 · 95% CI: $47.90T–$49.30T (±1.4%)
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(16,185,129,0.25)]">

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import MethodologyFootnote from './MethodologyFootnote';
+import DataClassificationBadge from './DataClassificationBadge';
 
 export default function NetworkContagionSimulator({
   dataset,
@@ -278,14 +279,22 @@ export default function NetworkContagionSimulator({
             <AlertOctagon className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              全球跨国银行网络系统性风险与传染扩散模拟器 (Eisenberg-Noe Contagion Cascade)
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                全球跨国银行网络系统性风险与传染扩散模拟器 (Eisenberg-Noe Contagion Cascade)
+              </h2>
               <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                 {selectedQuarter}
               </span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              基于 BIS 官方双边有向网络，推演某经济体违约或资本减记时，跨国银行一级资本的直接损失、去杠杆外溢与美元流动性短缺
+              <DataClassificationBadge
+                classification="STRESS_SIMULATION"
+                sourceText="模型重构双边资产负债基准"
+                methodText="Eisenberg & Noe (2001) 级联违约清算"
+                onOpenAppendix={onOpenAppendix}
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              基于模型重构之双边有向信贷网络，反事实推演某经济体违约或资本减记时，跨国银行一级资本的直接损失、去杠杆外溢与连锁流动性挤兑
             </p>
           </div>
         </div>

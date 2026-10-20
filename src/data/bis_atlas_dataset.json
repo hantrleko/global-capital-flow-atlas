@@ -1192,7 +1192,7 @@
     {
       "quarter": "2026Q3",
       "is_nowcast": true,
-      "data_vintage": "Atlas Dynamic Nowcast v2.4 (95% CI: +/-1.2%)",
+      "data_vintage": "Atlas Dynamic Nowcast v2.4 (95% CI: $47.90T-$49.30T, +/-1.4%)",
       "observation_status": "NOWCAST_ESTIMATE",
       "total_cross_border_claims_usd_bn": 48200.0,
       "total_usd_cross_border_bn": 21593.6,
@@ -1210,7 +1210,7 @@
     {
       "quarter": "2026Q4",
       "is_nowcast": true,
-      "data_vintage": "Atlas Dynamic Nowcast v2.4 (95% CI: +/-1.2%)",
+      "data_vintage": "Atlas Dynamic Nowcast v2.4 (95% CI: $47.90T-$49.30T, +/-1.4%)",
       "observation_status": "NOWCAST_ESTIMATE",
       "total_cross_border_claims_usd_bn": 48600.0,
       "total_usd_cross_border_bn": 21529.8,
