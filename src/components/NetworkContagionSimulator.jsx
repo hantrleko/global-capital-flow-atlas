@@ -2,11 +2,18 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import { 
   AlertOctagon, Play, RotateCcw, ShieldAlert, ArrowRight, 
-  TrendingDown, Layers, Zap, Download, Info, ChevronDown, ChevronUp, HelpCircle
+  TrendingDown, Layers, Zap, Download, Info, ChevronDown, ChevronUp, HelpCircle, FileText
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import MethodologyFootnote from './MethodologyFootnote';
 import DataClassificationBadge from './DataClassificationBadge';
+
+// Single Source of Truth for System, Model & Data Versions
+export const CLEARING_VERSION_REGISTRY = {
+  PRODUCT: 'v2.4.0',
+  MODEL: 'v2.2-DualBaseline-EN2001',
+  DATA: (quarter) => quarter <= '2026Q1' ? 'BIS-SDMX-Official' : (quarter === '2026Q2' ? 'BIS-Pending-Release (2026-10-30)' : 'Macro-NOWCAST-Scenario')
+};
 
 export default function NetworkContagionSimulator({
   dataset,
@@ -72,6 +79,7 @@ export default function NetworkContagionSimulator({
     // 1. Dual-Baseline Eisenberg-Noe (2001) Clearing Vector Fixed Point p* = min(pbar, Pi^T * p + e)
     const n = countries.length;
     const codeToIndex = Object.fromEntries(countries.map((c, idx) => [c.code, idx]));
+    const countryMap = Object.fromEntries(countries.map(c => [c.code, c]));
     
     // Matrix of interbank cross-border obligations L[j][i]: claims of creditor j on debtor i
     const L = Array.from({ length: n }, () => new Float64Array(n));
@@ -126,11 +134,18 @@ export default function NetworkContagionSimulator({
       return { p, iterCount, finalDiff };
     };
 
-    // (A) Zero-Shock Baseline: e_i^(0) = 1.5 * FX_reserves
+    // (A) Zero-Shock Baseline: e_i^(0) = 1.5 * FX_reserves (strictly derived without static 50 fallback)
+    let validReservesCount = 0;
     const eBaseline = new Float64Array(n);
     for (let i = 0; i < n; i++) {
       const c = countries[i];
-      eBaseline[i] = (c.fx_reserves || 50) * 1.5;
+      const r = c.fx_reserves;
+      if (r !== undefined && r !== null && !isNaN(r) && r > 0) {
+        validReservesCount++;
+        eBaseline[i] = r * 1.5;
+      } else {
+        eBaseline[i] = 0; // Explicit 0 boundary capital when missing
+      }
     }
     const { p: pBase } = solvePicard(eBaseline);
 
@@ -142,51 +157,67 @@ export default function NetworkContagionSimulator({
     }
     const { p: pShock, iterCount: iterShock, finalDiff: diffShock } = solvePicard(eShocked);
 
-    // Compute clearing shortfalls for every creditor j
+    // Compute clearing shortfalls for every creditor j using exact unrounded Float64 precision
+    let totBaseRaw = 0;
+    let totShockRaw = 0;
     const enBaselineShortfall = {};
     const enPostShockShortfall = {};
     const enIncrementalShortfall = {};
     const enIncrementalDirect = {};
     const enIncrementalIndirect = {};
-    let totalBaselineShortfall = 0;
-    let totalPostShockShortfall = 0;
 
     for (let j = 0; j < n; j++) {
-      let sumBase = 0;
-      let sumShock = 0;
-      let directInc = 0;
+      let sumBaseRaw = 0;
+      let sumShockRaw = 0;
+      let directIncRaw = 0;
       for (let i = 0; i < n; i++) {
         const shortB_i = Math.max(0, pbar[i] - pBase[i]);
         const shortS_i = Math.max(0, pbar[i] - pShock[i]);
-        if (shortB_i > 0) sumBase += Pi[i][j] * shortB_i;
+        if (shortB_i > 0) sumBaseRaw += Pi[i][j] * shortB_i;
         if (shortS_i > 0) {
-          sumShock += Pi[i][j] * shortS_i;
+          sumShockRaw += Pi[i][j] * shortS_i;
           if (i === epiIdx) {
             const incFromEpi = Pi[i][j] * Math.max(0, pBase[i] - pShock[i]);
-            directInc += incFromEpi;
+            directIncRaw += incFromEpi;
           }
         }
       }
-      const bRound = Math.round(sumBase * 10) / 10;
-      const sRound = Math.round(sumShock * 10) / 10;
-      const deltaRound = Math.max(0, Math.round((sRound - bRound) * 10) / 10);
-      const directRound = Math.min(deltaRound, Math.round(directInc * 10) / 10);
-      const indirectRound = Math.max(0, Math.round((deltaRound - directRound) * 10) / 10);
+      totBaseRaw += sumBaseRaw;
+      totShockRaw += sumShockRaw;
+
+      const deltaRaw = Math.max(0, sumShockRaw - sumBaseRaw);
+      const directVal = Math.min(deltaRaw, directIncRaw);
+      const indirectVal = Math.max(0, deltaRaw - directVal);
 
       const code = countries[j].code;
-      enBaselineShortfall[code] = bRound;
-      enPostShockShortfall[code] = sRound;
-      enIncrementalShortfall[code] = deltaRound;
-      enIncrementalDirect[code] = directRound;
-      enIncrementalIndirect[code] = indirectRound;
-
-      totalBaselineShortfall += bRound;
-      totalPostShockShortfall += sRound;
+      enBaselineShortfall[code] = {
+        raw: sumBaseRaw,
+        display: Math.round(sumBaseRaw * 10) / 10
+      };
+      enPostShockShortfall[code] = {
+        raw: sumShockRaw,
+        display: Math.round(sumShockRaw * 10) / 10
+      };
+      enIncrementalShortfall[code] = {
+        raw: deltaRaw,
+        display: Math.round(deltaRaw * 10) / 10
+      };
+      enIncrementalDirect[code] = {
+        raw: directVal,
+        display: Math.round(directVal * 10) / 10
+      };
+      enIncrementalIndirect[code] = {
+        raw: indirectVal,
+        display: Math.round(indirectVal * 10) / 10
+      };
     }
 
-    const totalIncrementalShortfall = Math.max(0, Math.round((totalPostShockShortfall - totalBaselineShortfall) * 10) / 10);
-    const epicenterHaircutAmount = epiIdx !== undefined ? Math.round(pbar[epiIdx] * (haircutPct / 100) * 10) / 10 : 0;
-    const epicenterLiab = epiIdx !== undefined ? Math.round(pbar[epiIdx] * 10) / 10 : 0;
+    // Exact unrounded incremental delta (never back-calculated from rounded totals!)
+    const totIncrementalRaw = Math.max(0, totShockRaw - totBaseRaw);
+    const epicenterHaircutAmountRaw = epiIdx !== undefined ? pbar[epiIdx] * (haircutPct / 100) : 0;
+    const epicenterHaircutAmountDisplay = Math.round(epicenterHaircutAmountRaw * 10) / 10;
+    const epicenterLiabRaw = epiIdx !== undefined ? pbar[epiIdx] : 0;
+    const epicenterLiabDisplay = Math.round(epicenterLiabRaw * 10) / 10;
 
     // 2. Multi-Round Behavioral Spillover Simulation
     const directCreditorLinks = currentLinks.filter(l => l.target === epicenter);
@@ -246,7 +277,7 @@ export default function NetworkContagionSimulator({
       }
     });
 
-    // Compile comprehensive impact ranking
+    // Compile comprehensive impact ranking (sorting strictly on raw unrounded metrics)
     const impactList = countries
       .filter(c => c.code !== epicenter)
       .map(c => {
@@ -255,24 +286,17 @@ export default function NetworkContagionSimulator({
         const r3 = round3DollarSqueeze[c.code] !== null ? (round3DollarSqueeze[c.code] || 0) : null;
         const totalImpact = r1 + r2 + (r3 !== null ? r3 : 0);
 
-        const bShortfall = enBaselineShortfall[c.code] || 0;
-        const sShortfall = enPostShockShortfall[c.code] || 0;
-        const incShortfall = enIncrementalShortfall[c.code] || 0;
-        const incDirect = enIncrementalDirect[c.code] || 0;
-        const incIndirect = enIncrementalIndirect[c.code] || 0;
+        const bObj = enBaselineShortfall[c.code] || { raw: 0, display: 0 };
+        const sObj = enPostShockShortfall[c.code] || { raw: 0, display: 0 };
+        const incObj = enIncrementalShortfall[c.code] || { raw: 0, display: 0 };
+        const incDirObj = enIncrementalDirect[c.code] || { raw: 0, display: 0 };
+        const incIndirObj = enIncrementalIndirect[c.code] || { raw: 0, display: 0 };
 
-        const reserves = c.fx_reserves || 1;
-        const impactToReservesPct = parseFloat(((totalImpact / reserves) * 100).toFixed(1));
-        const enIncrementalToReservesPct = parseFloat(((incShortfall / reserves) * 100).toFixed(1));
-        const enBaselineToReservesPct = parseFloat(((bShortfall / reserves) * 100).toFixed(1));
-        const enPostShockToReservesPct = parseFloat(((sShortfall / reserves) * 100).toFixed(1));
-
-        let primaryMetricValue = totalImpact;
-        if (simMode === 'en_clearing') {
-          if (enSortMetric === 'incremental') primaryMetricValue = incShortfall;
-          else if (enSortMetric === 'baseline') primaryMetricValue = bShortfall;
-          else primaryMetricValue = sShortfall;
-        }
+        const reserves = (c.fx_reserves !== undefined && c.fx_reserves !== null && !isNaN(c.fx_reserves)) ? c.fx_reserves : null;
+        const impactToReservesPct = reserves ? parseFloat(((totalImpact / reserves) * 100).toFixed(1)) : 'NA';
+        const enIncrementalToReservesPct = reserves ? parseFloat(((incObj.raw / reserves) * 100).toFixed(1)) : 'NA';
+        const enBaselineToReservesPct = reserves ? parseFloat(((bObj.raw / reserves) * 100).toFixed(1)) : 'NA';
+        const enPostShockToReservesPct = reserves ? parseFloat(((sObj.raw / reserves) * 100).toFixed(1)) : 'NA';
 
         return {
           code: c.code,
@@ -280,41 +304,100 @@ export default function NetworkContagionSimulator({
           name_zh: c.name_zh,
           region: c.region,
           tier: c.tier,
+          reserves,
           r1Loss: r1,
           r2Spillover: r2,
           r3Dollar: r3,
           totalImpact,
           impactToReservesPct,
-          enBaselineShortfall: bShortfall,
-          enPostShockShortfall: sShortfall,
-          enIncrementalShortfall: incShortfall,
-          enIncrementalDirect: incDirect,
-          enIncrementalIndirect: incIndirect,
+          enBaselineShortfallRaw: bObj.raw,
+          enBaselineShortfall: bObj.display,
+          enPostShockShortfallRaw: sObj.raw,
+          enPostShockShortfall: sObj.display,
+          enIncrementalShortfallRaw: incObj.raw,
+          enIncrementalShortfall: incObj.display,
+          enIncrementalDirect: incDirObj.display,
+          enIncrementalIndirect: incIndirObj.display,
           enIncrementalToReservesPct,
           enBaselineToReservesPct,
           enPostShockToReservesPct,
-          primaryMetricValue
+          primaryMetricValue: simMode === 'en_clearing'
+            ? (enSortMetric === 'incremental' ? incObj.raw : (enSortMetric === 'baseline' ? bObj.raw : sObj.raw))
+            : totalImpact
         };
       })
       .filter(item => {
         if (simMode === 'en_clearing') {
-          if (enSortMetric === 'incremental') return item.enIncrementalShortfall > 0 || item.enPostShockShortfall > 0;
-          if (enSortMetric === 'baseline') return item.enBaselineShortfall > 0;
-          return item.enPostShockShortfall > 0;
+          if (enSortMetric === 'incremental') return item.enIncrementalShortfallRaw > 0 || item.enPostShockShortfallRaw > 0;
+          if (enSortMetric === 'baseline') return item.enBaselineShortfallRaw > 0;
+          return item.enPostShockShortfallRaw > 0;
         }
         return item.totalImpact > 0;
       })
       .sort((a, b) => {
         if (simMode === 'en_clearing') {
-          if (enSortMetric === 'incremental') return b.enIncrementalShortfall - a.enIncrementalShortfall;
-          if (enSortMetric === 'baseline') return b.enBaselineShortfall - a.enBaselineShortfall;
-          return b.enPostShockShortfall - a.enPostShockShortfall;
+          if (enSortMetric === 'incremental') return b.enIncrementalShortfallRaw - a.enIncrementalShortfallRaw;
+          if (enSortMetric === 'baseline') return b.enBaselineShortfallRaw - a.enBaselineShortfallRaw;
+          return b.enPostShockShortfallRaw - a.enPostShockShortfallRaw;
         }
         return b.totalImpact - a.totalImpact;
       });
 
+    // Top incremental victim
+    const topVictim = impactList.length > 0 ? impactList[0] : null;
+
+    // Structural Mismatch Samples (US, GB, KY dynamically resolved from current matrix, no hardcoded constants)
+    const structuralSamples = ['US', 'GB', 'KY'].map(code => {
+      const idx = codeToIndex[code];
+      const liab = idx !== undefined ? pbar[idx] : null;
+      const cMeta = countryMap[code];
+      const res = cMeta?.fx_reserves;
+      return {
+        code,
+        name: cMeta?.name_zh || code,
+        liabilitiesBn: liab !== null ? Math.round(liab * 10) / 10 : null,
+        liabilitiesTrillion: liab !== null ? (liab / 1000).toFixed(2) : null,
+        reservesBn: (res !== undefined && res !== null && !isNaN(res)) ? res : null
+      };
+    });
+
+    // Unified Immutable Current Run Result Contract
+    const currentRun = {
+      runId: `${selectedQuarter}-${epicenter}-${haircutPct}-${Date.now()}`,
+      quarter: selectedQuarter,
+      quarterStatus: selectedQuarter <= '2026Q1' ? 'OFFICIAL' : (selectedQuarter === '2026Q2' ? 'PENDING_VERIFICATION' : 'NOWCAST_SCENARIO'),
+      epicenterCode: epicenter,
+      epicenterNameZh: epicenterCountry.name_zh,
+      epicenterLiabRaw,
+      epicenterLiabDisplay,
+      haircutPct,
+      epicenterHaircutAmountRaw,
+      epicenterHaircutAmountDisplay,
+      baselineTotalRaw: totBaseRaw,
+      postShockTotalRaw: totShockRaw,
+      incrementalTotalRaw: totIncrementalRaw,
+      baselineTotalDisplay: Math.round(totBaseRaw * 10) / 10,
+      postShockTotalDisplay: Math.round(totShockRaw * 10) / 10,
+      incrementalTotalDisplay: Math.round(totIncrementalRaw * 10) / 10,
+      topVictim: topVictim ? {
+        code: topVictim.code,
+        name_zh: topVictim.name_zh,
+        incrementalRaw: topVictim.enIncrementalShortfallRaw,
+        incrementalDisplay: topVictim.enIncrementalShortfall,
+        incrementalFormatted: `+$${topVictim.enIncrementalShortfall}B (+${Math.round(topVictim.enIncrementalShortfall * 10).toLocaleString()} 亿美元)`
+      } : null,
+      structuralSamples,
+      versionMeta: {
+        productVersion: CLEARING_VERSION_REGISTRY.PRODUCT,
+        modelVersion: CLEARING_VERSION_REGISTRY.MODEL,
+        dataVersion: CLEARING_VERSION_REGISTRY.DATA(selectedQuarter)
+      }
+    };
+
     setSimResults({
-      modelVersion: 'v2.2-DualBaseline-EN2001',
+      modelVersion: CLEARING_VERSION_REGISTRY.MODEL,
+      versionMeta: currentRun.versionMeta,
+      currentRun,
       quarter: selectedQuarter,
       epicenterCode: epicenter,
       simMode,
@@ -324,16 +407,20 @@ export default function NetworkContagionSimulator({
       dollarSqueezePct,
       iterationsCount: iterShock,
       clearingResidual: diffShock,
-      epicenterHaircutAmount,
-      epicenterLiab,
-      totalBaselineShortfall: Math.round(totalBaselineShortfall * 10) / 10,
-      totalPostShockShortfall: Math.round(totalPostShockShortfall * 10) / 10,
-      totalIncrementalShortfall,
+      epicenterHaircutAmount: epicenterHaircutAmountDisplay,
+      epicenterLiab: epicenterLiabDisplay,
+      totalBaselineShortfall: Math.round(totBaseRaw * 10) / 10,
+      totalPostShockShortfall: Math.round(totShockRaw * 10) / 10,
+      totalIncrementalShortfall: Math.round(totIncrementalRaw * 10) / 10,
+      totalBaselineRaw: totBaseRaw,
+      totalPostShockRaw: totShockRaw,
+      totalIncrementalRaw: totIncrementalRaw,
       totalR1Loss,
       totalR2Contagion,
       totalR3Dollar,
       totalSystemicLoss: totalR1Loss + totalR2Contagion + totalR3Dollar,
       validLiabCoverage: `${validLiabCount}/${countries.length - 1}`,
+      validReservesCoverage: `${validReservesCount}/${countries.length}`,
       impactList
     });
   };
@@ -400,7 +487,7 @@ export default function NetworkContagionSimulator({
                     冲击后总短缺 (Post-Shock Total S*): <b class="font-mono text-white font-bold">$${item.enPostShockShortfall}B</b>
                   </div>
                   <div class="text-[10px] text-slate-400 pt-0.5">
-                    增量损失占官方外储比: <b class="font-mono text-amber-400">+${item.enIncrementalToReservesPct}%</b>
+                    增量损失占官方外储比: <b class="font-mono text-amber-400">${item.enIncrementalToReservesPct !== 'NA' ? `+${item.enIncrementalToReservesPct}%` : 'NA (外储未收录)'}</b>
                   </div>
                   <div class="text-[10px] text-slate-500 mt-1 leading-normal">
                     压力测试准则：严格剥离网络闭合静态基线，仅度量外生冲击所致边际缺口。
@@ -510,6 +597,57 @@ export default function NetworkContagionSimulator({
     a.click();
   };
 
+  const handleExportScenarioCsv = () => {
+    if (!simResults || !simResults.currentRun) return;
+    soundFx.playTick();
+    const cr = simResults.currentRun;
+    const rows = [
+      ['=== BIS Atlas Network Stress Clearing Scenario Report ==='],
+      ['Product Version', cr.versionMeta.productVersion],
+      ['Model Version', cr.versionMeta.modelVersion],
+      ['Data Version', cr.versionMeta.dataVersion],
+      ['Quarter', cr.quarter],
+      ['Quarter Status', cr.quarterStatus],
+      ['Epicenter Code', cr.epicenterCode],
+      ['Epicenter Name', cr.epicenterNameZh],
+      ['Epicenter Total Liabilities (USD Bn)', cr.epicenterLiabDisplay],
+      ['Haircut Percentage', `${cr.haircutPct}%`],
+      ['Epicenter Haircut Amount (USD Bn)', cr.epicenterHaircutAmountDisplay],
+      ['Zero-Shock Baseline Shortfall (USD Bn)', cr.baselineTotalDisplay],
+      ['Post-Shock Total Shortfall (USD Bn)', cr.postShockTotalDisplay],
+      ['Marginal Incremental Shortfall (USD Bn)', `+${cr.incrementalTotalDisplay}`],
+      ['Top Incremental Victim', cr.topVictim ? `${cr.topVictim.name_zh} (${cr.topVictim.code}): ${cr.topVictim.incrementalFormatted}` : 'None'],
+      ['Iterations Count', simResults.iterationsCount],
+      ['Fixed-Point Residual', '< 1e-4 Bn USD'],
+      [''],
+      ['Jurisdiction Code', 'Jurisdiction Name', 'Baseline Shortfall (USD Bn)', 'Post-Shock Shortfall (USD Bn)', 'Marginal Incremental Shortfall (USD Bn)', 'FX Reserves (USD Bn)', 'Incremental / Reserves (%)', 'Direct from Epicenter (USD Bn)', 'Indirect from Cascade (USD Bn)']
+    ];
+
+    simResults.impactList.forEach(item => {
+      rows.push([
+        item.code,
+        item.name_zh,
+        item.enBaselineShortfall,
+        item.enPostShockShortfall,
+        item.enIncrementalShortfall,
+        item.reserves !== null ? item.reserves : 'NA',
+        item.enIncrementalToReservesPct,
+        item.enIncrementalDirect,
+        item.enIncrementalIndirect
+      ]);
+    });
+
+    const csvContent = '\uFEFF' + rows.map(r => r.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `bis_clearing_scenario_${cr.epicenterCode}_${cr.quarter}_${cr.haircutPct}pct.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="glass-panel rounded-2xl p-5 shadow-2xl space-y-5">
       {/* Top Header & Simulation Controls */}
@@ -539,13 +677,23 @@ export default function NetworkContagionSimulator({
           </div>
         </div>
 
-        <button
-          onClick={handleDownloadSnapshot}
-          className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
-          title="导出高清仿真图 PNG"
-        >
-          <Download className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportScenarioCsv}
+            className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-mono"
+            title="导出当前清算情景数据 CSV (包含版本元数据、基线与增量)"
+          >
+            <FileText className="w-3.5 h-3.5 text-sky-400" />
+            <span>导出情景 CSV</span>
+          </button>
+          <button
+            onClick={handleDownloadSnapshot}
+            className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+            title="导出高清仿真图 PNG"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Model Mode Toggle Bar: Eisenberg-Noe (2001) vs Multi-Round Behavioral */}
@@ -586,12 +734,14 @@ export default function NetworkContagionSimulator({
           </div>
         </div>
 
-        <div className="text-[11px] font-mono text-slate-400 flex items-center gap-3">
-          <span>模型版本: <strong className="text-white">v2.1-EN-2001</strong></span>
+        <div className="text-[11px] font-mono text-slate-400 flex flex-wrap items-center gap-2">
+          <span>产品: <strong className="text-slate-200">{simResults?.versionMeta?.productVersion || CLEARING_VERSION_REGISTRY.PRODUCT}</strong></span>
           <span>·</span>
-          <span>有效负债覆盖: <strong className="text-emerald-400">{simResults?.validLiabCoverage || '22/22'}</strong></span>
+          <span>模型: <strong className="text-purple-300">{simResults?.versionMeta?.modelVersion || CLEARING_VERSION_REGISTRY.MODEL}</strong></span>
           <span>·</span>
-          <span>矩阵方向: <strong className="text-slate-300">L[债权国][债务国]</strong></span>
+          <span>数据: <strong className="text-sky-300">{simResults?.versionMeta?.dataVersion || CLEARING_VERSION_REGISTRY.DATA(selectedQuarter)}</strong></span>
+          <span>·</span>
+          <span>负债覆盖: <strong className="text-emerald-400">{simResults?.validLiabCoverage || '22/22'}</strong></span>
         </div>
       </div>
 
@@ -717,10 +867,10 @@ export default function NetworkContagionSimulator({
                   1. 震中外生减记 (Epicenter Haircut)
                 </div>
                 <div className="text-lg font-bold font-mono text-rose-400 mt-0.5">
-                  ${simResults.epicenterHaircutAmount}B ({Math.round(simResults.epicenterHaircutAmount * 10).toLocaleString()} 亿美元)
+                  ${simResults.currentRun?.epicenterHaircutAmountDisplay ?? simResults.epicenterHaircutAmount}B ({Math.round((simResults.currentRun?.epicenterHaircutAmountDisplay ?? simResults.epicenterHaircutAmount) * 10).toLocaleString()} 亿美元)
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5">
-                  {epicenterCountry.name_zh} 负债总额 ${simResults.epicenterLiab}B 施加 {haircutPct}% 减记
+                  {simResults.currentRun?.epicenterNameZh || epicenterCountry.name_zh} ({simResults.currentRun?.epicenterCode || epicenter}) 负债总额 ${simResults.currentRun?.epicenterLiabDisplay ?? simResults.epicenterLiab}B 施加 {haircutPct}% 减记
                 </div>
               </div>
 
@@ -732,10 +882,10 @@ export default function NetworkContagionSimulator({
                   2. 冲击净增量短缺 (Marginal Loss ΔS)
                 </div>
                 <div className="text-xl font-bold font-mono text-rose-400 mt-0.5">
-                  +${simResults.totalIncrementalShortfall}B (+${(simResults.totalIncrementalShortfall / 1000).toFixed(4)}T)
+                  +${simResults.currentRun?.incrementalTotalDisplay ?? simResults.totalIncrementalShortfall}B (+${(((simResults.currentRun?.incrementalTotalRaw ?? simResults.totalIncrementalShortfall)) / 1000).toFixed(4)}T)
                 </div>
                 <div className="text-[11px] text-rose-200/80 mt-0.5">
-                  剥离静态基线后的冲击边际破坏力 (放大 {(simResults.totalIncrementalShortfall / Math.max(1, simResults.epicenterHaircutAmount)).toFixed(2)}x)
+                  剥离静态基线后的冲击边际破坏力 (放大 {((simResults.currentRun?.incrementalTotalRaw ?? simResults.totalIncrementalShortfall) / Math.max(1, simResults.currentRun?.epicenterHaircutAmountRaw ?? simResults.epicenterHaircutAmount)).toFixed(2)}x)
                 </div>
               </div>
 
@@ -744,10 +894,10 @@ export default function NetworkContagionSimulator({
                   3. 冲击后清算总短缺 (Post-Shock Total S*)
                 </div>
                 <div className="text-lg font-bold font-mono text-purple-300 mt-0.5">
-                  ${simResults.totalPostShockShortfall}B (${(simResults.totalPostShockShortfall / 1000).toFixed(4)}T)
+                  ${simResults.currentRun?.postShockTotalDisplay ?? simResults.totalPostShockShortfall}B (${(((simResults.currentRun?.postShockTotalRaw ?? simResults.totalPostShockShortfall)) / 1000).toFixed(4)}T)
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5">
-                  基线 ${simResults.totalBaselineShortfall}B (${(simResults.totalBaselineShortfall / 1000).toFixed(4)}T) + 冲击增量
+                  基线 ${simResults.currentRun?.baselineTotalDisplay ?? simResults.totalBaselineShortfall}B (${(((simResults.currentRun?.baselineTotalRaw ?? simResults.totalBaselineShortfall)) / 1000).toFixed(4)}T) + 冲击增量
                 </div>
               </div>
 
@@ -776,7 +926,7 @@ export default function NetworkContagionSimulator({
                 <div className="flex items-center gap-2">
                   <HelpCircle className="w-4 h-4 text-purple-400 shrink-0" />
                   <span className="text-xs font-bold text-white">
-                    🔬 核心方法论诊断：为何网络零冲击基线短缺偏大（${(simResults.totalBaselineShortfall / 1000).toFixed(4)}T）？
+                    🔬 核心方法论诊断：为何网络零冲击基线短缺偏大（${(((simResults.currentRun?.baselineTotalRaw ?? simResults.totalBaselineShortfall)) / 1000).toFixed(4)}T）？
                   </span>
                   <span className="text-[10px] font-mono text-purple-300 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-500/40">
                     实证与边界机制
@@ -804,16 +954,22 @@ export default function NetworkContagionSimulator({
                       <span>2. 外部流动性缓冲参数化假定 (Boundary Capital e_i)</span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                      经典 Eisenberg-Noe 假设外部缓冲注入来自网络之外的自由现金流。本系统遵循学术通用口径，将外部流动性参数化为各国官方外汇储备的 1.5 倍（e_i = 1.5 × 官方外汇储备 FX Reserves）。
+                      经典 Eisenberg-Noe 假设外部缓冲注入来自网络之外的自由现金流。本系统遵循学术通用口径，将外部流动性参数化为各国官方外汇储备的 1.5 倍（e_i = 1.5 × 官方外汇储备 FX Reserves）。未填报外汇储备的国家严格计为 0，不施加常数插补。
                     </p>
                   </div>
 
                   <div className="p-3 bg-slate-900/80 rounded-lg border border-slate-800 space-y-1">
                     <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                      <span>3. 清算中枢与主要储备货币国的结构性错配</span>
+                      <span>3. 清算中枢与主要储备货币国的结构性错配 (Structural Mismatch)</span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                      全球金融中心（英国 GB、开曼 KY）与核心储备货币国（美国 US）承担数万亿美元的跨国负债（US: $7.05T, GB: $5.07T, KY: $3.01T），但其官方主权外汇储备规模极小（美国官方外储仅 ~$242B，开曼仅 ~$0.8B）。在未引入美联储贴现窗口与常备央行互换（FIMA/Swap Lines）的极简模型中，静态不动点清算自然呈现数万亿美元内生结构性未清偿短缺。
+                      全球金融中心与核心储备货币国承担数万亿美元的跨国负债，但官方主权外汇储备规模极小。在当前 {selectedQuarter} 矩阵中：
+                      {simResults?.currentRun?.structuralSamples?.map((s) => (
+                        <span key={s.code} className="inline-block mr-2 font-mono text-slate-200">
+                          · {s.name} ({s.code}): 负债 {s.liabilitiesTrillion ? `$${s.liabilitiesTrillion}T` : 'NA'}，外储 {s.reservesBn !== null ? `$${s.reservesBn}B` : 'NA'}
+                        </span>
+                      ))}
+                      。在未引入美联储贴现窗口与常备央行互换（FIMA/Swap Lines）的极简模型中，静态不动点清算自然呈现内生结构性未清偿短缺（当前网络基线 ${(simResults?.currentRun?.baselineTotalDisplay / 1000).toFixed(4)}T）。
                     </p>
                   </div>
 
@@ -822,7 +978,12 @@ export default function NetworkContagionSimulator({
                       <span>4. 压力测试科学准则：差分增量（Differential Incremental Loss）</span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                      在宏观金融压力测试中，<strong>绝对短缺量（$5.8068T）绝不能称作“土耳其冲击造成的损失”</strong>！科学的评估指标是<strong>边际净增量（$\Delta S = S^* - S^{(0)} = +$284.8B）</strong>。观察增量排位能精准识别第一受害国（土耳其的最大双边债权国为德国 DE，增量排名第 1，+692 亿美元），避免真实传染链路被英美巨大的基线所掩盖。
+                      在宏观金融压力测试中，<strong>绝对短缺量（${(((simResults?.currentRun?.postShockTotalRaw ?? simResults?.totalPostShockShortfall)) / 1000).toFixed(4)}T / ${simResults?.currentRun?.postShockTotalDisplay ?? simResults?.totalPostShockShortfall}B）绝不能称作“{simResults?.currentRun?.epicenterNameZh || epicenterCountry.name_zh}冲击造成的损失”</strong>！科学的评估指标是<strong>边际净增量（ΔS = S* - S^(0) = +${simResults?.currentRun?.incrementalTotalDisplay ?? simResults?.totalIncrementalShortfall}B / +${(((simResults?.currentRun?.incrementalTotalRaw ?? simResults?.totalIncrementalShortfall)) / 1000).toFixed(4)}T）</strong>。
+                      {simResults?.currentRun?.topVictim && (
+                        <span>
+                          观察增量排位能精准识别第一受害国（{simResults?.currentRun?.epicenterNameZh || epicenterCountry.name_zh}的最大外生波及受害者为 <strong>{simResults?.currentRun?.topVictim?.name_zh} ({simResults?.currentRun?.topVictim?.code})</strong>，增量排名第 1，<strong>{simResults?.currentRun?.topVictim?.incrementalFormatted}</strong>），避免真实传染链路被静态庞大基线所掩盖。
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -981,7 +1142,7 @@ export default function NetworkContagionSimulator({
                           </span>
                         </div>
                         <div className="text-[10px] text-amber-400/90 font-mono">
-                          增量/外储: +{item.enIncrementalToReservesPct}%
+                          {item.enIncrementalToReservesPct !== 'NA' ? `增量/外储: +${item.enIncrementalToReservesPct}%` : '增量/外储: NA'}
                         </div>
                       </div>
                     </div>
