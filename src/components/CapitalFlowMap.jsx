@@ -122,6 +122,21 @@ export default function CapitalFlowMap({
     }
   }, []);
 
+  // Keyboard accessibility: Escape clears active corridor inspection and resets country focus
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (selectedCorridor) {
+          setSelectedCorridor(null);
+        } else if (focusCountry !== 'ALL') {
+          setFocusCountry('ALL');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCorridor, focusCountry]);
+
   // Update chart options with elite aesthetic curation
   useEffect(() => {
     if (!chartInstance.current || !mapLoaded) return;

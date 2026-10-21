@@ -288,10 +288,10 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
                     <ShieldAlert className="w-4 h-4 text-rose-400" />
-                    四、级联清算模型与示意性说明 (Eisenberg-Noe Stylized Contagion)
+                    四、级联清算模型与双基线契约说明 (Eisenberg-Noe Stylized Contagion)
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
-                    明确区分官方公布数据与结构性计量模拟演示。
+                    系统性风险网络清算算法原理、外部流动性缓冲参数化假定与收敛守护规范。
                   </p>
                 </div>
 
@@ -305,10 +305,45 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                     因此，本系统的“银行级联传染模拟”与“Top 30 G-SIBs 微观透镜”模块：
                   </p>
                   <ul className="list-disc pl-5 space-y-1 text-slate-300">
-                    <li>资本充足率（CET1）、杠杆率、FSB 附加缓冲要求<strong>完全取自各机构最新官方年报及巴塞尔披露</strong>；</li>
+                    <li>资本充足率（CET1）、杠杆率、FSB 附加缓冲要求<strong>完全取自各机构最新官方披露</strong>；</li>
                     <li>银行间级联传染路径基于学术经典文献 <strong>Eisenberg-Noe (2001) 清算向量不动点算法</strong> 进行<strong>示意性结构模拟</strong>；</li>
                     <li>用于定量展示流动性螺旋与资产减记的系统性扩散机理，<strong>并非且不应被理解为监管部门未公开的逐笔真实合同</strong>。</li>
                   </ul>
+                </div>
+
+                <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3 text-xs text-slate-300">
+                  <div className="font-semibold text-white flex items-center gap-2">
+                    <span>🔬 外部流动性缓冲假定学术依据 (Boundary Capital e_i Parameterization)</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    在经典 Eisenberg-Noe (2001) 框架中，向量 <strong>\(e_i \ge 0\)</strong> 代表各节点在网络闭合边界之外持有的“外生自由现金流或可变现流动性缓冲”。在微观单体银行体系中，这通常对应于中央银行准备金与未抵押优质流动性资产（HQLA）。
+                  </p>
+                  <p className="leading-relaxed">
+                    在跨国宏观金融网络模型中（参考 Glasserman & Young, 2015；Cont et al., 2013 及 BIS 宏观审慎工作论文），国家主权管辖区层面的外部流动性缓冲常以官方外汇储备为锚。本系统设立<strong>参数化敏感度阶梯</strong>：
+                  </p>
+                  <ul className="list-disc pl-5 space-y-1 text-slate-400">
+                    <li><strong>1.0x 外储（严格外储）：</strong>仅假定主权直接动用官方外汇储备用于跨国银行间垫付；</li>
+                    <li><strong>1.5x 外储（学术基准）：</strong>纳入主权流动性缓冲与可紧急变现主权债资产（系统默认）；</li>
+                    <li><strong>2.0x 外储（广义互换缓冲）：</strong>额外计入核心双边央行常备流动性互换行（Swap Lines）额度。</li>
+                  </ul>
+                  <p className="text-amber-300 text-[11px] bg-amber-950/40 p-2.5 rounded border border-amber-500/30">
+                    ⚠️ <strong>特别提示：</strong>外部缓冲设定为纯粹的模型边界参数（Model Boundary Parameter），旨在为不动点清算提供收敛边界，<strong>绝不等同于现实宏观世界中已经或必定发生的外储损失或全要素经济资本损失</strong>。
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3 text-xs text-slate-300">
+                  <div className="font-semibold text-white">双基线差分（Dual-Baseline Difference）与 Picard 求解收敛守护</div>
+                  <p className="leading-relaxed">
+                    由于全球 23 个核心管辖区网络是一个闭合的离散银行间系统，核心储备货币国（如美、英、开曼）的数万亿跨国负债远超其官方外汇储备，零冲击状态下模型即存在内生未清偿差额。因此，本系统严格贯彻<strong>双基线差分准则</strong>：
+                  </p>
+                  <div className="font-mono bg-slate-900 p-2.5 rounded border border-slate-800 text-[11px] text-sky-300 space-y-1">
+                    <div>1. 零冲击基线: S^(0) = Σ_j s_j^(0), 由 p^(0) = min(pbar, Pi^T * p^(0) + e^(0)) 求解</div>
+                    <div>2. 冲击后总短缺: S* = Σ_j s_j*, 由 p* = min(pbar, Pi^T * p* + e*) 求解</div>
+                    <div>3. 冲击边际净增量: ΔS = max(0, S* - S^(0))（以 64 位双精度浮点数直接相减，禁止由舍入总额反推）</div>
+                  </div>
+                  <p className="leading-relaxed text-slate-400">
+                    双基线求解均采用 Picard 迭代，收敛容差阈值严格定为 <strong>1e-4 Bn USD（10 万美元）</strong>。每次运行均独立校验基线与冲击后残差；若超过最大迭代限制仍未收敛，系统将触发 FAILED 熔断保护并在报告与界面中显式告警。
+                  </p>
                 </div>
               </div>
             )}

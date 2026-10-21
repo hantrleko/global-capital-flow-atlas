@@ -8,12 +8,13 @@ import soundFx from '../utils/soundEffects';
 import MethodologyFootnote from './MethodologyFootnote';
 import DataClassificationBadge from './DataClassificationBadge';
 
-// Single Source of Truth for System, Model & Data Versions
-export const CLEARING_VERSION_REGISTRY = {
-  PRODUCT: 'v2.4.0',
-  MODEL: 'v2.2-DualBaseline-EN2001',
-  DATA: (quarter) => quarter <= '2026Q1' ? 'BIS-SDMX-Official' : (quarter === '2026Q2' ? 'BIS-Pending-Release (2026-10-30)' : 'Macro-NOWCAST-Scenario')
-};
+import {
+  CLEARING_VERSION_REGISTRY,
+  computeClearingScenario,
+  buildDataFingerprint
+} from '../utils/eisenbergNoeClearing';
+
+export { CLEARING_VERSION_REGISTRY };
 
 export default function NetworkContagionSimulator({
   dataset,
@@ -23,16 +24,12 @@ export default function NetworkContagionSimulator({
   onOpenAppendix
 }) {
   const countries = dataset.countries || [];
-  const currentLinks = (dataset.bilateral_matrix || {})[selectedQuarter] || [];
-  const currentQIdx = dataset.quarters.indexOf(selectedQuarter);
-  const lbsData = dataset.lbs_data || {};
-  const cbsRisk = dataset.cbs_risk || {};
 
   // Standard Macro Contagion Presets
   const CONTAGION_PRESETS = [
-    { id: 'emerging_debt', name: '前沿主权外债违约', epicenter: 'TR', haircut: 40, deleveraging: 1.8, dollarSqueeze: 15, desc: '新兴市场主权债务暴雷引发直接资产减记与信贷重估' },
-    { id: 'dollar_crunch', name: '离岸美元流动性休克', epicenter: 'GB', haircut: 20, deleveraging: 2.2, dollarSqueeze: 25, desc: '欧洲美元转口中枢流动性骤紧与全球美元荒' },
-    { id: 'euro_contagion', name: '泛欧跨国银行去杠杆', epicenter: 'IT', haircut: 30, deleveraging: 2.0, dollarSqueeze: 12, desc: '核心主权息差走阔导致多米诺骨牌级联收缩' }
+    { id: 'emerging_debt', name: '前沿主权外债违约', epicenter: 'TR', haircut: 40, deleveraging: 1.8, dollarSqueeze: 15, buffer: 1.5, desc: '新兴市场主权债务暴雷引发直接资产减记与信贷重估' },
+    { id: 'dollar_crunch', name: '离岸美元流动性休克', epicenter: 'GB', haircut: 20, deleveraging: 2.2, dollarSqueeze: 25, buffer: 1.5, desc: '欧洲美元转口中枢流动性骤紧与全球美元荒' },
+    { id: 'euro_contagion', name: '泛欧跨国银行去杠杆', epicenter: 'IT', haircut: 30, deleveraging: 2.0, dollarSqueeze: 12, buffer: 1.5, desc: '核心主权息差走阔导致多米诺骨牌级联收缩' }
   ];
 
   // Simulation parameters
@@ -42,18 +39,21 @@ export default function NetworkContagionSimulator({
   const [activePreset, setActivePreset] = useState('custom');
   const [epicenter, setEpicenter] = useState('TR'); // Default: Turkey (high external vulnerability)
   const [haircutPct, setHaircutPct] = useState(25); // Credit loss %
+  const [bufferMultiplier, setBufferMultiplier] = useState(1.5); // 1.0 | 1.5 | 2.0x FX Reserves
   const [deleveragingMultiplier, setDeleveragingMultiplier] = useState(1.5); // Bank deleveraging ratio
   const [dollarSqueezePct, setDollarSqueezePct] = useState(12); // Dollar liquidity squeeze %
   const [simResults, setSimResults] = useState(null);
 
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
+  const runTokenRef = useRef(0);
 
   // Sync external configuration if passed from CountryDrawer or CrisisPlaybook
   useEffect(() => {
     if (contagionConfig) {
       if (contagionConfig.epicenter) setEpicenter(contagionConfig.epicenter);
       if (contagionConfig.haircut) setHaircutPct(contagionConfig.haircut);
+      if (contagionConfig.buffer) setBufferMultiplier(contagionConfig.buffer);
       if (contagionConfig.deleveraging) setDeleveragingMultiplier(contagionConfig.deleveraging);
       if (contagionConfig.dollarSqueeze) setDollarSqueezePct(contagionConfig.dollarSqueeze);
       if (contagionConfig.presetId) setActivePreset(contagionConfig.presetId);
@@ -68,367 +68,57 @@ export default function NetworkContagionSimulator({
     setActivePreset(p.id);
     setEpicenter(p.epicenter);
     setHaircutPct(p.haircut);
+    if (p.buffer) setBufferMultiplier(p.buffer);
     setDeleveragingMultiplier(p.deleveraging);
     setDollarSqueezePct(p.dollarSqueeze);
   };
 
-  // Run Dual-Baseline Eisenberg-Noe (2001) Fixed-Point Clearing & Multi-Round Stress Cascade
-  const runSimulation = () => {
-    soundFx.playShockwave();
+  // Dynamically resolve links slice from active dataset (transparently accounts for custom matrix)
+  const currentLinks = useMemo(() => {
+    return (dataset.bilateral_matrix || {})[selectedQuarter] || [];
+  }, [dataset, selectedQuarter]);
 
-    // 1. Dual-Baseline Eisenberg-Noe (2001) Clearing Vector Fixed Point p* = min(pbar, Pi^T * p + e)
-    const n = countries.length;
-    const codeToIndex = Object.fromEntries(countries.map((c, idx) => [c.code, idx]));
-    const countryMap = Object.fromEntries(countries.map(c => [c.code, c]));
-    
-    // Matrix of interbank cross-border obligations L[j][i]: claims of creditor j on debtor i
-    const L = Array.from({ length: n }, () => new Float64Array(n));
-    currentLinks.forEach(l => {
-      const j = codeToIndex[l.source]; // creditor
-      const i = codeToIndex[l.target]; // debtor
-      if (j !== undefined && i !== undefined) {
-        L[j][i] = l.claims_usd_bn;
-      }
-    });
-
-    // Nominal cross-border debt pbar[i] of debtor i: sum of obligations of i to all foreign creditors j
-    const pbar = new Float64Array(n);
-    for (let i = 0; i < n; i++) {
-      let sum = 0;
-      for (let j = 0; j < n; j++) sum += L[j][i];
-      pbar[i] = sum;
-    }
-
-    // Relative liabilities Pi[i][j]: proportion of debtor i's payments due to creditor j
-    const Pi = Array.from({ length: n }, () => new Float64Array(n));
-    for (let i = 0; i < n; i++) {
-      if (pbar[i] > 0) {
-        for (let j = 0; j < n; j++) {
-          Pi[i][j] = L[j][i] / pbar[i];
-        }
-      }
-    }
-
-    // Picard fixed-point solver
-    const solvePicard = (eVec) => {
-      let p = new Float64Array(pbar);
-      let iterCount = 0;
-      let finalDiff = 0;
-      for (let iter = 0; iter < 100; iter++) {
-        iterCount = iter + 1;
-        const pNext = new Float64Array(n);
-        let diff = 0;
-        for (let i = 0; i < n; i++) {
-          let inflows = 0;
-          for (let j = 0; j < n; j++) {
-            inflows += Pi[j][i] * p[j];
-          }
-          const available = Math.max(0, inflows + eVec[i]);
-          pNext[i] = Math.min(pbar[i], available);
-          diff = Math.max(diff, Math.abs(pNext[i] - p[i]));
-        }
-        p = pNext;
-        finalDiff = diff;
-        if (diff < 1e-4) break;
-      }
-      return { p, iterCount, finalDiff };
-    };
-
-    // (A) Zero-Shock Baseline: e_i^(0) = 1.5 * FX_reserves (strictly derived without static 50 fallback)
-    let validReservesCount = 0;
-    const eBaseline = new Float64Array(n);
-    for (let i = 0; i < n; i++) {
-      const c = countries[i];
-      const r = c.fx_reserves;
-      if (r !== undefined && r !== null && !isNaN(r) && r > 0) {
-        validReservesCount++;
-        eBaseline[i] = r * 1.5;
-      } else {
-        eBaseline[i] = 0; // Explicit 0 boundary capital when missing
-      }
-    }
-    const { p: pBase } = solvePicard(eBaseline);
-
-    // (B) Shocked Vector: Epicenter buffer reduced by haircut % on nominal liabilities
-    const epiIdx = codeToIndex[epicenter];
-    const eShocked = new Float64Array(eBaseline);
-    if (epiIdx !== undefined) {
-      eShocked[epiIdx] = Math.max(-pbar[epiIdx], eBaseline[epiIdx] - pbar[epiIdx] * (haircutPct / 100));
-    }
-    const { p: pShock, iterCount: iterShock, finalDiff: diffShock } = solvePicard(eShocked);
-
-    // Compute clearing shortfalls for every creditor j using exact unrounded Float64 precision
-    let totBaseRaw = 0;
-    let totShockRaw = 0;
-    const enBaselineShortfall = {};
-    const enPostShockShortfall = {};
-    const enIncrementalShortfall = {};
-    const enIncrementalDirect = {};
-    const enIncrementalIndirect = {};
-
-    for (let j = 0; j < n; j++) {
-      let sumBaseRaw = 0;
-      let sumShockRaw = 0;
-      let directIncRaw = 0;
-      for (let i = 0; i < n; i++) {
-        const shortB_i = Math.max(0, pbar[i] - pBase[i]);
-        const shortS_i = Math.max(0, pbar[i] - pShock[i]);
-        if (shortB_i > 0) sumBaseRaw += Pi[i][j] * shortB_i;
-        if (shortS_i > 0) {
-          sumShockRaw += Pi[i][j] * shortS_i;
-          if (i === epiIdx) {
-            const incFromEpi = Pi[i][j] * Math.max(0, pBase[i] - pShock[i]);
-            directIncRaw += incFromEpi;
-          }
-        }
-      }
-      totBaseRaw += sumBaseRaw;
-      totShockRaw += sumShockRaw;
-
-      const deltaRaw = Math.max(0, sumShockRaw - sumBaseRaw);
-      const directVal = Math.min(deltaRaw, directIncRaw);
-      const indirectVal = Math.max(0, deltaRaw - directVal);
-
-      const code = countries[j].code;
-      enBaselineShortfall[code] = {
-        raw: sumBaseRaw,
-        display: Math.round(sumBaseRaw * 10) / 10
-      };
-      enPostShockShortfall[code] = {
-        raw: sumShockRaw,
-        display: Math.round(sumShockRaw * 10) / 10
-      };
-      enIncrementalShortfall[code] = {
-        raw: deltaRaw,
-        display: Math.round(deltaRaw * 10) / 10
-      };
-      enIncrementalDirect[code] = {
-        raw: directVal,
-        display: Math.round(directVal * 10) / 10
-      };
-      enIncrementalIndirect[code] = {
-        raw: indirectVal,
-        display: Math.round(indirectVal * 10) / 10
-      };
-    }
-
-    // Exact unrounded incremental delta (never back-calculated from rounded totals!)
-    const totIncrementalRaw = Math.max(0, totShockRaw - totBaseRaw);
-    const epicenterHaircutAmountRaw = epiIdx !== undefined ? pbar[epiIdx] * (haircutPct / 100) : 0;
-    const epicenterHaircutAmountDisplay = Math.round(epicenterHaircutAmountRaw * 10) / 10;
-    const epicenterLiabRaw = epiIdx !== undefined ? pbar[epiIdx] : 0;
-    const epicenterLiabDisplay = Math.round(epicenterLiabRaw * 10) / 10;
-
-    // 2. Multi-Round Behavioral Spillover Simulation
-    const directCreditorLinks = currentLinks.filter(l => l.target === epicenter);
-    
-    // Round 1: Direct Losses
-    const round1Losses = {};
-    let totalR1Loss = 0;
-
-    directCreditorLinks.forEach(l => {
-      const loss = Math.round(l.claims_usd_bn * (haircutPct / 100));
-      round1Losses[l.source] = (round1Losses[l.source] || 0) + loss;
-      totalR1Loss += loss;
-    });
-
-    // Round 2: Secondary Deleveraging
-    const round2Spillovers = {};
-    let totalR2Contagion = 0;
-
-    Object.entries(round1Losses).forEach(([creditorCode, r1Loss]) => {
-      if (r1Loss > 10) {
-        const retrenchmentPool = Math.round(r1Loss * deleveragingMultiplier);
-        const otherLoans = currentLinks.filter(l => l.source === creditorCode && l.target !== epicenter);
-        const totalOtherLoans = otherLoans.reduce((sum, l) => sum + l.claims_usd_bn, 0);
-
-        if (totalOtherLoans > 0) {
-          otherLoans.forEach(l => {
-            const cut = Math.round(retrenchmentPool * (l.claims_usd_bn / totalOtherLoans));
-            round2Spillovers[l.target] = (round2Spillovers[l.target] || 0) + cut;
-            totalR2Contagion += cut;
-          });
-        }
-      }
-    });
-
-    // Round 3: Dollar Refinancing Squeeze (Global Dollar Shortage)
-    // Strictly derived from quarterly actual liabilities, NEVER hardcoded 120 fallback!
-    const round3DollarSqueeze = {};
-    let totalR3Dollar = 0;
-    let validLiabCount = 0;
-
-    countries.forEach(c => {
-      if (c.code !== epicenter) {
-        const qLbs = (lbsData[c.code] || []).find(q => q.quarter === selectedQuarter);
-        const qCbs = (cbsRisk[c.code] || []).find(q => q.quarter === selectedQuarter);
-        const actualLiab = qLbs?.liabilities_usd_bn 
-          ?? qCbs?.cross_border_borrowings_bn 
-          ?? currentLinks.filter(l => l.target === c.code).reduce((sum, l) => sum + l.claims_usd_bn, 0);
-
-        if (actualLiab !== undefined && actualLiab !== null && !isNaN(actualLiab) && actualLiab > 0) {
-          validLiabCount++;
-          const dSqueeze = Math.round(actualLiab * (c.default_usd_share / 100) * (dollarSqueezePct / 100));
-          round3DollarSqueeze[c.code] = dSqueeze;
-          totalR3Dollar += dSqueeze;
-        } else {
-          round3DollarSqueeze[c.code] = null; // Marked as NA when missing
-        }
-      }
-    });
-
-    // Compile comprehensive impact ranking (sorting strictly on raw unrounded metrics)
-    const impactList = countries
-      .filter(c => c.code !== epicenter)
-      .map(c => {
-        const r1 = round1Losses[c.code] || 0;
-        const r2 = round2Spillovers[c.code] || 0;
-        const r3 = round3DollarSqueeze[c.code] !== null ? (round3DollarSqueeze[c.code] || 0) : null;
-        const totalImpact = r1 + r2 + (r3 !== null ? r3 : 0);
-
-        const bObj = enBaselineShortfall[c.code] || { raw: 0, display: 0 };
-        const sObj = enPostShockShortfall[c.code] || { raw: 0, display: 0 };
-        const incObj = enIncrementalShortfall[c.code] || { raw: 0, display: 0 };
-        const incDirObj = enIncrementalDirect[c.code] || { raw: 0, display: 0 };
-        const incIndirObj = enIncrementalIndirect[c.code] || { raw: 0, display: 0 };
-
-        const reserves = (c.fx_reserves !== undefined && c.fx_reserves !== null && !isNaN(c.fx_reserves)) ? c.fx_reserves : null;
-        const impactToReservesPct = reserves ? parseFloat(((totalImpact / reserves) * 100).toFixed(1)) : 'NA';
-        const enIncrementalToReservesPct = reserves ? parseFloat(((incObj.raw / reserves) * 100).toFixed(1)) : 'NA';
-        const enBaselineToReservesPct = reserves ? parseFloat(((bObj.raw / reserves) * 100).toFixed(1)) : 'NA';
-        const enPostShockToReservesPct = reserves ? parseFloat(((sObj.raw / reserves) * 100).toFixed(1)) : 'NA';
-
-        return {
-          code: c.code,
-          name: c.name,
-          name_zh: c.name_zh,
-          region: c.region,
-          tier: c.tier,
-          reserves,
-          r1Loss: r1,
-          r2Spillover: r2,
-          r3Dollar: r3,
-          totalImpact,
-          impactToReservesPct,
-          enBaselineShortfallRaw: bObj.raw,
-          enBaselineShortfall: bObj.display,
-          enPostShockShortfallRaw: sObj.raw,
-          enPostShockShortfall: sObj.display,
-          enIncrementalShortfallRaw: incObj.raw,
-          enIncrementalShortfall: incObj.display,
-          enIncrementalDirect: incDirObj.display,
-          enIncrementalIndirect: incIndirObj.display,
-          enIncrementalToReservesPct,
-          enBaselineToReservesPct,
-          enPostShockToReservesPct,
-          primaryMetricValue: simMode === 'en_clearing'
-            ? (enSortMetric === 'incremental' ? incObj.raw : (enSortMetric === 'baseline' ? bObj.raw : sObj.raw))
-            : totalImpact
-        };
-      })
-      .filter(item => {
-        if (simMode === 'en_clearing') {
-          if (enSortMetric === 'incremental') return item.enIncrementalShortfallRaw > 0 || item.enPostShockShortfallRaw > 0;
-          if (enSortMetric === 'baseline') return item.enBaselineShortfallRaw > 0;
-          return item.enPostShockShortfallRaw > 0;
-        }
-        return item.totalImpact > 0;
-      })
-      .sort((a, b) => {
-        if (simMode === 'en_clearing') {
-          if (enSortMetric === 'incremental') return b.enIncrementalShortfallRaw - a.enIncrementalShortfallRaw;
-          if (enSortMetric === 'baseline') return b.enBaselineShortfallRaw - a.enBaselineShortfallRaw;
-          return b.enPostShockShortfallRaw - a.enPostShockShortfallRaw;
-        }
-        return b.totalImpact - a.totalImpact;
-      });
-
-    // Top incremental victim
-    const topVictim = impactList.length > 0 ? impactList[0] : null;
-
-    // Structural Mismatch Samples (US, GB, KY dynamically resolved from current matrix, no hardcoded constants)
-    const structuralSamples = ['US', 'GB', 'KY'].map(code => {
-      const idx = codeToIndex[code];
-      const liab = idx !== undefined ? pbar[idx] : null;
-      const cMeta = countryMap[code];
-      const res = cMeta?.fx_reserves;
-      return {
-        code,
-        name: cMeta?.name_zh || code,
-        liabilitiesBn: liab !== null ? Math.round(liab * 10) / 10 : null,
-        liabilitiesTrillion: liab !== null ? (liab / 1000).toFixed(2) : null,
-        reservesBn: (res !== undefined && res !== null && !isNaN(res)) ? res : null
-      };
-    });
-
-    // Unified Immutable Current Run Result Contract
-    const currentRun = {
-      runId: `${selectedQuarter}-${epicenter}-${haircutPct}-${Date.now()}`,
+  // Deterministic Fingerprint Key: binds quarter, active matrix links, and all scenario parameters
+  const dataFingerprint = useMemo(() => {
+    return buildDataFingerprint({
       quarter: selectedQuarter,
-      quarterStatus: selectedQuarter <= '2026Q1' ? 'OFFICIAL' : (selectedQuarter === '2026Q2' ? 'PENDING_VERIFICATION' : 'NOWCAST_SCENARIO'),
-      epicenterCode: epicenter,
-      epicenterNameZh: epicenterCountry.name_zh,
-      epicenterLiabRaw,
-      epicenterLiabDisplay,
+      links: currentLinks,
+      epicenter,
       haircutPct,
-      epicenterHaircutAmountRaw,
-      epicenterHaircutAmountDisplay,
-      baselineTotalRaw: totBaseRaw,
-      postShockTotalRaw: totShockRaw,
-      incrementalTotalRaw: totIncrementalRaw,
-      baselineTotalDisplay: Math.round(totBaseRaw * 10) / 10,
-      postShockTotalDisplay: Math.round(totShockRaw * 10) / 10,
-      incrementalTotalDisplay: Math.round(totIncrementalRaw * 10) / 10,
-      topVictim: topVictim ? {
-        code: topVictim.code,
-        name_zh: topVictim.name_zh,
-        incrementalRaw: topVictim.enIncrementalShortfallRaw,
-        incrementalDisplay: topVictim.enIncrementalShortfall,
-        incrementalFormatted: `+$${topVictim.enIncrementalShortfall}B (+${Math.round(topVictim.enIncrementalShortfall * 10).toLocaleString()} 亿美元)`
-      } : null,
-      structuralSamples,
-      versionMeta: {
-        productVersion: CLEARING_VERSION_REGISTRY.PRODUCT,
-        modelVersion: CLEARING_VERSION_REGISTRY.MODEL,
-        dataVersion: CLEARING_VERSION_REGISTRY.DATA(selectedQuarter)
-      }
-    };
-
-    setSimResults({
-      modelVersion: CLEARING_VERSION_REGISTRY.MODEL,
-      versionMeta: currentRun.versionMeta,
-      currentRun,
-      quarter: selectedQuarter,
-      epicenterCode: epicenter,
-      simMode,
-      enSortMetric,
-      haircutPct,
+      bufferMultiplier,
       deleveragingMultiplier,
       dollarSqueezePct,
-      iterationsCount: iterShock,
-      clearingResidual: diffShock,
-      epicenterHaircutAmount: epicenterHaircutAmountDisplay,
-      epicenterLiab: epicenterLiabDisplay,
-      totalBaselineShortfall: Math.round(totBaseRaw * 10) / 10,
-      totalPostShockShortfall: Math.round(totShockRaw * 10) / 10,
-      totalIncrementalShortfall: Math.round(totIncrementalRaw * 10) / 10,
-      totalBaselineRaw: totBaseRaw,
-      totalPostShockRaw: totShockRaw,
-      totalIncrementalRaw: totIncrementalRaw,
-      totalR1Loss,
-      totalR2Contagion,
-      totalR3Dollar,
-      totalSystemicLoss: totalR1Loss + totalR2Contagion + totalR3Dollar,
-      validLiabCoverage: `${validLiabCount}/${countries.length - 1}`,
-      validReservesCoverage: `${validReservesCount}/${countries.length}`,
-      impactList
+      simMode,
+      enSortMetric
     });
+  }, [dataset, selectedQuarter, currentLinks, epicenter, haircutPct, bufferMultiplier, deleveragingMultiplier, dollarSqueezePct, simMode, enSortMetric]);
+
+  // Pure Simulation Executor with Async Race Protection
+  const executeSimulation = () => {
+    const token = ++runTokenRef.current;
+    const results = computeClearingScenario({
+      dataset,
+      quarter: selectedQuarter,
+      currentLinks,
+      epicenter,
+      haircutPct,
+      bufferMultiplier,
+      deleveragingMultiplier,
+      dollarSqueezePct,
+      simMode,
+      enSortMetric
+    });
+
+    // Guard against stale async or delayed race conditions
+    if (token === runTokenRef.current) {
+      setSimResults(results);
+    }
   };
 
-  // Run on mount or when parameters change
+  // Re-run whenever identity key (dataFingerprint) changes
   useEffect(() => {
-    runSimulation();
-  }, [epicenter, haircutPct, deleveragingMultiplier, dollarSqueezePct, selectedQuarter, simMode, enSortMetric]);
+    executeSimulation();
+  }, [dataFingerprint]);
 
   // Render Cascade Chart
   useEffect(() => {
@@ -603,11 +293,22 @@ export default function NetworkContagionSimulator({
     const cr = simResults.currentRun;
     const rows = [
       ['=== BIS Atlas Network Stress Clearing Scenario Report ==='],
+      ['Report Generation Timestamp', new Date().toISOString()],
       ['Product Version', cr.versionMeta.productVersion],
       ['Model Version', cr.versionMeta.modelVersion],
       ['Data Version', cr.versionMeta.dataVersion],
       ['Quarter', cr.quarter],
       ['Quarter Status', cr.quarterStatus],
+      ['Fixed-Point Convergence Status', cr.convergenceStatus],
+      ['Baseline Picard Iterations', simResults.baselineConvergence?.iterCount ?? 'NA'],
+      ['Baseline Picard Residual (USD Bn)', simResults.baselineConvergence?.residual !== undefined ? simResults.baselineConvergence.residual.toFixed(8) : 'NA'],
+      ['Shock Picard Iterations', simResults.shockConvergence?.iterCount ?? 'NA'],
+      ['Shock Picard Residual (USD Bn)', simResults.shockConvergence?.residual !== undefined ? simResults.shockConvergence.residual.toFixed(8) : 'NA'],
+      ['Picard Convergence Tolerance (USD Bn)', '0.0001 (1e-4)'],
+      ['FX Reserves Boundary Buffer Multiplier', `${cr.bufferMultiplier}x FX Reserves`],
+      ['FX Reserves Jurisdiction Coverage', `${cr.coverageMeta?.reservesCoverageRatio || simResults.validReservesCoverage} (${cr.coverageMeta?.reservesCoveragePct || 100}%)`],
+      ['Liabilities Jurisdiction Coverage', `${cr.coverageMeta?.liabCoverageRatio || simResults.validLiabCoverage} (${cr.coverageMeta?.liabCoveragePct || 100}%)`],
+      ['Data Fingerprint Hash', cr.dataFingerprint],
       ['Epicenter Code', cr.epicenterCode],
       ['Epicenter Name', cr.epicenterNameZh],
       ['Epicenter Total Liabilities (USD Bn)', cr.epicenterLiabDisplay],
@@ -617,10 +318,8 @@ export default function NetworkContagionSimulator({
       ['Post-Shock Total Shortfall (USD Bn)', cr.postShockTotalDisplay],
       ['Marginal Incremental Shortfall (USD Bn)', `+${cr.incrementalTotalDisplay}`],
       ['Top Incremental Victim', cr.topVictim ? `${cr.topVictim.name_zh} (${cr.topVictim.code}): ${cr.topVictim.incrementalFormatted}` : 'None'],
-      ['Iterations Count', simResults.iterationsCount],
-      ['Fixed-Point Residual', '< 1e-4 Bn USD'],
       [''],
-      ['Jurisdiction Code', 'Jurisdiction Name', 'Baseline Shortfall (USD Bn)', 'Post-Shock Shortfall (USD Bn)', 'Marginal Incremental Shortfall (USD Bn)', 'FX Reserves (USD Bn)', 'Incremental / Reserves (%)', 'Direct from Epicenter (USD Bn)', 'Indirect from Cascade (USD Bn)']
+      ['Jurisdiction Code', 'Jurisdiction Name', 'Baseline Shortfall (USD Bn)', 'Post-Shock Shortfall (USD Bn)', 'Marginal Incremental Shortfall (USD Bn)', 'FX Reserves (USD Bn)', 'Reserves Provenance Source', 'Reserves Status', 'Incremental / Reserves (%)', 'Direct from Epicenter (USD Bn)', 'Indirect from Cascade (USD Bn)']
     ];
 
     simResults.impactList.forEach(item => {
@@ -631,6 +330,8 @@ export default function NetworkContagionSimulator({
         item.enPostShockShortfall,
         item.enIncrementalShortfall,
         item.reserves !== null ? item.reserves : 'NA',
+        item.reservesSource || 'BIS_CBS_TABLE_B',
+        item.reservesStatus || 'OFFICIAL',
         item.enIncrementalToReservesPct,
         item.enIncrementalDirect,
         item.enIncrementalIndirect
@@ -642,7 +343,7 @@ export default function NetworkContagionSimulator({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `bis_clearing_scenario_${cr.epicenterCode}_${cr.quarter}_${cr.haircutPct}pct.csv`);
+    link.setAttribute('download', `bis_clearing_scenario_${cr.epicenterCode}_${cr.quarter}_${cr.haircutPct}pct_${cr.bufferMultiplier}buf.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -815,51 +516,136 @@ export default function NetworkContagionSimulator({
           />
         </div>
 
-        <div className={simMode === 'en_clearing' ? 'opacity-50' : ''}>
-          <div className="flex justify-between text-slate-400 mb-1">
-            <span className="font-semibold">3. 跨国银行去杠杆乘数 {simMode === 'en_clearing' && '(行为模式)'}:</span>
-            <span className="font-mono text-amber-400 font-bold">{deleveragingMultiplier}x</span>
+        {simMode === 'en_clearing' ? (
+          <div>
+            <div className="flex justify-between text-slate-400 mb-1">
+              <span className="font-semibold" title="外部现金流注入参数化倍数 e_i = k * FX Reserves">
+                3. 外部流动性缓冲倍数 (Buffer):
+              </span>
+              <span className="font-mono text-purple-400 font-bold">{bufferMultiplier.toFixed(1)}x 外储</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1 mt-1">
+              {[
+                { val: 1.0, label: '1.0x 严格外储' },
+                { val: 1.5, label: '1.5x 学术基准' },
+                { val: 2.0, label: '2.0x 广义缓冲' }
+              ].map(opt => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => {
+                    soundFx.playTick();
+                    setBufferMultiplier(opt.val);
+                    setActivePreset('custom');
+                  }}
+                  className={`py-1 px-1 text-[11px] rounded font-mono transition-all cursor-pointer border ${
+                    bufferMultiplier === opt.val
+                      ? 'bg-purple-600 text-white font-bold border-purple-400 shadow-sm'
+                      : 'bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <input
-            type="range"
-            min={1.0}
-            max={3.0}
-            step={0.1}
-            disabled={simMode === 'en_clearing'}
-            value={deleveragingMultiplier}
-            onChange={(e) => {
-              setDeleveragingMultiplier(parseFloat(e.target.value));
-              setActivePreset('custom');
-            }}
-            className="w-full accent-amber-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1 disabled:cursor-not-allowed"
-          />
-        </div>
+        ) : (
+          <div>
+            <div className="flex justify-between text-slate-400 mb-1">
+              <span className="font-semibold">3. 跨国银行去杠杆乘数:</span>
+              <span className="font-mono text-amber-400 font-bold">{deleveragingMultiplier}x</span>
+            </div>
+            <input
+              type="range"
+              min={1.0}
+              max={3.0}
+              step={0.1}
+              value={deleveragingMultiplier}
+              onChange={(e) => {
+                setDeleveragingMultiplier(parseFloat(e.target.value));
+                setActivePreset('custom');
+              }}
+              className="w-full accent-amber-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
+            />
+          </div>
+        )}
 
-        <div className={simMode === 'en_clearing' ? 'opacity-50' : ''}>
-          <div className="flex justify-between text-slate-400 mb-1">
-            <span className="font-semibold">4. 离岸美元流动性抽水 {simMode === 'en_clearing' && '(行为模式)'}:</span>
-            <span className="font-mono text-sky-400 font-bold">{dollarSqueezePct}%</span>
+        {simMode === 'en_clearing' ? (
+          <div>
+            <div className="flex justify-between text-slate-400 mb-1">
+              <span className="font-semibold">4. 榜单排序口径 (Metric):</span>
+              <span className="font-mono text-sky-400 font-bold">
+                {enSortMetric === 'incremental' ? '冲击增量 Δ' : (enSortMetric === 'baseline' ? '零冲击基线' : '冲击后总额')}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-1 mt-1">
+              {[
+                { val: 'incremental', label: '增量 ΔS' },
+                { val: 'post_shock', label: '总额 S*' },
+                { val: 'baseline', label: '基线 S0' }
+              ].map(opt => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => {
+                    soundFx.playTick();
+                    setEnSortMetric(opt.val);
+                  }}
+                  className={`py-1 px-1 text-[11px] rounded font-mono transition-all cursor-pointer border ${
+                    enSortMetric === opt.val
+                      ? 'bg-rose-600 text-white font-bold border-rose-400 shadow-sm'
+                      : 'bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <input
-            type="range"
-            min={0}
-            max={30}
-            step={2}
-            disabled={simMode === 'en_clearing'}
-            value={dollarSqueezePct}
-            onChange={(e) => {
-              setDollarSqueezePct(parseInt(e.target.value, 10));
-              setActivePreset('custom');
-            }}
-            className="w-full accent-sky-400 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1 disabled:cursor-not-allowed"
-          />
-        </div>
+        ) : (
+          <div>
+            <div className="flex justify-between text-slate-400 mb-1">
+              <span className="font-semibold">4. 离岸美元流动性抽水:</span>
+              <span className="font-mono text-sky-400 font-bold">{dollarSqueezePct}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={30}
+              step={2}
+              value={dollarSqueezePct}
+              onChange={(e) => {
+                setDollarSqueezePct(parseInt(e.target.value, 10));
+                setActivePreset('custom');
+              }}
+              className="w-full accent-sky-400 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
+            />
+          </div>
+        )}
       </div>
 
       {/* Summary KPI Badges */}
       {simResults && (
         simMode === 'en_clearing' ? (
           <div className="space-y-3">
+            {/* Solver Convergence Alert Banner if FAILED */}
+            {!simResults.allConverged && (
+              <div className="p-3.5 bg-rose-950/90 border border-rose-500 rounded-xl text-rose-200 flex items-start gap-3 shadow-xl">
+                <AlertOctagon className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                <div className="space-y-1 text-xs">
+                  <div className="font-bold text-sm text-rose-300">
+                    ⚠️ 清算不动点求解未收敛告警 (Fixed-Point Solver FAILED)
+                  </div>
+                  <p className="text-slate-300">
+                    在当前迭代轮数内，不动点残差未达到 1e-4 Bn USD 守恒容差。请注意当前清算结果处于未完全出清截断状态。
+                  </p>
+                  <div className="font-mono text-[11px] text-rose-300 bg-black/40 p-1.5 rounded border border-rose-500/30">
+                    基线残差: {simResults.baselineConvergence?.residual?.toFixed(6)} Bn USD ({simResults.baselineConvergence?.converged ? '收敛' : '未收敛'}) | 冲击残差: {simResults.shockConvergence?.residual?.toFixed(6)} Bn USD ({simResults.shockConvergence?.converged ? '收敛' : '未收敛'})
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* 4 Core Eisenberg-Noe KPI Badges */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
@@ -901,15 +687,23 @@ export default function NetworkContagionSimulator({
                 </div>
               </div>
 
-              <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                <div className="text-[11px] text-slate-400 uppercase tracking-wider font-mono">
-                  4. Picard 不动点双基线收敛
+              <div className={`p-3 rounded-xl border ${simResults.allConverged ? 'bg-slate-900/80 border-slate-800' : 'bg-rose-950/40 border-rose-500/80 shadow-lg'}`}>
+                <div className="text-[11px] text-slate-400 uppercase tracking-wider font-mono flex items-center justify-between">
+                  <span>4. Picard 不动点求解收敛</span>
+                  {simResults.allConverged ? (
+                    <span className="text-[10px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/30">已收敛</span>
+                  ) : (
+                    <span className="text-[10px] text-rose-300 bg-rose-900/80 px-1.5 py-0.2 rounded border border-rose-500/50 font-bold">FAILED</span>
+                  )}
                 </div>
-                <div className="text-lg font-bold font-mono text-emerald-400 mt-0.5">
-                  {simResults.iterationsCount} 次迭代 (双基线均收敛)
+                <div className={`text-base font-bold font-mono mt-0.5 ${simResults.allConverged ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {simResults.allConverged ? '双不动点收敛完成' : '不动点未收敛 (FAILED)'}
                 </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">
-                  最大残差 &lt; 1e-4 Bn USD (覆盖 {countries.length} 个主要管辖区)
+                <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
+                  基线: {simResults.baselineConvergence?.iterCount} 轮 ({simResults.baselineConvergence?.residual < 1e-4 ? '<1e-4' : simResults.baselineConvergence?.residual?.toFixed(5)} B) / 冲击: {simResults.shockConvergence?.iterCount} 轮 ({simResults.shockConvergence?.residual < 1e-4 ? '<1e-4' : simResults.shockConvergence?.residual?.toFixed(5)} B)
+                </div>
+                <div className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                  外储覆盖: {simResults.coverageMeta?.reservesCoverageRatio || simResults.validReservesCoverage} ({simResults.coverageMeta?.reservesCoveragePct || 100}%) · 容差: 1e-4 B
                 </div>
               </div>
             </div>
@@ -950,11 +744,14 @@ export default function NetworkContagionSimulator({
                   </div>
 
                   <div className="p-3 bg-slate-900/80 rounded-lg border border-slate-800 space-y-1">
-                    <div className="font-bold text-emerald-400 flex items-center gap-1.5">
-                      <span>2. 外部流动性缓冲参数化假定 (Boundary Capital e_i)</span>
+                    <div className="font-bold text-emerald-400 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">2. 外部流动性缓冲参数化假定 (Boundary Capital e_i)</span>
+                      <span className="font-mono text-[10px] text-emerald-300 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                        敏感度设定: {simResults.bufferMultiplier}x FX Reserves
+                      </span>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                      经典 Eisenberg-Noe 假设外部缓冲注入来自网络之外的自由现金流。本系统遵循学术通用口径，将外部流动性参数化为各国官方外汇储备的 1.5 倍（e_i = 1.5 × 官方外汇储备 FX Reserves）。未填报外汇储备的国家严格计为 0，不施加常数插补。
+                      经典 Eisenberg-Noe 假设外部缓冲注入来自网络闭合边界之外的自由现金流。本系统将外部流动性参数化为各国官方外汇储备的动态倍数（e_i = {simResults.bufferMultiplier} × 官方外汇储备 FX Reserves）。当前外储覆盖率达 {simResults.coverageMeta?.reservesCoverageRatio || simResults.validReservesCoverage}（{simResults.coverageMeta?.reservesCoveragePct || 100}%）。无数据记录严格标记为 NA 并以 0 缓冲参与清算，不施加常数插补。支持通过上方参数栏在 1.0x（严格外储）、1.5x（学术基准）、2.0x（广义互换缓冲）间切换进行敏感性分析。
                     </p>
                   </div>
 
@@ -966,7 +763,7 @@ export default function NetworkContagionSimulator({
                       全球金融中心与核心储备货币国承担数万亿美元的跨国负债，但官方主权外汇储备规模极小。在当前 {selectedQuarter} 矩阵中：
                       {simResults?.currentRun?.structuralSamples?.map((s) => (
                         <span key={s.code} className="inline-block mr-2 font-mono text-slate-200">
-                          · {s.name} ({s.code}): 负债 {s.liabilitiesTrillion ? `$${s.liabilitiesTrillion}T` : 'NA'}，外储 {s.reservesBn !== null ? `$${s.reservesBn}B` : 'NA'}
+                          · {s.name} ({s.code}): 负债 {s.liabilitiesTrillion ? `$${s.liabilitiesTrillion}T` : 'NA'}，外储 {s.reservesBn !== null ? `$${s.reservesBn}B` : 'NA'} [{s.reservesStatus || 'OFFICIAL'}]
                         </span>
                       ))}
                       。在未引入美联储贴现窗口与常备央行互换（FIMA/Swap Lines）的极简模型中，静态不动点清算自然呈现内生结构性未清偿短缺（当前网络基线 ${(simResults?.currentRun?.baselineTotalDisplay / 1000).toFixed(4)}T）。
