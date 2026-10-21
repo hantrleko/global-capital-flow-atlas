@@ -5,12 +5,12 @@
  * Eisenberg, L., & Noe, T. H. (2001). Systemic Risk in Financial Systems.
  * Management Science, 47(2), 236-249.
  * 
- * Model Specifications:
- * - Dual-Baseline: S^(0) (zero-shock baseline) and S* (post-shock clearing shortfall)
- * - Marginal Incremental Shock Loss: ΔS = max(0, S* - S^(0)) computed in unrounded Float64 precision
- * - Fixed point: p* = min(pbar, Pi^T * p + e) solved via Picard iteration with convergence validation
- * - Dynamic data provenance: quarterly FX reserves (CBS Risk Table B) and liabilities (LBS Table A / Matrix Sum)
- * - Deterministic data fingerprinting and stale execution race prevention
+ * Standards & Protocols:
+ * - A1: Canonical Matrix Digest & datasetRevision independent cache keys
+ * - A2: Explicit distinction between OBSERVED, EXPLICIT_ZERO, and MISSING/NA reserves
+ * - A3: Centralized liability resolver with declared statistical basis (no silent fallback)
+ * - A4: Independent post-solve verification of clearing operator Phi(p) and scaled residuals
+ * - A5: Rigorous subset coverage ratios (Full Network 23/23 vs Non-Epicenter Spillover 22/22)
  */
 
 export const CLEARING_VERSION_REGISTRY = {
@@ -24,9 +24,46 @@ export const CLEARING_VERSION_REGISTRY = {
 };
 
 /**
- * Deterministic fingerprint of dataset slice and simulation inputs
+ * A1: Canonical Matrix Content Digest
+ * Sorts links canonically by source and target and computes dual-word 64-bit hash
+ * on raw unrounded values, distinguishing null, undefined, explicit zero, and positive claims.
+ */
+export function computeCanonicalMatrixDigest(links = []) {
+  if (!links || links.length === 0) return 'EMPTY_MATRIX';
+
+  const sorted = [...links].sort((a, b) => {
+    const sComp = String(a.source).localeCompare(String(b.source));
+    if (sComp !== 0) return sComp;
+    return String(a.target).localeCompare(String(b.target));
+  });
+
+  let h1 = 0x811c9dc5;
+  let h2 = 0x1000193;
+
+  for (let i = 0; i < sorted.length; i++) {
+    const l = sorted[i];
+    const valStr = (l.claims_usd_bn === null)
+      ? 'NULL'
+      : (l.claims_usd_bn === undefined)
+        ? 'UNDEF'
+        : String(l.claims_usd_bn);
+    const itemStr = `${l.source}>${l.target}:${valStr};`;
+
+    for (let c = 0; c < itemStr.length; c++) {
+      const code = itemStr.charCodeAt(c);
+      h1 = Math.imul(h1 ^ code, 0x01000193);
+      h2 = Math.imul(h2 ^ (code * 31), 0x5bd1e995);
+    }
+  }
+
+  return `${(h1 >>> 0).toString(16)}-${(h2 >>> 0).toString(16)}`;
+}
+
+/**
+ * A1: Comprehensive Cache & Identity Keys
  */
 export function buildDataFingerprint({
+  revision = 1,
   quarter,
   links = [],
   epicenter = '',
@@ -35,18 +72,349 @@ export function buildDataFingerprint({
   deleveragingMultiplier = 1.5,
   dollarSqueezePct = 12,
   simMode = 'en_clearing',
-  enSortMetric = 'incremental'
+  enSortMetric = 'incremental',
+  allowModelProxy = false
 }) {
-  const linkCount = links.length;
-  const linkSum = links.reduce((acc, l) => acc + (Number(l.claims_usd_bn) || 0), 0);
-  const head = links[0] ? `${links[0].source}->${links[0].target}:${links[0].claims_usd_bn}` : 'empty';
-  const tail = links[links.length - 1] ? `${links[links.length - 1].source}->${links[links.length - 1].target}:${links[links.length - 1].claims_usd_bn}` : 'empty';
-  return `Q:${quarter}_N:${linkCount}_S:${linkSum.toFixed(2)}_H:${head}_T:${tail}_EPI:${epicenter}_HC:${haircutPct}_BUF:${bufferMultiplier}_DEL:${deleveragingMultiplier}_DSQ:${dollarSqueezePct}_M:${simMode}_SM:${enSortMetric}`;
+  const digest = computeCanonicalMatrixDigest(links);
+  return `REV:${revision}_Q:${quarter}_DIGEST:${digest}_EPI:${epicenter}_HC:${haircutPct}_BUF:${bufferMultiplier}_DEL:${deleveragingMultiplier}_DSQ:${dollarSqueezePct}_M:${simMode}_SM:${enSortMetric}_PRX:${allowModelProxy}`;
+}
+
+export function buildBaselineCacheKey({
+  revision = 1,
+  quarter,
+  links = [],
+  bufferMultiplier = 1.5
+}) {
+  const digest = computeCanonicalMatrixDigest(links);
+  return `BASE_REV:${revision}_Q:${quarter}_DIGEST:${digest}_BUF:${bufferMultiplier}`;
+}
+
+export function buildShockCacheKey({
+  revision = 1,
+  quarter,
+  links = [],
+  epicenter = '',
+  haircutPct = 0,
+  bufferMultiplier = 1.5
+}) {
+  const digest = computeCanonicalMatrixDigest(links);
+  return `SHOCK_REV:${revision}_Q:${quarter}_DIGEST:${digest}_EPI:${epicenter}_HC:${haircutPct}_BUF:${bufferMultiplier}`;
 }
 
 /**
- * Pure Picard Fixed-Point Solver for Eisenberg-Noe Clearing Vectors
- * Returns independent residual, iteration count, and strict convergence flag.
+ * A2: Centralized FX Reserves Resolver
+ * Distinguishes OBSERVED, EXPLICIT_ZERO, MISSING, and INVALID_NUMERIC
+ */
+export function resolveCountryReserves({
+  dataset,
+  country,
+  quarter,
+  allowEstimation = false
+}) {
+  const code = typeof country === 'string' ? country : country?.code;
+  const cMeta = dataset?.countries?.find(c => c.code === code) || (typeof country === 'object' ? country : null);
+  const cbsRisk = dataset?.cbs_risk || {};
+  const qRecord = (cbsRisk[code] || []).find(q => q.quarter === quarter);
+
+  const meta = {
+    unit: 'USD_BN',
+    currency: 'USD',
+    jurisdiction: code,
+    period: quarter
+  };
+
+  if (qRecord && qRecord.fx_reserves_bn !== undefined && qRecord.fx_reserves_bn !== null) {
+    const rawVal = qRecord.fx_reserves_bn;
+
+    if (typeof rawVal !== 'number' || isNaN(rawVal) || !isFinite(rawVal) || rawVal < 0) {
+      return {
+        ...meta,
+        status: 'INVALID_NUMERIC',
+        value: null,
+        isExplicitZero: false,
+        isMissing: true,
+        source: 'BIS_CBS_TABLE_B',
+        explanation: '外汇储备记录存在非有限或非法数值'
+      };
+    }
+
+    if (rawVal === 0) {
+      return {
+        ...meta,
+        status: 'EXPLICIT_ZERO',
+        value: 0,
+        isExplicitZero: true,
+        isMissing: false,
+        source: 'BIS_CBS_TABLE_B',
+        explanation: '官方统计明确记录外汇储备为 0.00'
+      };
+    }
+
+    return {
+      ...meta,
+      status: qRecord.is_nowcast ? 'NOWCAST' : (quarter <= '2026Q1' ? 'OFFICIAL' : (quarter === '2026Q2' ? 'PENDING_VERIFICATION' : 'NOWCAST')),
+      value: rawVal,
+      isExplicitZero: false,
+      isMissing: false,
+      source: 'BIS_CBS_TABLE_B (Quarterly)',
+      explanation: '当季 CBS Table B 登记之官方外汇储备'
+    };
+  }
+
+  // Check static metadata fallback only if explicit estimation is allowed
+  if (allowEstimation && cMeta && cMeta.fx_reserves !== undefined && cMeta.fx_reserves !== null && !isNaN(cMeta.fx_reserves)) {
+    const staticVal = Number(cMeta.fx_reserves);
+    if (staticVal === 0) {
+      return {
+        ...meta,
+        status: 'ESTIMATED_ZERO',
+        value: 0,
+        isExplicitZero: true,
+        isMissing: false,
+        source: 'COUNTRY_METADATA_ESTIMATED',
+        explanation: '静态元数据插补明确零'
+      };
+    }
+    return {
+      ...meta,
+      status: 'ESTIMATED_STATIC_FALLBACK',
+      value: staticVal,
+      isExplicitZero: false,
+      isMissing: false,
+      source: 'COUNTRY_METADATA_ESTIMATED',
+      explanation: '用户显式授权采用历史元数据常数估算'
+    };
+  }
+
+  // Definite missing
+  return {
+    ...meta,
+    status: 'MISSING',
+    value: null,
+    isExplicitZero: false,
+    isMissing: true,
+    source: 'NONE_MISSING',
+    explanation: '当期未填报官方外汇储备数据，严格标记为缺失'
+  };
+}
+
+/**
+ * A3: Centralized Liability Resolver
+ * Prohibits silent cross-basis substitution unless explicitly authorized as model proxy
+ */
+export function resolveJurisdictionLiability({
+  dataset,
+  countryCode,
+  quarter,
+  requiredBasis = 'LBS_RESIDENCE', // 'LBS_RESIDENCE' | 'CBS_ULTIMATE_RISK' | 'BILATERAL_MATRIX_PERIMETER'
+  allowModelProxy = false,
+  matrixLinks = null
+}) {
+  const lbsData = dataset?.lbs_data || {};
+  const cbsRisk = dataset?.cbs_risk || {};
+  const links = matrixLinks || (dataset?.bilateral_matrix || {})[quarter] || [];
+
+  const qLbs = (lbsData[countryCode] || []).find(q => q.quarter === quarter);
+  const qCbs = (cbsRisk[countryCode] || []).find(q => q.quarter === quarter);
+
+  const matrixSum = links
+    .filter(l => l.target === countryCode)
+    .reduce((sum, l) => sum + (Number(l.claims_usd_bn) || 0), 0);
+
+  const baseResult = {
+    jurisdiction: countryCode,
+    period: quarter,
+    unit: 'USD_BN',
+    availableSources: {
+      lbsResidence: qLbs?.liabilities_usd_bn ?? null,
+      cbsUltimateRisk: qCbs?.cross_border_borrowings_bn ?? null,
+      bilateralMatrixSum: matrixSum
+    }
+  };
+
+  // 1. Bilateral Matrix Perimeter Column Sum
+  if (requiredBasis === 'BILATERAL_MATRIX_PERIMETER') {
+    return {
+      ...baseResult,
+      value: matrixSum,
+      source: 'BILATERAL_MATRIX_SUM',
+      statisticalBasis: '23国银行间闭合有向网络列和 (Inward Cross-Border Obligations)',
+      isFallback: false,
+      fallbackReason: null,
+      status: quarter <= '2026Q1' ? 'OFFICIAL_MATRIX' : (quarter === '2026Q2' ? 'PENDING_MATRIX' : 'NOWCAST_MATRIX')
+    };
+  }
+
+  // 2. LBS Residence Basis
+  if (requiredBasis === 'LBS_RESIDENCE') {
+    if (qLbs && qLbs.liabilities_usd_bn !== undefined && qLbs.liabilities_usd_bn !== null) {
+      const val = Number(qLbs.liabilities_usd_bn);
+      return {
+        ...baseResult,
+        value: val,
+        source: 'BIS_LBS_TABLE_A',
+        statisticalBasis: '居住地原则跨国银行负债 (Locational Banking Statistics)',
+        isFallback: false,
+        fallbackReason: null,
+        status: qLbs.is_nowcast ? 'NOWCAST' : (quarter <= '2026Q1' ? 'OFFICIAL' : (quarter === '2026Q2' ? 'PENDING_VERIFICATION' : 'NOWCAST'))
+      };
+    }
+
+    if (allowModelProxy) {
+      return {
+        ...baseResult,
+        value: matrixSum,
+        source: 'BILATERAL_MATRIX_SUM_PROXY',
+        statisticalBasis: '23国闭合网络列和代理 (Model Proxy)',
+        isFallback: true,
+        fallbackReason: 'LBS统计缺失，用户显式授权采用闭合矩阵列和作为模型代理',
+        status: 'MODEL_PROXY'
+      };
+    }
+
+    return {
+      ...baseResult,
+      value: null,
+      source: 'NONE_MISSING',
+      statisticalBasis: '居住地原则跨国银行负债 (Locational Banking Statistics)',
+      isFallback: false,
+      fallbackReason: '当期LBS居住地统计未填报，且未授权跨口径代理',
+      status: 'UNAVAILABLE_MISSING'
+    };
+  }
+
+  // 3. CBS Ultimate Risk Basis
+  if (requiredBasis === 'CBS_ULTIMATE_RISK') {
+    if (qCbs && qCbs.cross_border_borrowings_bn !== undefined && qCbs.cross_border_borrowings_bn !== null) {
+      const val = Number(qCbs.cross_border_borrowings_bn);
+      return {
+        ...baseResult,
+        value: val,
+        source: 'BIS_CBS_TABLE_B',
+        statisticalBasis: '最终风险承担原则跨国借款 (Consolidated Ultimate Risk)',
+        isFallback: false,
+        fallbackReason: null,
+        status: qCbs.is_nowcast ? 'NOWCAST' : (quarter <= '2026Q1' ? 'OFFICIAL' : (quarter === '2026Q2' ? 'PENDING_VERIFICATION' : 'NOWCAST'))
+      };
+    }
+
+    if (allowModelProxy) {
+      return {
+        ...baseResult,
+        value: matrixSum,
+        source: 'BILATERAL_MATRIX_SUM_PROXY',
+        statisticalBasis: '23国闭合网络列和代理 (Model Proxy)',
+        isFallback: true,
+        fallbackReason: 'CBS跨国借款统计缺失，用户显式授权采用闭合矩阵列和作为模型代理',
+        status: 'MODEL_PROXY'
+      };
+    }
+
+    return {
+      ...baseResult,
+      value: null,
+      source: 'NONE_MISSING',
+      statisticalBasis: '最终风险承担原则跨国借款 (Consolidated Ultimate Risk)',
+      isFallback: false,
+      fallbackReason: '当期CBS统计未填报，且未授权跨口径代理',
+      status: 'UNAVAILABLE_MISSING'
+    };
+  }
+
+  throw new Error(`Unsupported statistical basis: ${requiredBasis}`);
+}
+
+/**
+ * A4: Independent Fixed-Point Verification Function
+ * Recomputes Phi(p) independently on final payment vector p, evaluating exact
+ * node-wise absolute and scaled residuals against Eisenberg-Noe operator.
+ */
+export function verifyFixedPointClearingVector({
+  pbar,
+  Pi,
+  eVec,
+  pCandidate,
+  absTolerance = 1e-4,
+  relTolerance = 1e-5
+}) {
+  const n = pbar.length;
+  let maxAbsResidual = 0;
+  let maxScaledResidual = 0;
+  let worstNodeIndex = -1;
+  let worstNodeResidual = 0;
+  let boundsValid = true;
+  const boundsViolations = [];
+
+  for (let i = 0; i < n; i++) {
+    const pi = pCandidate[i];
+    const pb = pbar[i];
+
+    // 1. Numerical legality & bounds check: 0 <= p_i <= pbar_i
+    if (typeof pi !== 'number' || isNaN(pi) || !isFinite(pi)) {
+      boundsValid = false;
+      boundsViolations.push({ index: i, p: pi, pbar: pb, error: 'NON_FINITE_PAYMENT' });
+      continue;
+    }
+
+    if (pb <= 0) {
+      if (Math.abs(pi) > absTolerance) {
+        boundsValid = false;
+        boundsViolations.push({ index: i, p: pi, pbar: pb, error: 'NON_ZERO_PAYMENT_FOR_ZERO_DEBT' });
+      }
+    } else {
+      if (pi < -absTolerance || pi > pb + absTolerance) {
+        boundsValid = false;
+        boundsViolations.push({ index: i, p: pi, pbar: pb, error: 'PAYMENT_EXCEEDS_BOUNDS' });
+      }
+    }
+
+    // 2. Independent evaluation of Clearing Operator Phi_i(p)
+    let inflows = 0;
+    for (let j = 0; j < n; j++) {
+      inflows += Pi[j][i] * pCandidate[j];
+    }
+
+    const available = Math.max(0, inflows + eVec[i]);
+    const phi_i = pb > 0 ? Math.min(pb, available) : 0;
+
+    // Independent residual r_i = p_i - Phi_i(p)
+    const ri = Math.abs(pi - phi_i);
+    const scale = Math.max(1.0, pb);
+    const scaled_ri = ri / scale;
+
+    if (ri > maxAbsResidual) {
+      maxAbsResidual = ri;
+      worstNodeIndex = i;
+      worstNodeResidual = ri;
+    }
+    if (scaled_ri > maxScaledResidual) {
+      maxScaledResidual = scaled_ri;
+    }
+  }
+
+  // Combined absolute and relative tolerance threshold
+  const worstNodePbar = worstNodeIndex >= 0 ? pbar[worstNodeIndex] : 0;
+  const allowableTol = absTolerance + relTolerance * worstNodePbar;
+  const fixedPointValid = boundsValid && maxAbsResidual <= allowableTol;
+
+  return {
+    fixedPointValid,
+    maxAbsResidual,
+    maxScaledResidual,
+    worstNodeIndex,
+    worstNodeResidual,
+    boundsValid,
+    boundsViolations,
+    absTolerance,
+    relTolerance,
+    verificationSummary: fixedPointValid
+      ? `固定点独立残差通过检验 (最大残差: ${maxAbsResidual < 1e-6 ? '<1e-6' : maxAbsResidual.toFixed(8)} B, 缩放残差: ${maxScaledResidual.toExponential(2)})`
+      : `固定点残差超标或越界 (最大残差: ${maxAbsResidual.toFixed(6)} B > 允许容差 ${allowableTol.toFixed(6)} B)`
+  };
+}
+
+/**
+ * Pure Picard Fixed-Point Solver with loop difference tracking
  */
 export function solvePicardFixedPoint({
   pbar,
@@ -58,7 +426,7 @@ export function solvePicardFixedPoint({
   const n = pbar.length;
   let p = new Float64Array(pbar);
   let iterCount = 0;
-  let finalResidual = 0;
+  let finalLoopDiff = 0;
 
   for (let iter = 0; iter < maxIterations; iter++) {
     iterCount = iter + 1;
@@ -66,6 +434,10 @@ export function solvePicardFixedPoint({
     let diff = 0;
 
     for (let i = 0; i < n; i++) {
+      if (pbar[i] <= 0) {
+        pNext[i] = 0;
+        continue;
+      }
       let inflows = 0;
       for (let j = 0; j < n; j++) {
         inflows += Pi[j][i] * p[j];
@@ -76,43 +448,54 @@ export function solvePicardFixedPoint({
     }
 
     p = pNext;
-    finalResidual = diff;
+    finalLoopDiff = diff;
     if (diff < tolerance) {
       break;
     }
   }
 
-  const converged = finalResidual < tolerance;
+  const iterationConverged = finalLoopDiff < tolerance;
+
+  // Perform independent post-solve fixed point verification (A4)
+  const verification = verifyFixedPointClearingVector({
+    pbar,
+    Pi,
+    eVec,
+    pCandidate: p,
+    absTolerance: tolerance,
+    relTolerance: 1e-5
+  });
 
   return {
     p,
     iterCount,
-    residual: finalResidual,
-    converged,
+    residual: finalLoopDiff,
+    finalLoopDiff,
+    iterationConverged,
     maxIterations,
-    tolerance
+    tolerance,
+    verification,
+    converged: iterationConverged && verification.fixedPointValid
   };
 }
 
 /**
- * Resolve quarterly reserves, liabilities, and data provenance for all countries
+ * A5: Resolve Country Inputs & Rigorous Coverage Statistics
  */
 export function resolveCountryInputs({
   dataset,
   quarter,
   currentLinks = [],
-  bufferMultiplier = 1.5
+  bufferMultiplier = 1.5,
+  allowEstimation = false,
+  allowModelProxy = false
 }) {
   const countries = dataset.countries || [];
-  const cbsRisk = dataset.cbs_risk || {};
-  const lbsData = dataset.lbs_data || {};
-  const isHistorical = quarter <= '2026Q1';
-  const isPending = quarter === '2026Q2';
-  const quarterDefaultStatus = isHistorical ? 'OFFICIAL' : (isPending ? 'PENDING_VERIFICATION' : 'NOWCAST');
+  const totalCount = countries.length;
 
   const countryInputs = {};
   let validReservesCount = 0;
-  let validLiabCount = 0;
+  let validLiabFullCount = 0;
 
   // Pre-calculate bilateral matrix obligations for all targets
   const matrixLiabMap = {};
@@ -121,108 +504,89 @@ export function resolveCountryInputs({
   });
 
   countries.forEach(c => {
-    // 1. Quarterly FX Reserves lookup
-    const qCbs = (cbsRisk[c.code] || []).find(q => q.quarter === quarter);
-    let reservesVal = null;
-    let reservesSource = 'MISSING_NA';
-    let reservesStatus = 'DATA_UNAVAILABLE';
-    let reservesMissing = true;
+    // 1. Reserves via A2 centralized resolver
+    const reservesInfo = resolveCountryReserves({
+      dataset,
+      country: c,
+      quarter,
+      allowEstimation
+    });
 
-    if (qCbs && qCbs.fx_reserves_bn !== undefined && qCbs.fx_reserves_bn !== null && !isNaN(qCbs.fx_reserves_bn)) {
-      reservesVal = Number(qCbs.fx_reserves_bn);
-      reservesSource = 'BIS_CBS_TABLE_B (Quarterly)';
-      reservesStatus = qCbs.is_nowcast ? 'NOWCAST' : (isHistorical ? 'OFFICIAL' : (isPending ? 'PENDING_VERIFICATION' : 'NOWCAST'));
-      reservesMissing = false;
-      validReservesCount++;
-    } else if (c.fx_reserves !== undefined && c.fx_reserves !== null && !isNaN(c.fx_reserves)) {
-      reservesVal = Number(c.fx_reserves);
-      reservesSource = 'COUNTRY_METADATA_FALLBACK';
-      reservesStatus = 'STATIC_FALLBACK';
-      reservesMissing = false;
+    if (!reservesInfo.isMissing && reservesInfo.value !== null) {
       validReservesCount++;
     }
 
-    // 2. Network clearing nominal liabilities (matrix sum)
-    const matrixLiab = matrixLiabMap[c.code] || 0;
-    const clearingLiab = {
-      value: matrixLiab,
-      unit: 'USD Bn',
-      source: 'BILATERAL_MATRIX_SUM',
-      status: quarterDefaultStatus
-    };
+    // 2. Clearing liabilities (Matrix sum)
+    const clearingLiab = resolveJurisdictionLiability({
+      dataset,
+      countryCode: c.code,
+      quarter,
+      requiredBasis: 'BILATERAL_MATRIX_PERIMETER',
+      allowModelProxy: true,
+      matrixLinks: currentLinks
+    });
 
-    // 3. Behavioral liabilities base lookup (LBS Table A -> CBS Table B -> Matrix sum)
-    const qLbs = (lbsData[c.code] || []).find(q => q.quarter === quarter);
-    let behLiabVal = null;
-    let behLiabSource = 'MISSING_NA';
-    let behLiabStatus = 'DATA_UNAVAILABLE';
-    let behLiabMissing = true;
+    // 3. Behavioral liabilities (LBS Residence basis with explicit proxy rule)
+    const behLiab = resolveJurisdictionLiability({
+      dataset,
+      countryCode: c.code,
+      quarter,
+      requiredBasis: 'LBS_RESIDENCE',
+      allowModelProxy,
+      matrixLinks: currentLinks
+    });
 
-    if (qLbs && qLbs.liabilities_usd_bn !== undefined && qLbs.liabilities_usd_bn !== null && !isNaN(qLbs.liabilities_usd_bn) && qLbs.liabilities_usd_bn > 0) {
-      behLiabVal = Number(qLbs.liabilities_usd_bn);
-      behLiabSource = 'BIS_LBS_TABLE_A';
-      behLiabStatus = qLbs.is_nowcast ? 'NOWCAST' : quarterDefaultStatus;
-      behLiabMissing = false;
-      validLiabCount++;
-    } else if (qCbs && qCbs.cross_border_borrowings_bn !== undefined && qCbs.cross_border_borrowings_bn !== null && !isNaN(qCbs.cross_border_borrowings_bn) && qCbs.cross_border_borrowings_bn > 0) {
-      behLiabVal = Number(qCbs.cross_border_borrowings_bn);
-      behLiabSource = 'BIS_CBS_TABLE_B';
-      behLiabStatus = qCbs.is_nowcast ? 'NOWCAST' : quarterDefaultStatus;
-      behLiabMissing = false;
-      validLiabCount++;
-    } else if (matrixLiab > 0) {
-      behLiabVal = matrixLiab;
-      behLiabSource = 'BILATERAL_MATRIX_SUM_FALLBACK';
-      behLiabStatus = quarterDefaultStatus;
-      behLiabMissing = false;
-      validLiabCount++;
+    if (behLiab.value !== null && !isNaN(behLiab.value)) {
+      validLiabFullCount++;
     }
 
-    // 4. Boundary Liquidity Buffer e_i = bufferMultiplier * FX Reserves
-    const bufferVal = !reservesMissing && reservesVal > 0 ? reservesVal * bufferMultiplier : 0;
+    // 4. Boundary Liquidity Buffer e_i
+    let bufferVal = 0;
+    let bufferStatus = 'BUFFER_AVAILABLE';
+    if (reservesInfo.isMissing) {
+      bufferVal = 0;
+      bufferStatus = 'BUFFER_UNAVAILABLE_MISSING_RESERVES';
+    } else if (reservesInfo.isExplicitZero) {
+      bufferVal = 0;
+      bufferStatus = 'BUFFER_EXPLICIT_ZERO';
+    } else if (reservesInfo.value > 0) {
+      bufferVal = reservesInfo.value * bufferMultiplier;
+      bufferStatus = 'BUFFER_ACTIVE';
+    }
 
     countryInputs[c.code] = {
       code: c.code,
       name: c.name,
       name_zh: c.name_zh,
       quarter,
-      reserves: {
-        value: reservesVal,
-        unit: 'USD Bn',
-        source: reservesSource,
-        status: reservesStatus,
-        isMissing: reservesMissing
-      },
+      reserves: reservesInfo,
       clearingLiabilities: clearingLiab,
-      behavioralLiabilities: {
-        value: behLiabVal,
-        unit: 'USD Bn',
-        source: behLiabSource,
-        status: behLiabStatus,
-        isMissing: behLiabMissing
-      },
+      behavioralLiabilities: behLiab,
       boundaryBuffer: {
         value: bufferVal,
         multiplier: bufferMultiplier,
         formula: `${bufferMultiplier}x FX Reserves`,
-        isUnavailable: reservesMissing || reservesVal <= 0
+        status: bufferStatus,
+        isUnavailable: reservesInfo.isMissing
       }
     };
   });
 
-  const totalCount = countries.length;
+  // A5: Strictly defined universe coverage
   const reservesCoveragePct = totalCount > 0 ? parseFloat(((validReservesCount / totalCount) * 100).toFixed(1)) : 0;
-  const liabCoveragePct = totalCount > 0 ? parseFloat(((validLiabCount / totalCount) * 100).toFixed(1)) : 0;
+  const liabFullCoveragePct = totalCount > 0 ? parseFloat(((validLiabFullCount / totalCount) * 100).toFixed(1)) : 0;
 
   return {
     countryInputs,
-    validReservesCount,
-    validLiabCount,
     totalJurisdictions: totalCount,
+    validReservesCount,
     reservesCoverageRatio: `${validReservesCount}/${totalCount}`,
     reservesCoveragePct,
-    liabCoverageRatio: `${validLiabCount}/${totalCount}`,
-    liabCoveragePct
+    validLiabFullCount,
+    liabFullCoverageRatio: `${validLiabFullCount}/${totalCount}`,
+    liabFullCoveragePct,
+    liabCoverageRatio: `${validLiabFullCount}/${totalCount}`,
+    liabCoveragePct: liabFullCoveragePct
   };
 }
 
@@ -240,6 +604,8 @@ export function computeClearingScenario({
   dollarSqueezePct = 12,
   simMode = 'en_clearing',
   enSortMetric = 'incremental',
+  allowEstimation = false,
+  allowModelProxy = false,
   maxIterations = 100,
   tolerance = 1e-4
 }) {
@@ -252,9 +618,11 @@ export function computeClearingScenario({
   const links = currentLinks || (dataset.bilateral_matrix || {})[quarter] || [];
   const codeToIndex = Object.fromEntries(countries.map((c, idx) => [c.code, idx]));
   const countryMap = Object.fromEntries(countries.map(c => [c.code, c]));
+  const revision = dataset?.datasetRevision ?? 1;
 
-  // Build Deterministic Fingerprint
+  // A1: Full Canonical Fingerprint
   const dataFingerprint = buildDataFingerprint({
+    revision,
     quarter,
     links,
     epicenter,
@@ -263,27 +631,46 @@ export function computeClearingScenario({
     deleveragingMultiplier,
     dollarSqueezePct,
     simMode,
-    enSortMetric
+    enSortMetric,
+    allowModelProxy
   });
 
-  // Resolve Country Inputs and Provenance
+  // A1: Independent Cache Keys
+  const baselineCacheKey = buildBaselineCacheKey({
+    revision,
+    quarter,
+    links,
+    bufferMultiplier
+  });
+
+  const shockCacheKey = buildShockCacheKey({
+    revision,
+    quarter,
+    links,
+    epicenter,
+    haircutPct,
+    bufferMultiplier
+  });
+
+  // A2 & A3: Resolve Country Inputs and Provenance
   const {
     countryInputs,
     validReservesCount,
-    validLiabCount,
     reservesCoverageRatio,
     reservesCoveragePct,
-    liabCoverageRatio,
-    liabCoveragePct
+    validLiabFullCount,
+    liabFullCoverageRatio,
+    liabFullCoveragePct
   } = resolveCountryInputs({
     dataset,
     quarter,
     currentLinks: links,
-    bufferMultiplier
+    bufferMultiplier,
+    allowEstimation,
+    allowModelProxy
   });
 
   // 1. Construct Interbank Cross-Border Obligation Matrix L
-  // L[j][i]: claims of creditor j on debtor i
   const L = Array.from({ length: n }, () => new Float64Array(n));
   links.forEach(l => {
     const j = codeToIndex[l.source]; // creditor
@@ -342,8 +729,10 @@ export function computeClearingScenario({
     tolerance
   });
 
+  // A4: Independent Fixed-Point Verification
   const allConverged = baselineConvergence.converged && shockConvergence.converged;
-  const convergenceStatus = allConverged ? 'CONVERGED' : 'FAILED';
+  const allFixedPointsValid = baselineConvergence.verification.fixedPointValid && shockConvergence.verification.fixedPointValid;
+  const convergenceStatus = (allConverged && allFixedPointsValid) ? 'CONVERGED' : 'FAILED';
 
   // Compute clearing shortfalls for every creditor j using exact unrounded Float64 precision
   let totBaseRaw = 0;
@@ -405,7 +794,7 @@ export function computeClearingScenario({
     };
   }
 
-  // Exact unrounded incremental delta (CRITICAL: never back-calculated from rounded totals!)
+  // Exact unrounded incremental delta (never back-calculated from rounded totals!)
   const totIncrementalRaw = Math.max(0, totShockRaw - totBaseRaw);
   const epicenterHaircutAmountRaw = epiIdx !== undefined ? pbar[epiIdx] * (haircutPct / 100) : 0;
   const epicenterHaircutAmountDisplay = Math.round(epicenterHaircutAmountRaw * 10) / 10;
@@ -446,6 +835,7 @@ export function computeClearingScenario({
   // Round 3: Dollar Refinancing Squeeze
   const round3DollarSqueeze = {};
   let totalR3Dollar = 0;
+  let validSpilloverLiabCount = 0;
 
   countries.forEach(c => {
     if (c.code !== epicenter) {
@@ -453,6 +843,7 @@ export function computeClearingScenario({
       const actualLiab = cInput?.behavioralLiabilities?.value;
 
       if (actualLiab !== undefined && actualLiab !== null && !isNaN(actualLiab) && actualLiab > 0) {
+        validSpilloverLiabCount++;
         const defaultUsdShare = Number(c.default_usd_share) || 50;
         const dSqueeze = Math.round(actualLiab * (defaultUsdShare / 100) * (dollarSqueezePct / 100));
         round3DollarSqueeze[c.code] = dSqueeze;
@@ -462,6 +853,11 @@ export function computeClearingScenario({
       }
     }
   });
+
+  // A5: Spillover Universe (22 countries excluding epicenter)
+  const spilloverUniverseCount = Math.max(1, n - 1);
+  const spilloverLiabCoverageRatio = `${validSpilloverLiabCount}/${spilloverUniverseCount}`;
+  const spilloverLiabCoveragePct = parseFloat(((validSpilloverLiabCount / spilloverUniverseCount) * 100).toFixed(1));
 
   // Compile Comprehensive Impact Ranking
   const impactList = countries
@@ -479,11 +875,28 @@ export function computeClearingScenario({
       const incIndirObj = enIncrementalIndirect[c.code] || { raw: 0, display: 0 };
 
       const cInput = countryInputs[c.code];
-      const reserves = cInput?.reserves?.value;
-      const impactToReservesPct = reserves ? parseFloat(((totalImpact / reserves) * 100).toFixed(1)) : 'NA';
-      const enIncrementalToReservesPct = reserves ? parseFloat(((incObj.raw / reserves) * 100).toFixed(1)) : 'NA';
-      const enBaselineToReservesPct = reserves ? parseFloat(((bObj.raw / reserves) * 100).toFixed(1)) : 'NA';
-      const enPostShockToReservesPct = reserves ? parseFloat(((sObj.raw / reserves) * 100).toFixed(1)) : 'NA';
+      const resObj = cInput?.reserves;
+      const reserves = resObj?.value;
+
+      // A2: Dependent Ratios Zero/Null Handling
+      let impactToReservesPct = 'NA';
+      let enIncrementalToReservesPct = 'NA';
+      let enBaselineToReservesPct = 'NA';
+      let enPostShockToReservesPct = 'NA';
+
+      if (resObj && !resObj.isMissing) {
+        if (resObj.isExplicitZero || reserves === 0) {
+          impactToReservesPct = 'N/A (外储为零)';
+          enIncrementalToReservesPct = 'N/A (外储为零)';
+          enBaselineToReservesPct = 'N/A (外储为零)';
+          enPostShockToReservesPct = 'N/A (外储为零)';
+        } else if (reserves > 0) {
+          impactToReservesPct = parseFloat(((totalImpact / reserves) * 100).toFixed(1));
+          enIncrementalToReservesPct = parseFloat(((incObj.raw / reserves) * 100).toFixed(1));
+          enBaselineToReservesPct = parseFloat(((bObj.raw / reserves) * 100).toFixed(1));
+          enPostShockToReservesPct = parseFloat(((sObj.raw / reserves) * 100).toFixed(1));
+        }
+      }
 
       return {
         code: c.code,
@@ -492,8 +905,9 @@ export function computeClearingScenario({
         region: c.region,
         tier: c.tier,
         reserves,
-        reservesStatus: cInput?.reserves?.status || 'DATA_UNAVAILABLE',
-        reservesSource: cInput?.reserves?.source || 'MISSING_NA',
+        reservesStatus: resObj?.status || 'MISSING',
+        reservesSource: resObj?.source || 'NONE_MISSING',
+        isExplicitZeroReserves: resObj?.isExplicitZero || false,
         r1Loss: r1,
         r2Spillover: r2,
         r3Dollar: r3,
@@ -532,7 +946,7 @@ export function computeClearingScenario({
       return b.totalImpact - a.totalImpact;
     });
 
-  // Top incremental victim (only exists if incremental shortfall > 0)
+  // Top incremental victim (only if delta > 0)
   const topVictim = (impactList.length > 0 && impactList[0].enIncrementalShortfallRaw > 0) ? impactList[0] : null;
 
   // Structural Mismatch Samples (US, GB, KY dynamically resolved with complete provenance trace)
@@ -550,8 +964,8 @@ export function computeClearingScenario({
       liabilitiesTrillion: liab !== null ? (liab / 1000).toFixed(2) : null,
       liabilitiesSource: 'BILATERAL_MATRIX_SUM',
       reservesBn: res,
-      reservesSource: cInput?.reserves?.source || 'MISSING_NA',
-      reservesStatus: cInput?.reserves?.status || 'DATA_UNAVAILABLE',
+      reservesSource: cInput?.reserves?.source || 'NONE_MISSING',
+      reservesStatus: cInput?.reserves?.status || 'MISSING',
       bufferMultiplier,
       bufferBn: cInput?.boundaryBuffer?.value ?? 0
     };
@@ -561,8 +975,11 @@ export function computeClearingScenario({
   const epicenterCountry = countryMap[epicenter] || countries[0];
 
   const currentRun = {
-    runId: `${quarter}-${epicenter}-${haircutPct}-${bufferMultiplier}-${Date.now()}`,
+    runId: `${quarter}-${epicenter}-${haircutPct}-${bufferMultiplier}-${revision}-${Date.now()}`,
     dataFingerprint,
+    baselineCacheKey,
+    shockCacheKey,
+    datasetRevision: revision,
     quarter,
     quarterStatus,
     epicenterCode: epicenter,
@@ -581,18 +998,23 @@ export function computeClearingScenario({
     incrementalTotalDisplay: Math.round(totIncrementalRaw * 10) / 10,
     convergenceStatus,
     allConverged,
+    allFixedPointsValid,
     baselineConvergence,
     shockConvergence,
-    validLiabCoverage: `${validLiabCount}/${countries.length - 1}`,
-    validReservesCoverage: `${validReservesCount}/${countries.length}`,
+    validLiabCoverage: spilloverLiabCoverageRatio,
+    validReservesCoverage: reservesCoverageRatio,
     coverageMeta: {
-      validReservesCount,
       totalJurisdictions: n,
+      validReservesCount,
       reservesCoverageRatio,
       reservesCoveragePct,
-      validLiabCount,
-      liabCoverageRatio,
-      liabCoveragePct
+      validLiabFullCount,
+      liabFullCoverageRatio,
+      liabFullCoveragePct,
+      spilloverUniverseCount,
+      validSpilloverLiabCount,
+      spilloverLiabCoverageRatio,
+      spilloverLiabCoveragePct
     },
     topVictim: topVictim ? {
       code: topVictim.code,
@@ -615,6 +1037,9 @@ export function computeClearingScenario({
     currentRun,
     quarter,
     dataFingerprint,
+    baselineCacheKey,
+    shockCacheKey,
+    datasetRevision: revision,
     epicenterCode: epicenter,
     simMode,
     enSortMetric,
@@ -624,10 +1049,11 @@ export function computeClearingScenario({
     dollarSqueezePct,
     convergenceStatus,
     allConverged,
+    allFixedPointsValid,
     baselineConvergence,
     shockConvergence,
     iterationsCount: shockConvergence.iterCount,
-    clearingResidual: shockConvergence.residual,
+    clearingResidual: shockConvergence.verification.maxAbsResidual,
     epicenterHaircutAmount: epicenterHaircutAmountDisplay,
     epicenterLiab: epicenterLiabDisplay,
     totalBaselineShortfall: currentRun.baselineTotalDisplay,

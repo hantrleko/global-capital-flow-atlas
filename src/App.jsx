@@ -90,6 +90,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState(null);
   const [customMatrix, setCustomMatrix] = useState(null);
   const [customFileName, setCustomFileName] = useState(null);
+  const [datasetRevision, setDatasetRevision] = useState(1);
   const [selectedCurrency, setSelectedCurrency] = useState(() => {
     if (paramCurrency && ['USD', 'EUR', 'CNY', 'JPY', 'GOLD'].includes(paramCurrency)) return paramCurrency;
     return localStorage.getItem('bis_atlas_currency') || 'USD';
@@ -131,17 +132,20 @@ export default function App() {
     localStorage.setItem('bis_atlas_currency', newCur);
   };
 
-  // Active dataset that transparently overlays custom uploaded matrix in memory
+  // Active dataset that transparently overlays custom uploaded matrix in memory with explicit datasetRevision
   const activeDataset = useMemo(() => {
-    if (!customMatrix) return bisDataset;
-    return {
+    const base = customMatrix ? {
       ...bisDataset,
       bilateral_matrix: {
         ...bisDataset.bilateral_matrix,
         [selectedQuarter]: customMatrix
       }
+    } : bisDataset;
+    return {
+      ...base,
+      datasetRevision
     };
-  }, [customMatrix, selectedQuarter]);
+  }, [customMatrix, selectedQuarter, datasetRevision]);
 
   const toggleSound = () => {
     const next = soundFx.toggleMute();
@@ -586,10 +590,12 @@ export default function App() {
           onApplyCustomData={(matrix, fName) => {
             setCustomMatrix(matrix);
             setCustomFileName(fName);
+            setDatasetRevision(r => r + 1);
           }}
           onResetToOfficial={() => {
             setCustomMatrix(null);
             setCustomFileName(null);
+            setDatasetRevision(r => r + 1);
           }}
         />
       </Suspense>

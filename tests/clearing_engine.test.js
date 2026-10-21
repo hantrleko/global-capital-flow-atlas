@@ -9,6 +9,12 @@ import { fileURLToPath } from 'url';
 import {
   computeClearingScenario,
   buildDataFingerprint,
+  buildBaselineCacheKey,
+  buildShockCacheKey,
+  computeCanonicalMatrixDigest,
+  resolveCountryReserves,
+  resolveJurisdictionLiability,
+  verifyFixedPointClearingVector,
   resolveCountryInputs,
   solvePicardFixedPoint,
   CLEARING_VERSION_REGISTRY
@@ -296,6 +302,271 @@ function runTestSuite() {
     assert(Math.abs(res.totalIncrementalRaw - 284.75284) < 0.05, `Full network incremental raw shortfall ~284.7528B (got ${res.totalIncrementalRaw.toFixed(5)})`);
     assert(res.totalIncrementalRaw === Math.max(0, res.totalPostShockRaw - res.totalBaselineRaw), 'Total incremental delta must strictly equal (S* - S^(0)) in Float64');
     assert(res.totalIncrementalShortfall === Math.round(res.totalIncrementalRaw * 10) / 10, 'Display incremental shortfall must be exact 1-decimal rounding of Float64 total');
+  }
+
+  // TEST 11: A1 - Zero-Sum Distribution Mutation & Fingerprint Invalidation
+  console.log('\nTest 11: A1 - Zero-Sum Distribution Mutation & Cache Invalidation');
+  {
+    const origLinks = dataset.bilateral_matrix['2026Q4'];
+    const origDigest = computeCanonicalMatrixDigest(origLinks);
+    const origFingerprint = buildDataFingerprint({
+      revision: 1,
+      quarter: '2026Q4',
+      links: origLinks,
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+
+    // Zero-sum mutation: edge count and sum of claims are bitwise identical,
+    // but the spatial distribution between US->JP and US->GB shifts by 50B.
+    let foundUSJP = false;
+    let foundUSGB = false;
+    const mutatedLinks = origLinks.map(l => {
+      if (l.source === 'US' && l.target === 'JP') {
+        foundUSJP = true;
+        return { ...l, claims_usd_bn: l.claims_usd_bn - 50.0 };
+      }
+      if (l.source === 'US' && l.target === 'GB') {
+        foundUSGB = true;
+        return { ...l, claims_usd_bn: l.claims_usd_bn + 50.0 };
+      }
+      return { ...l };
+    });
+
+    assert(foundUSJP && foundUSGB, 'Must find both US->JP and US->GB corridors for zero-sum test');
+    assert(mutatedLinks.length === origLinks.length, 'Mutated matrix must have identical corridor count');
+
+    const origSum = origLinks.reduce((acc, l) => acc + l.claims_usd_bn, 0);
+    const mutatedSum = mutatedLinks.reduce((acc, l) => acc + l.claims_usd_bn, 0);
+    assert(Math.abs(origSum - mutatedSum) < 1e-9, 'Mutated matrix sum must be bitwise identical');
+
+    const mutatedDigest = computeCanonicalMatrixDigest(mutatedLinks);
+    assert(mutatedDigest !== origDigest, `Canonical digest must change despite identical sum and edge count (got ${mutatedDigest})`);
+
+    const mutatedFingerprint = buildDataFingerprint({
+      revision: 2,
+      quarter: '2026Q4',
+      links: mutatedLinks,
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+    assert(mutatedFingerprint !== origFingerprint, 'Fingerprint must change when distribution changes');
+
+    // Recomputation on mutated matrix produces updated clearing results
+    const resMutated = computeClearingScenario({
+      dataset: { ...dataset, datasetRevision: 2 },
+      quarter: '2026Q4',
+      currentLinks: mutatedLinks,
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+    assert(resMutated.dataFingerprint === mutatedFingerprint, 'Scenario result must bind mutated fingerprint');
+    assert(resMutated.datasetRevision === 2, 'Scenario result must reflect datasetRevision 2');
+
+    // Restoration back to original links yields identical original digest and fingerprint
+    const restoredDigest = computeCanonicalMatrixDigest(origLinks);
+    assert(restoredDigest === origDigest, 'Restored digest must match original digest');
+  }
+
+  // TEST 12: A2 - Explicit Zero Reserves vs Missing Reserves & Division-by-Zero Guard
+  console.log('\nTest 12: A2 - Explicit Zero vs Missing Reserves & Ratio Guard');
+  {
+    // Test resolveCountryReserves with synthetic records
+    const synDataset = JSON.parse(JSON.stringify(dataset));
+    
+    // Explicit Zero
+    synDataset.cbs_risk['TEST_ZERO'] = [{ quarter: '2026Q4', fx_reserves_bn: 0, is_nowcast: false }];
+    // Definite Missing (null)
+    synDataset.cbs_risk['TEST_NULL'] = [{ quarter: '2026Q4', fx_reserves_bn: null, is_nowcast: false }];
+    // Invalid Numeric (negative or NaN)
+    synDataset.cbs_risk['TEST_INVALID'] = [{ quarter: '2026Q4', fx_reserves_bn: -100, is_nowcast: false }];
+
+    const resZero = resolveCountryReserves({ dataset: synDataset, country: 'TEST_ZERO', quarter: '2026Q4' });
+    assert(resZero.status === 'EXPLICIT_ZERO', 'fx_reserves_bn = 0 must produce EXPLICIT_ZERO status');
+    assert(resZero.value === 0, 'EXPLICIT_ZERO value must be 0');
+    assert(resZero.isExplicitZero === true, 'isExplicitZero must be true');
+    assert(resZero.isMissing === false, 'isMissing must be false for explicit zero');
+    assert(resZero.unit === 'USD_BN', 'Must provide unit USD_BN');
+
+    const resNull = resolveCountryReserves({ dataset: synDataset, country: 'TEST_NULL', quarter: '2026Q4' });
+    assert(resNull.status === 'MISSING', 'fx_reserves_bn = null must produce MISSING status');
+    assert(resNull.value === null, 'MISSING value must be null');
+    assert(resNull.isExplicitZero === false, 'isExplicitZero must be false for null');
+    assert(resNull.isMissing === true, 'isMissing must be true for null');
+
+    const resInvalid = resolveCountryReserves({ dataset: synDataset, country: 'TEST_INVALID', quarter: '2026Q4' });
+    assert(resInvalid.status === 'INVALID_NUMERIC', 'Negative fx_reserves must produce INVALID_NUMERIC status');
+    assert(resInvalid.value === null, 'INVALID_NUMERIC value must be null');
+
+    // Test scenario ratio formatting: explicit zero denominator returns 'N/A (外储为零)', missing returns 'NA'
+    synDataset.countries.push(
+      { code: 'TEST_ZERO', name: 'Zero Island', name_zh: '零储备岛', tier: 3 },
+      { code: 'TEST_NULL', name: 'Null Island', name_zh: '缺失储备岛', tier: 3 }
+    );
+    synDataset.bilateral_matrix['2026Q4'].push(
+      { source: 'TEST_ZERO', target: 'TR', claims_usd_bn: 20 },
+      { source: 'TR', target: 'TEST_ZERO', claims_usd_bn: 20 },
+      { source: 'TEST_NULL', target: 'TR', claims_usd_bn: 20 },
+      { source: 'TR', target: 'TEST_NULL', claims_usd_bn: 20 }
+    );
+
+    const resScenario = computeClearingScenario({
+      dataset: synDataset,
+      quarter: '2026Q4',
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+
+    const zeroItem = resScenario.impactList.find(i => i.code === 'TEST_ZERO');
+    assert(zeroItem !== undefined, 'TEST_ZERO country must be in impact list');
+    assert(zeroItem.enIncrementalToReservesPct === 'N/A (外储为零)', `Explicit zero reserves ratio must return 'N/A (外储为零)', got ${zeroItem.enIncrementalToReservesPct}`);
+
+    const nullItem = resScenario.impactList.find(i => i.code === 'TEST_NULL');
+    assert(nullItem !== undefined, 'TEST_NULL country must be in impact list');
+    assert(nullItem.enIncrementalToReservesPct === 'NA', `Missing reserves ratio must return 'NA', got ${nullItem.enIncrementalToReservesPct}`);
+  }
+
+  // TEST 13: A3 - Centralized Liability Resolver & Prohibition of Silent Cross-Basis Fallback
+  console.log('\nTest 13: A3 - Centralized Liability Resolver & Fallback Guard');
+  {
+    // Test LBS Residence basis resolution
+    const lbsUS = resolveJurisdictionLiability({
+      dataset,
+      countryCode: 'US',
+      quarter: '2026Q1',
+      requiredBasis: 'LBS_RESIDENCE'
+    });
+    assert(lbsUS.value > 0, 'US LBS residence liabilities must be positive in 2026Q1');
+    assert(lbsUS.source === 'BIS_LBS_TABLE_A', 'US LBS source must be BIS_LBS_TABLE_A');
+    assert(lbsUS.isFallback === false, 'Official LBS must not be a fallback');
+
+    // Test CBS Ultimate Risk basis resolution
+    const cbsUS = resolveJurisdictionLiability({
+      dataset,
+      countryCode: 'US',
+      quarter: '2026Q1',
+      requiredBasis: 'CBS_ULTIMATE_RISK'
+    });
+    assert(cbsUS.value > 0, 'US CBS ultimate risk liabilities must be positive in 2026Q1');
+    assert(cbsUS.source === 'BIS_CBS_TABLE_B', 'US CBS source must be BIS_CBS_TABLE_B');
+    assert(cbsUS.isFallback === false, 'Official CBS must not be a fallback');
+
+    // Test Bilateral Matrix Perimeter Column Sum
+    const matrixUS = resolveJurisdictionLiability({
+      dataset,
+      countryCode: 'US',
+      quarter: '2026Q1',
+      requiredBasis: 'BILATERAL_MATRIX_PERIMETER'
+    });
+    assert(matrixUS.value > 0, 'US matrix perimeter sum must be positive in 2026Q1');
+    assert(matrixUS.source === 'BILATERAL_MATRIX_SUM', 'US matrix source must be BILATERAL_MATRIX_SUM');
+
+    // Test missing basis without authorization: must NOT silently fall back
+    const synDataset = JSON.parse(JSON.stringify(dataset));
+    delete synDataset.lbs_data['US']; // Remove LBS data for US
+
+    const missingWithoutProxy = resolveJurisdictionLiability({
+      dataset: synDataset,
+      countryCode: 'US',
+      quarter: '2026Q1',
+      requiredBasis: 'LBS_RESIDENCE',
+      allowModelProxy: false
+    });
+    assert(missingWithoutProxy.value === null, 'Missing LBS without allowModelProxy must return value = null');
+    assert(missingWithoutProxy.status === 'UNAVAILABLE_MISSING', 'Must return status UNAVAILABLE_MISSING');
+    assert(missingWithoutProxy.isFallback === false, 'Must not claim fallback when proxy is prohibited');
+
+    // Test missing basis with explicit authorization: falls back to MODEL_PROXY
+    const missingWithProxy = resolveJurisdictionLiability({
+      dataset: synDataset,
+      countryCode: 'US',
+      quarter: '2026Q1',
+      requiredBasis: 'LBS_RESIDENCE',
+      allowModelProxy: true
+    });
+    assert(missingWithProxy.value > 0, 'With allowModelProxy = true, proxy column sum is provided');
+    assert(missingWithProxy.source === 'BILATERAL_MATRIX_SUM_PROXY', 'Source must indicate BILATERAL_MATRIX_SUM_PROXY');
+    assert(missingWithProxy.isFallback === true, 'isFallback must be true');
+    assert(missingWithProxy.status === 'MODEL_PROXY', 'status must be MODEL_PROXY');
+  }
+
+  // TEST 14: A4 - Independent Fixed-Point Verification Operator (Phi(p))
+  console.log('\nTest 14: A4 - Independent Clearing Operator Phi(p) Verification');
+  {
+    const res = computeClearingScenario({
+      dataset,
+      quarter: '2026Q4',
+      epicenter: 'TR',
+      haircutPct: 25,
+      bufferMultiplier: 1.5
+    });
+
+    // 1. Genuine converged solution must pass independent verification
+    assert(res.allFixedPointsValid === true, 'Genuine clearing vector must pass independent verification');
+    assert(res.baselineConvergence.verification.fixedPointValid === true, 'Baseline verification must be valid');
+    assert(res.shockConvergence.verification.fixedPointValid === true, 'Shocked verification must be valid');
+    assert(res.shockConvergence.verification.maxAbsResidual < 1e-4, `Max abs residual must be < 1e-4 (got ${res.shockConvergence.verification.maxAbsResidual})`);
+    assert(res.shockConvergence.verification.boundsValid === true, 'Payment bounds 0 <= p <= pbar must be strictly valid');
+
+    // 2. Perturbed vector must FAIL independent verification
+    const validP = res.shockConvergence.p;
+    const perturbedP = validP.map((v, i) => i === 0 ? v + 1.0 : v); // Corrupt node 0 by 1.0B
+
+    // Reconstruct input vectors for independent operator evaluation
+    const inputs = resolveCountryInputs({ dataset, quarter: '2026Q4', bufferMultiplier: 1.5 });
+    const n = dataset.countries.length;
+    const pbarArr = dataset.countries.map(c => inputs.countryInputs[c.code].clearingLiabilities.value || 0);
+    const eVec = dataset.countries.map((c, i) => {
+      const b = inputs.countryInputs[c.code].boundaryBuffer.value || 0;
+      return c.code === 'TR' ? Math.max(0, b - pbarArr[i] * 0.25) : b;
+    });
+
+    // Compute relative liability matrix Pi
+    const links = dataset.bilateral_matrix['2026Q4'];
+    const codeToIndex = Object.fromEntries(dataset.countries.map((c, idx) => [c.code, idx]));
+    const Pi = Array.from({ length: n }, () => new Float64Array(n));
+    for (const link of links) {
+      const i = codeToIndex[link.source];
+      const j = codeToIndex[link.target];
+      if (i !== undefined && j !== undefined && pbarArr[i] > 0) {
+        Pi[i][j] = link.claims_usd_bn / pbarArr[i];
+      }
+    }
+
+    const perturbedVerif = verifyFixedPointClearingVector({
+      pbar: pbarArr,
+      Pi,
+      eVec,
+      pCandidate: perturbedP,
+      absTolerance: 1e-4
+    });
+
+    assert(perturbedVerif.fixedPointValid === false, 'Perturbed candidate vector must FAIL independent verification');
+    assert(perturbedVerif.maxAbsResidual >= 0.5, `Perturbed vector residual must be >= 0.5 (got ${perturbedVerif.maxAbsResidual})`);
+  }
+
+  // TEST 15: A5 - Strict Subset Coverage Label Definition (23/23 & 22/22)
+  console.log('\nTest 15: A5 - Strict Subset Coverage Label Definition');
+  {
+    const res = computeClearingScenario({
+      dataset,
+      quarter: '2026Q4',
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+
+    const cm = res.coverageMeta;
+    assert(cm !== undefined, 'coverageMeta must be present in simulation results');
+    assert(cm.totalJurisdictions === 23, 'Total network jurisdictions must be 23');
+    assert(cm.reservesCoverageRatio === '23/23', `Reserves coverage ratio must be '23/23' (got ${cm.reservesCoverageRatio})`);
+    assert(cm.reservesCoveragePct === 100, 'Reserves coverage percentage must be 100%');
+    assert(cm.validReservesCount <= cm.totalJurisdictions, 'Reserves count must be subset of total network');
+
+    assert(cm.spilloverUniverseCount === 22, 'Spillover universe count must be 22 (23 - 1 epicenter)');
+    assert(cm.spilloverLiabCoverageRatio === '22/22', `Spillover liab coverage ratio must be '22/22' (got ${cm.spilloverLiabCoverageRatio})`);
+    assert(cm.spilloverLiabCoveragePct === 100, 'Spillover liab coverage percentage must be 100%');
+    assert(cm.validSpilloverLiabCount <= cm.spilloverUniverseCount, 'Spillover count must be subset of spillover universe');
+    assert(cm.liabFullCoverageRatio === '23/23', `Full liab coverage ratio must be '23/23' (got ${cm.liabFullCoverageRatio})`);
   }
 
   console.log('\n===============================================================');

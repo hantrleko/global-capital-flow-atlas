@@ -128,14 +128,18 @@ export default function CapitalFlowMap({
       if (e.key === 'Escape') {
         if (selectedCorridor) {
           setSelectedCorridor(null);
-        } else if (focusCountry !== 'ALL') {
+        }
+        if (focusCountry !== 'ALL') {
           setFocusCountry('ALL');
+        }
+        if (selectedCountry && onSelectCountry) {
+          onSelectCountry(null);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedCorridor, focusCountry]);
+  }, [selectedCorridor, focusCountry, selectedCountry, onSelectCountry]);
 
   // Update chart options with elite aesthetic curation
   useEffect(() => {
@@ -616,10 +620,10 @@ export default function CapitalFlowMap({
     };
 
     chartInstance.current.setOption(option, {
-      notMerge: false,
+      notMerge: true,
       lazyUpdate: true
     });
-  }, [selectedQuarter, selectedCountry, corridorDensity, metricView, mapLoaded, focusCountry, geoPreset, showLabels, flowMode, linksWithFlow]);
+  }, [selectedQuarter, selectedCountry, corridorDensity, metricView, mapLoaded, focusCountry, geoPreset, showLabels, flowMode, linksWithFlow, dataset?.datasetRevision]);
 
   // Full 28-Quarter Macro Historical Scrubber Chart (2018Q1 - 2024Q4)
   useEffect(() => {

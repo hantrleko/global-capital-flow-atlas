@@ -42,6 +42,8 @@ export default function NetworkContagionSimulator({
   const [bufferMultiplier, setBufferMultiplier] = useState(1.5); // 1.0 | 1.5 | 2.0x FX Reserves
   const [deleveragingMultiplier, setDeleveragingMultiplier] = useState(1.5); // Bank deleveraging ratio
   const [dollarSqueezePct, setDollarSqueezePct] = useState(12); // Dollar liquidity squeeze %
+  const [allowModelProxy, setAllowModelProxy] = useState(false); // Explicit authorization for model proxy liabilities
+  const [isRecomputing, setIsRecomputing] = useState(false); // Immediate visual feedback during recomputation
   const [simResults, setSimResults] = useState(null);
 
   const chartRef = useRef(null);
@@ -78,9 +80,10 @@ export default function NetworkContagionSimulator({
     return (dataset.bilateral_matrix || {})[selectedQuarter] || [];
   }, [dataset, selectedQuarter]);
 
-  // Deterministic Fingerprint Key: binds quarter, active matrix links, and all scenario parameters
+  // Deterministic Fingerprint Key: binds revision, quarter, active matrix links, and all scenario parameters
   const dataFingerprint = useMemo(() => {
     return buildDataFingerprint({
+      revision: dataset?.datasetRevision ?? 1,
       quarter: selectedQuarter,
       links: currentLinks,
       epicenter,
@@ -89,13 +92,16 @@ export default function NetworkContagionSimulator({
       deleveragingMultiplier,
       dollarSqueezePct,
       simMode,
-      enSortMetric
+      enSortMetric,
+      allowModelProxy
     });
-  }, [dataset, selectedQuarter, currentLinks, epicenter, haircutPct, bufferMultiplier, deleveragingMultiplier, dollarSqueezePct, simMode, enSortMetric]);
+  }, [dataset?.datasetRevision, selectedQuarter, currentLinks, epicenter, haircutPct, bufferMultiplier, deleveragingMultiplier, dollarSqueezePct, simMode, enSortMetric, allowModelProxy]);
 
-  // Pure Simulation Executor with Async Race Protection
+  // Pure Simulation Executor with Async Race Protection & Recomputing Indicator
   const executeSimulation = () => {
     const token = ++runTokenRef.current;
+    setIsRecomputing(true);
+
     const results = computeClearingScenario({
       dataset,
       quarter: selectedQuarter,
@@ -106,12 +112,14 @@ export default function NetworkContagionSimulator({
       deleveragingMultiplier,
       dollarSqueezePct,
       simMode,
-      enSortMetric
+      enSortMetric,
+      allowModelProxy
     });
 
     // Guard against stale async or delayed race conditions
     if (token === runTokenRef.current) {
       setSimResults(results);
+      setIsRecomputing(false);
     }
   };
 
@@ -297,17 +305,24 @@ export default function NetworkContagionSimulator({
       ['Product Version', cr.versionMeta.productVersion],
       ['Model Version', cr.versionMeta.modelVersion],
       ['Data Version', cr.versionMeta.dataVersion],
+      ['Dataset Revision', simResults.datasetRevision ?? 1],
       ['Quarter', cr.quarter],
       ['Quarter Status', cr.quarterStatus],
       ['Fixed-Point Convergence Status', cr.convergenceStatus],
+      ['Fixed-Point Independent Verification Valid', simResults.allFixedPointsValid ? 'TRUE' : 'FALSE'],
       ['Baseline Picard Iterations', simResults.baselineConvergence?.iterCount ?? 'NA'],
-      ['Baseline Picard Residual (USD Bn)', simResults.baselineConvergence?.residual !== undefined ? simResults.baselineConvergence.residual.toFixed(8) : 'NA'],
+      ['Baseline Picard Loop Residual (USD Bn)', simResults.baselineConvergence?.residual !== undefined ? simResults.baselineConvergence.residual.toFixed(8) : 'NA'],
+      ['Baseline Operator Max Abs Residual (USD Bn)', simResults.baselineConvergence?.verification?.maxAbsResidual !== undefined ? simResults.baselineConvergence.verification.maxAbsResidual.toFixed(8) : 'NA'],
+      ['Baseline Operator Max Scaled Residual', simResults.baselineConvergence?.verification?.maxScaledResidual !== undefined ? simResults.baselineConvergence.verification.maxScaledResidual.toExponential(4) : 'NA'],
       ['Shock Picard Iterations', simResults.shockConvergence?.iterCount ?? 'NA'],
-      ['Shock Picard Residual (USD Bn)', simResults.shockConvergence?.residual !== undefined ? simResults.shockConvergence.residual.toFixed(8) : 'NA'],
+      ['Shock Picard Loop Residual (USD Bn)', simResults.shockConvergence?.residual !== undefined ? simResults.shockConvergence.residual.toFixed(8) : 'NA'],
+      ['Shock Operator Max Abs Residual (USD Bn)', simResults.shockConvergence?.verification?.maxAbsResidual !== undefined ? simResults.shockConvergence.verification.maxAbsResidual.toFixed(8) : 'NA'],
+      ['Shock Operator Max Scaled Residual', simResults.shockConvergence?.verification?.maxScaledResidual !== undefined ? simResults.shockConvergence.verification.maxScaledResidual.toExponential(4) : 'NA'],
       ['Picard Convergence Tolerance (USD Bn)', '0.0001 (1e-4)'],
       ['FX Reserves Boundary Buffer Multiplier', `${cr.bufferMultiplier}x FX Reserves`],
-      ['FX Reserves Jurisdiction Coverage', `${cr.coverageMeta?.reservesCoverageRatio || simResults.validReservesCoverage} (${cr.coverageMeta?.reservesCoveragePct || 100}%)`],
-      ['Liabilities Jurisdiction Coverage', `${cr.coverageMeta?.liabCoverageRatio || simResults.validLiabCoverage} (${cr.coverageMeta?.liabCoveragePct || 100}%)`],
+      ['FX Reserves Jurisdiction Coverage (Whole Network)', `${cr.coverageMeta?.reservesCoverageRatio || simResults.validReservesCoverage} (${cr.coverageMeta?.reservesCoveragePct || 100}%)`],
+      ['Spillover Liabilities Jurisdiction Coverage (Non-Epicenter)', `${cr.coverageMeta?.spilloverLiabCoverageRatio || '22/22'} (${cr.coverageMeta?.spilloverLiabCoveragePct || 100}%)`],
+      ['Total Liabilities Jurisdiction Coverage (Whole Network)', `${cr.coverageMeta?.liabFullCoverageRatio || '23/23'} (${cr.coverageMeta?.liabFullCoveragePct || 100}%)`],
       ['Data Fingerprint Hash', cr.dataFingerprint],
       ['Epicenter Code', cr.epicenterCode],
       ['Epicenter Name', cr.epicenterNameZh],
@@ -436,13 +451,20 @@ export default function NetworkContagionSimulator({
         </div>
 
         <div className="text-[11px] font-mono text-slate-400 flex flex-wrap items-center gap-2">
+          {isRecomputing && (
+            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-bold">
+              ⚡ 正在重算清算向量...
+            </span>
+          )}
           <span>产品: <strong className="text-slate-200">{simResults?.versionMeta?.productVersion || CLEARING_VERSION_REGISTRY.PRODUCT}</strong></span>
           <span>·</span>
           <span>模型: <strong className="text-purple-300">{simResults?.versionMeta?.modelVersion || CLEARING_VERSION_REGISTRY.MODEL}</strong></span>
           <span>·</span>
           <span>数据: <strong className="text-sky-300">{simResults?.versionMeta?.dataVersion || CLEARING_VERSION_REGISTRY.DATA(selectedQuarter)}</strong></span>
           <span>·</span>
-          <span>负债覆盖: <strong className="text-emerald-400">{simResults?.validLiabCoverage || '22/22'}</strong></span>
+          <span>全网外储覆盖: <strong className="text-emerald-400">{simResults?.coverageMeta?.reservesCoverageRatio || '23/23'}</strong></span>
+          <span>·</span>
+          <span>波及负债覆盖: <strong className="text-emerald-400">{simResults?.coverageMeta?.spilloverLiabCoverageRatio || '22/22'}</strong></span>
         </div>
       </div>
 
@@ -629,18 +651,18 @@ export default function NetworkContagionSimulator({
         simMode === 'en_clearing' ? (
           <div className="space-y-3">
             {/* Solver Convergence Alert Banner if FAILED */}
-            {!simResults.allConverged && (
+            {(!simResults.allConverged || !simResults.allFixedPointsValid) && (
               <div className="p-3.5 bg-rose-950/90 border border-rose-500 rounded-xl text-rose-200 flex items-start gap-3 shadow-xl">
                 <AlertOctagon className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                 <div className="space-y-1 text-xs">
                   <div className="font-bold text-sm text-rose-300">
-                    ⚠️ 清算不动点求解未收敛告警 (Fixed-Point Solver FAILED)
+                    ⚠️ 清算不动点求解未收敛或独立验证未通过 (Fixed-Point Solver FAILED)
                   </div>
                   <p className="text-slate-300">
-                    在当前迭代轮数内，不动点残差未达到 1e-4 Bn USD 守恒容差。请注意当前清算结果处于未完全出清截断状态。
+                    在当前迭代轮数内，不动点残差未达到 1e-4 Bn USD 守恒容差或算子独立检验存在越界。请注意当前清算结果处于未完全出清截断状态。
                   </p>
                   <div className="font-mono text-[11px] text-rose-300 bg-black/40 p-1.5 rounded border border-rose-500/30">
-                    基线残差: {simResults.baselineConvergence?.residual?.toFixed(6)} Bn USD ({simResults.baselineConvergence?.converged ? '收敛' : '未收敛'}) | 冲击残差: {simResults.shockConvergence?.residual?.toFixed(6)} Bn USD ({simResults.shockConvergence?.converged ? '收敛' : '未收敛'})
+                    基线独立最大残差: {simResults.baselineConvergence?.verification?.maxAbsResidual !== undefined ? simResults.baselineConvergence.verification.maxAbsResidual.toFixed(6) : 'NA'} Bn USD ({simResults.baselineConvergence?.verification?.fixedPointValid ? '独立验证通过' : '未通过'}) | 冲击独立最大残差: {simResults.shockConvergence?.verification?.maxAbsResidual !== undefined ? simResults.shockConvergence.verification.maxAbsResidual.toFixed(6) : 'NA'} Bn USD ({simResults.shockConvergence?.verification?.fixedPointValid ? '独立验证通过' : '未通过'})
                   </div>
                 </div>
               </div>
@@ -687,23 +709,23 @@ export default function NetworkContagionSimulator({
                 </div>
               </div>
 
-              <div className={`p-3 rounded-xl border ${simResults.allConverged ? 'bg-slate-900/80 border-slate-800' : 'bg-rose-950/40 border-rose-500/80 shadow-lg'}`}>
+              <div className={`p-3 rounded-xl border ${simResults.allFixedPointsValid ? 'bg-slate-900/80 border-slate-800' : 'bg-rose-950/40 border-rose-500/80 shadow-lg'}`}>
                 <div className="text-[11px] text-slate-400 uppercase tracking-wider font-mono flex items-center justify-between">
-                  <span>4. Picard 不动点求解收敛</span>
-                  {simResults.allConverged ? (
-                    <span className="text-[10px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/30">已收敛</span>
+                  <span>4. 不动点收敛与算子独立验证</span>
+                  {simResults.allFixedPointsValid ? (
+                    <span className="text-[10px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/30">双检验通过</span>
                   ) : (
                     <span className="text-[10px] text-rose-300 bg-rose-900/80 px-1.5 py-0.2 rounded border border-rose-500/50 font-bold">FAILED</span>
                   )}
                 </div>
-                <div className={`text-base font-bold font-mono mt-0.5 ${simResults.allConverged ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {simResults.allConverged ? '双不动点收敛完成' : '不动点未收敛 (FAILED)'}
+                <div className={`text-base font-bold font-mono mt-0.5 ${simResults.allFixedPointsValid ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {simResults.allFixedPointsValid ? 'Picard 收敛 & 算子独立验证通过' : '不动点未收敛或验证未通过'}
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
-                  基线: {simResults.baselineConvergence?.iterCount} 轮 ({simResults.baselineConvergence?.residual < 1e-4 ? '<1e-4' : simResults.baselineConvergence?.residual?.toFixed(5)} B) / 冲击: {simResults.shockConvergence?.iterCount} 轮 ({simResults.shockConvergence?.residual < 1e-4 ? '<1e-4' : simResults.shockConvergence?.residual?.toFixed(5)} B)
+                  基线: {simResults.baselineConvergence?.iterCount} 轮 (残差 {simResults.baselineConvergence?.verification?.maxAbsResidual < 1e-4 ? '<1e-4' : simResults.baselineConvergence?.verification?.maxAbsResidual?.toFixed(5)} B) / 冲击: {simResults.shockConvergence?.iterCount} 轮 (残差 {simResults.shockConvergence?.verification?.maxAbsResidual < 1e-4 ? '<1e-4' : simResults.shockConvergence?.verification?.maxAbsResidual?.toFixed(5)} B)
                 </div>
                 <div className="text-[10px] text-slate-500 mt-0.5 font-mono">
-                  外储覆盖: {simResults.coverageMeta?.reservesCoverageRatio || simResults.validReservesCoverage} ({simResults.coverageMeta?.reservesCoveragePct || 100}%) · 容差: 1e-4 B
+                  全网外储: {simResults.coverageMeta?.reservesCoverageRatio || simResults.validReservesCoverage} · 波及负债: {simResults.coverageMeta?.spilloverLiabCoverageRatio || '22/22'} · 容差: 1e-4 B
                 </div>
               </div>
             </div>
