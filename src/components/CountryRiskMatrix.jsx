@@ -551,17 +551,17 @@ export default function CountryRiskMatrix({
                 </th>
                 <th className="py-2.5 px-3">风险评级</th>
                 <th className="py-2.5 px-3 cursor-pointer hover:text-white text-right" onClick={() => handleSort('borrowings')}>
-                  跨境借贷本金 <ArrowUpDown className="w-3 h-3 inline ml-0.5 opacity-50" />
+                  跨境借贷本金 ($B) <ArrowUpDown className="w-3 h-3 inline ml-0.5 opacity-50" />
                 </th>
                 <th className="py-2.5 px-3 cursor-pointer hover:text-white text-right" onClick={() => handleSort('reserves')}>
-                  官方外储规模 <ArrowUpDown className="w-3 h-3 inline ml-0.5 opacity-50" />
+                  官方外储规模 ($B) <ArrowUpDown className="w-3 h-3 inline ml-0.5 opacity-50" />
                 </th>
                 <th className="py-2.5 px-3 cursor-pointer hover:text-white text-right" onClick={() => handleSort('debtToReserves')}>
                   外债/外储倍数 <ArrowUpDown className="w-3 h-3 inline ml-0.5 opacity-50" />
                 </th>
                 <th className="py-2.5 px-3 text-right">美元比重</th>
                 {scenario.creditDeclinePct < 0 && (
-                  <th className="py-2.5 px-3 text-right text-rose-400 font-bold">冲击展期缺口</th>
+                  <th className="py-2.5 px-3 text-right text-rose-400 font-bold">冲击展期缺口 ($B)</th>
                 )}
                 <th className="py-2.5 px-3 text-center">操作</th>
               </tr>
@@ -590,8 +590,8 @@ export default function CountryRiskMatrix({
                       {r.rating}
                     </span>
                   </td>
-                  <td className="py-2 px-3 text-right font-mono text-slate-200">${r.borrowings} 亿</td>
-                  <td className="py-2 px-3 text-right font-mono text-slate-200">${r.reserves} 亿</td>
+                  <td className="py-2 px-3 text-right font-mono text-slate-200">${r.borrowings.toLocaleString()}B</td>
+                  <td className="py-2 px-3 text-right font-mono text-slate-200">${r.reserves.toLocaleString()}B</td>
                   <td className="py-2 px-3 text-right font-mono">
                     <span className={r.debtToReserves > 2 ? 'text-rose-400 font-bold' : 'text-slate-300'}>
                       {r.debtToReserves}x
@@ -600,7 +600,7 @@ export default function CountryRiskMatrix({
                   <td className="py-2 px-3 text-right font-mono text-emerald-400">{r.usdShare}%</td>
                   {scenario.creditDeclinePct < 0 && (
                     <td className="py-2 px-3 text-right font-mono text-rose-400 font-bold">
-                      {r.refGap > 0 ? `-$${r.refGap} 亿` : '-'}
+                      {r.refGap > 0 ? `-$${r.refGap.toLocaleString()}B` : '-'}
                     </td>
                   )}
                   <td className="py-2 px-3 text-center">

@@ -129,7 +129,7 @@ export default function MacroAiCopilot({
       stressState,
       redCount,
       amberCount,
-      summaryText: `在 ${selectedQuarter} 观测期内，全球跨国银行跨境债权存量报 ${totalClaims.toLocaleString()} 亿美元（环比变动 ${claimsDelta >= 0 ? '+' : ''}${claimsDeltaPct}%）。离岸美元流动性压力指数为 ${usdStress}/100，处于「${stressState}」态势。巴塞尔早期预警系统 (EWS) 监测到全球共有 ${redCount} 个经济体触发红灯警报，${amberCount} 个经济体处于黄灯临界区间。离岸避税管道（开曼/卢森堡）与最终主权归属地之间存在显著资产负债穿透折价。`
+      summaryText: `在 ${selectedQuarter} 观测期内，全球跨国银行跨境债权存量报 $${(totalClaims / 1000).toFixed(2)}T (${Math.round(totalClaims * 10).toLocaleString()} 亿美元，环比变动 ${claimsDelta >= 0 ? '+' : ''}${claimsDeltaPct}%）。离岸美元流动性压力指数为 ${usdStress}/100，处于「${stressState}」态势。巴塞尔早期预警系统 (EWS) 监测到全球共有 ${redCount} 个经济体触发红灯警报，${amberCount} 个经济体处于黄灯临界区间。离岸避税管道（开曼/卢森堡）与最终主权归属地之间存在显著资产负债穿透折价。`
     };
   }, [selectedQuarter, currentMacro, prevMacro, dataset, countries]);
 

@@ -108,10 +108,10 @@ export default function RegimeComparison({
                 ${item.srcName} → ${item.dstName} 走廊信贷变化
               </div>
               <div class="space-y-1 text-xs">
-                <div>${quarterA} 规模: <b class="font-mono text-slate-300">$${item.valA} 亿</b></div>
-                <div>${quarterB} 规模: <b class="font-mono text-white">$${item.valB} 亿</b></div>
+                <div>${quarterA} 规模: <b class="font-mono text-slate-300">$${item.valA >= 1000 ? `${(item.valA / 1000).toFixed(2)}T` : `${item.valA}B`}</b></div>
+                <div>${quarterB} 规模: <b class="font-mono text-white">$${item.valB >= 1000 ? `${(item.valB / 1000).toFixed(2)}T` : `${item.valB}B`}</b></div>
                 <div class="${item.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">
-                  净变动 (Delta): ${sign}$${item.delta} 亿 (${sign}${item.deltaPct}%)
+                  净变动 (Delta): ${sign}$${Math.abs(item.delta) >= 1000 ? `${(Math.abs(item.delta) / 1000).toFixed(2)}T` : `${Math.abs(item.delta)}B`} (${sign}${item.deltaPct}%)
                 </div>
               </div>
             </div>
@@ -209,7 +209,7 @@ export default function RegimeComparison({
             <TrendingUp className="w-3.5 h-3.5 text-blue-400" /> 全球跨境总债权净变动 (Δ Claims)
           </div>
           <div className={`text-lg font-bold font-mono mt-1 ${deltaTotalClaims >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {deltaTotalClaims >= 0 ? '+' : ''}${deltaTotalClaims} 亿
+            {deltaTotalClaims >= 0 ? '+' : ''}${Math.abs(deltaTotalClaims) >= 1000 ? `${(deltaTotalClaims / 1000).toFixed(2)}T` : `${deltaTotalClaims}B`}
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
             从 ${macroA.total_cross_border_claims_usd_bn || 0}B 变动至 ${macroB.total_cross_border_claims_usd_bn || 0}B
@@ -221,7 +221,7 @@ export default function RegimeComparison({
             <DollarSign className="w-3.5 h-3.5 text-emerald-400" /> 美元跨境信贷净变动 (Δ USD)
           </div>
           <div className={`text-lg font-bold font-mono mt-1 ${deltaUsdCredit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {deltaUsdCredit >= 0 ? '+' : ''}${deltaUsdCredit} 亿
+            {deltaUsdCredit >= 0 ? '+' : ''}${Math.abs(deltaUsdCredit) >= 1000 ? `${(deltaUsdCredit / 1000).toFixed(2)}T` : `${deltaUsdCredit}B`}
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
             美元占比变动: {((macroB.global_usd_share_pct || 0) - (macroA.global_usd_share_pct || 0)).toFixed(1)}%
@@ -263,7 +263,7 @@ export default function RegimeComparison({
               {topExpanding.slice(0, 4).map(item => (
                 <div key={`${item.source}->${item.target}`} className="flex justify-between p-1 bg-slate-950/60 rounded text-[11px]">
                   <span className="text-slate-300">{item.srcName} → {item.dstName}</span>
-                  <span className="font-mono text-emerald-400 font-bold">+${item.delta} 亿 (+{item.deltaPct}%)</span>
+                  <span className="font-mono text-emerald-400 font-bold">+{item.delta >= 1000 ? `$${(item.delta / 1000).toFixed(2)}T` : `$${item.delta}B`} (+{item.deltaPct}%)</span>
                 </div>
               ))}
             </div>
@@ -278,7 +278,7 @@ export default function RegimeComparison({
               {topContracting.slice(0, 4).map(item => (
                 <div key={`${item.source}->${item.target}`} className="flex justify-between p-1 bg-slate-950/60 rounded text-[11px]">
                   <span className="text-slate-300">{item.srcName} → {item.dstName}</span>
-                  <span className="font-mono text-rose-400 font-bold">${item.delta} 亿 ({item.deltaPct}%)</span>
+                  <span className="font-mono text-rose-400 font-bold">${item.delta <= -1000 ? `-${(Math.abs(item.delta) / 1000).toFixed(2)}T` : `${item.delta}B`} ({item.deltaPct}%)</span>
                 </div>
               ))}
             </div>

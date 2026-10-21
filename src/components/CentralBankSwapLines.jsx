@@ -139,7 +139,7 @@ export default function CentralBankSwapLines({
         formatter: (params) => {
           let s = `<div style="font-family:monospace; font-size:12px;"><b>${params[0].name} 央行互换额度</b><br/>`;
           params.forEach(p => {
-            s += `<span style="color:${p.color}">●</span> ${p.seriesName}: <b>$${p.value} 亿美元</b><br/>`;
+            s += `<span style="color:${p.color}">●</span> ${p.seriesName}: <b>$${p.value >= 1000 ? `${(p.value / 1000).toFixed(2)}T` : `${p.value}B`} (${(p.value * 10).toLocaleString()} 亿美元)</b><br/>`;
           });
           return s + '</div>';
         }
@@ -383,11 +383,11 @@ export default function CentralBankSwapLines({
                   </div>
                   <div className="text-[11px] text-slate-400 mt-2 font-mono flex items-center justify-between">
                     <span>本币协议规模:</span>
-                    <span className="text-emerald-400 font-bold">¥{line.amount_cny_bn} 亿 RMB</span>
+                    <span className="text-emerald-400 font-bold">¥{Math.round(line.amount_cny_bn * 10).toLocaleString()} 亿元 RMB</span>
                   </div>
                   <div className="text-[11px] text-slate-400 mt-1 font-mono flex items-center justify-between">
                     <span>折合美元当量:</span>
-                    <span className="text-slate-200 font-bold">${line.amount_usd_bn} 亿 USD</span>
+                    <span className="text-slate-200 font-bold">${line.amount_usd_bn}B ({Math.round(line.amount_usd_bn * 10).toLocaleString()} 亿美元)</span>
                   </div>
                 </div>
               ))}

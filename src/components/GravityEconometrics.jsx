@@ -159,7 +159,7 @@ export default function GravityEconometrics({
                 </div>
                 <div class="space-y-1 text-xs">
                   <div>两地大圆距离: <b class="font-mono text-slate-200">${p.dist} 公里</b></div>
-                  <div>实际债权存量: <b class="font-mono text-emerald-400 font-bold">$${p.claims} 亿</b></div>
+                  <div>实际债权存量: <b class="font-mono text-emerald-400 font-bold">$${p.claims >= 1000 ? `${(p.claims / 1000).toFixed(2)}T` : `${p.claims}B`} (${Math.round(p.claims * 10).toLocaleString()} 亿美元)</b></div>
                   <div class="${p.residual >= 0 ? 'text-amber-400' : 'text-slate-400'}">
                     引力模型残差: <b class="font-mono">${p.residual > 0 ? '+' : ''}${p.residual}</b>
                     ${p.isOffshore ? ' <span class="text-rose-400 font-bold">[反常转口溢价]</span>' : ''}

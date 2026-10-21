@@ -381,7 +381,7 @@ print("\\n=== Research Package Generation Completed Successfully ===")
           <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-xl">
             <div className="text-xs text-slate-400 uppercase tracking-wider font-mono">1. 信贷规模与环比动能</div>
             <div className="text-sm font-semibold text-white mt-1">
-              跨境总债权规模达 <span className="text-blue-400 font-mono font-bold">${currentMacro.total_cross_border_claims_usd_bn} 亿</span>
+              跨境总债权规模达 <span className="text-blue-400 font-mono font-bold">${(currentMacro.total_cross_border_claims_usd_bn / 1000).toFixed(2)}T (${Math.round(currentMacro.total_cross_border_claims_usd_bn * 10).toLocaleString()} 亿美元)</span>
             </div>
             <p className="text-xs text-slate-400 mt-2 leading-relaxed">
               年化环比增速为 <span className="font-mono text-emerald-400">{currentMacro.global_qoq_growth_pct}%</span>。在主要发达经济体间，跨国商业银行同业拆借与存托头寸占据了主导流动性渠道。
@@ -391,7 +391,7 @@ print("\\n=== Research Package Generation Completed Successfully ===")
           <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-xl">
             <div className="text-xs text-slate-400 uppercase tracking-wider font-mono">2. 美元霸权与离岸融资压迫</div>
             <div className="text-sm font-semibold text-white mt-1">
-              美元跨境比重 <span className="text-emerald-400 font-mono font-bold">{currentMacro.global_usd_share_pct}%</span> (规模 ${currentMacro.total_usd_cross_border_bn} 亿)
+              美元跨境比重 <span className="text-emerald-400 font-mono font-bold">{currentMacro.global_usd_share_pct}%</span> (规模 ${(currentMacro.total_usd_cross_border_bn / 1000).toFixed(2)}T / ${Math.round(currentMacro.total_usd_cross_border_bn * 10).toLocaleString()} 亿美元)
             </div>
             <p className="text-xs text-slate-400 mt-2 leading-relaxed">
               BIS 美元融资压力读数为 <span className="font-mono text-amber-400">{currentMacro.bis_usd_funding_stress_index}</span>。由于非美实体存在大量美元计价未对冲负债，美元汇率与利率变动直接决定全球金融条件松紧。

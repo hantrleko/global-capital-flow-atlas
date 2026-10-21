@@ -52,7 +52,7 @@ export default function InstitutionalReportModal({
 - 环比信贷增速 (QoQ): ${qoqGrowth}%
 
 ## 二、 前五大双边跨境信贷走廊
-${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} → ${countryNameMap[c.target] || c.target}: $${c.claims_usd_bn} 亿美元 (美元份额: ${Math.round((c.usd_denominated_bn / c.claims_usd_bn) * 100)}%)`).join('\n')}
+${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} → ${countryNameMap[c.target] || c.target}: $${c.claims_usd_bn >= 1000 ? `${(c.claims_usd_bn / 1000).toFixed(2)}T` : `${c.claims_usd_bn}B`} (${Math.round(c.claims_usd_bn * 10).toLocaleString()} 亿美元, 美元份额: ${Math.round((c.usd_denominated_bn / c.claims_usd_bn) * 100)}%)`).join('\n')}
 
 ## 三、 早期预警与系统性风险审计
 - 巴塞尔 III 逆周期资本缓冲 (CCyB): 多数主要经济体处于常规缓冲区间，离岸非银与表外外汇掉期合成负债为主要监控指标。
@@ -245,8 +245,8 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
                   <tr>
                     <th className="py-2.5 px-3">走廊排名</th>
                     <th className="py-2.5 px-3">资金源 (Source) &rarr; 宿主国 (Target)</th>
-                    <th className="py-2.5 px-3 text-right">双边债权规模</th>
-                    <th className="py-2.5 px-3 text-right">美元计价总额</th>
+                    <th className="py-2.5 px-3 text-right">双边债权规模 ($B)</th>
+                    <th className="py-2.5 px-3 text-right">美元计价总额 ($B)</th>
                     <th className="py-2.5 px-3 text-right">美元计价份额</th>
                   </tr>
                 </thead>
@@ -259,10 +259,10 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
                         <span className="text-[10px] font-mono text-slate-400 ml-1.5">({c.source} &rarr; {c.target})</span>
                       </td>
                       <td className="py-2 px-3 text-right font-mono font-bold text-white print:text-black">
-                        ${c.claims_usd_bn} 亿
+                        ${c.claims_usd_bn >= 1000 ? `${(c.claims_usd_bn / 1000).toFixed(2)}T` : `${c.claims_usd_bn}B`}
                       </td>
                       <td className="py-2 px-3 text-right font-mono text-emerald-400 print:text-green-800">
-                        ${c.usd_denominated_bn} 亿
+                        ${c.usd_denominated_bn >= 1000 ? `${(c.usd_denominated_bn / 1000).toFixed(2)}T` : `${c.usd_denominated_bn}B`}
                       </td>
                       <td className="py-2 px-3 text-right font-mono text-slate-300 print:text-gray-800">
                         {Math.round((c.usd_denominated_bn / c.claims_usd_bn) * 100)}%

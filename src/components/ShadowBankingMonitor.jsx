@@ -75,10 +75,10 @@ export default function ShadowBankingMonitor({
                 ${item.name} (${item.code}) 跨国信用总敞口穿透
               </div>
               <div class="space-y-1 text-xs">
-                <div>BIS 表内法定统计债权: <b class="font-mono text-sky-400">$${item.onBalance} 亿</b></div>
-                <div>外汇掉期/衍生品表外隐性负债估算: <b class="font-mono text-rose-400 font-bold">$${item.offBalance} 亿</b></div>
+                <div>BIS 表内法定统计债权: <b class="font-mono text-sky-400">$${item.onBalance >= 1000 ? `${(item.onBalance / 1000).toFixed(2)}T` : `${item.onBalance}B`} (${Math.round(item.onBalance * 10).toLocaleString()} 亿美元)</b></div>
+                <div>外汇掉期/衍生品表外隐性负债估算: <b class="font-mono text-rose-400 font-bold">$${item.offBalance >= 1000 ? `${(item.offBalance / 1000).toFixed(2)}T` : `${item.offBalance}B`} (${Math.round(item.offBalance * 10).toLocaleString()} 亿美元)</b></div>
                 <div class="border-t border-slate-800 pt-1 text-amber-400">
-                  真实潜在系统性总敞口: <b class="font-mono text-white text-sm">$${item.total} 亿</b>
+                  真实潜在系统性总敞口: <b class="font-mono text-white text-sm">$${item.total >= 1000 ? `${(item.total / 1000).toFixed(2)}T` : `${item.total}B`} (${Math.round(item.total * 10).toLocaleString()} 亿美元)</b>
                 </div>
               </div>
             </div>

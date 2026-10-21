@@ -137,7 +137,7 @@ export default function BilateralRoutingMatrix({
                     <span class="text-[10px] text-slate-400 font-mono">资本路由跨度</span>
                   </div>
                   <div class="text-xs font-mono mt-1">
-                    信贷路由流转规模: <b class="text-white text-sm">$${params.data.value} 亿</b>
+                    信贷路由流转规模: <b class="text-white text-sm">$${params.data.value >= 1000 ? `${(params.data.value / 1000).toFixed(2)}T` : `${params.data.value}B`} (${Math.round(params.data.value * 10).toLocaleString()} 亿美元)</b>
                   </div>
                 </div>
               `;
@@ -196,7 +196,7 @@ export default function BilateralRoutingMatrix({
                   债权方: ${src} → 借款方: ${dst}
                 </div>
                 <div class="text-xs">
-                  双边银行债权敞口: <b class="font-mono text-white text-sm">$${val} 亿</b>
+                  双边银行债权敞口: <b class="font-mono text-white text-sm">$${val >= 1000 ? `${(val / 1000).toFixed(2)}T` : `${val}B`} (${Math.round(val * 10).toLocaleString()} 亿美元)</b>
                 </div>
               </div>
             `;

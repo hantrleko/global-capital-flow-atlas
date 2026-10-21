@@ -502,7 +502,7 @@ export default function NetworkContagionSimulator({
               震中直接吸收敞口 (Round 1)
             </div>
             <div className="text-lg font-bold font-mono text-rose-400 mt-0.5">
-              ${simResults.totalR1Loss} 亿
+              ${simResults.totalR1Loss}B ({Math.round(simResults.totalR1Loss * 10).toLocaleString()} 亿美元)
             </div>
             <div className="text-[11px] text-slate-500 mt-0.5">
               由 {epicenterCountry.name_zh} 的直接主要债权国银行承担
@@ -514,7 +514,7 @@ export default function NetworkContagionSimulator({
               次生信贷抽离外溢 (Round 2)
             </div>
             <div className="text-lg font-bold font-mono text-amber-400 mt-0.5">
-              ${simResults.totalR2Contagion} 亿
+              ${simResults.totalR2Contagion}B ({Math.round(simResults.totalR2Contagion * 10).toLocaleString()} 亿美元)
             </div>
             <div className="text-[11px] text-slate-500 mt-0.5">
               受损银行为了维系资本充足率削减的外债池
@@ -526,7 +526,7 @@ export default function NetworkContagionSimulator({
               离岸美元挤兑缺口 (Round 3)
             </div>
             <div className="text-lg font-bold font-mono text-sky-400 mt-0.5">
-              ${simResults.totalR3Dollar} 亿
+              ${simResults.totalR3Dollar}B ({Math.round(simResults.totalR3Dollar * 10).toLocaleString()} 亿美元)
             </div>
             <div className="text-[11px] text-slate-500 mt-0.5">
               非美实体美元未对冲敞口再融资冲击
@@ -538,7 +538,7 @@ export default function NetworkContagionSimulator({
               全网系统性流动性蒸发
             </div>
             <div className="text-lg font-bold font-mono text-white mt-0.5">
-              ${simResults.totalSystemicLoss} 亿
+              ${simResults.totalSystemicLoss}B ({Math.round(simResults.totalSystemicLoss * 10).toLocaleString()} 亿美元)
             </div>
             <div className="text-[11px] text-slate-500 mt-0.5">
               波及经济体数量: {simResults.impactList.length} 个
@@ -581,7 +581,7 @@ export default function NetworkContagionSimulator({
 
                   <div className="text-right">
                     <div className="font-mono font-bold text-rose-400">
-                      -${item.totalImpact} 亿
+                      -${item.totalImpact}B ({Math.round(item.totalImpact * 10).toLocaleString()} 亿美元)
                     </div>
                     <div className="text-[10px] text-slate-500 font-mono">
                       损耗储备: {item.impactToReservesPct}%

@@ -221,7 +221,7 @@ export default function UsdFundingMonitor({
         backgroundColor: '#0f172a',
         borderColor: '#334155',
         textStyle: { color: '#f8fafc', fontSize: 12 },
-        formatter: '{b}: <b>${c} 亿</b> ({d}%)'
+        formatter: (params) => `${params.name}: <b>$${params.value >= 1000 ? `${(params.value / 1000).toFixed(2)}T` : `${params.value}B`}</b> (${params.percent}%)`
       },
       legend: {
         orient: 'vertical',
@@ -251,7 +251,7 @@ export default function UsdFundingMonitor({
               fontSize: 14,
               fontWeight: 'bold',
               color: '#ffffff',
-              formatter: '{b}\n${c}亿'
+              formatter: (params) => `${params.name}\n$${params.value >= 1000 ? `${(params.value / 1000).toFixed(2)}T` : `${params.value}B`}`
             }
           },
           data: [

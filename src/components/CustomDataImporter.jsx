@@ -241,8 +241,8 @@ export default function CustomDataImporter({
                       <tr key={i} className="hover:bg-slate-900/40">
                         <td className="p-2 text-sky-400 font-bold">{row.source}</td>
                         <td className="p-2 text-white font-bold">{row.target}</td>
-                        <td className="p-2 text-right text-emerald-400">${row.claims_usd_bn} 亿</td>
-                        <td className="p-2 text-right text-slate-300">${row.usd_denominated_bn} 亿</td>
+                        <td className="p-2 text-right text-emerald-400">${row.claims_usd_bn}B</td>
+                        <td className="p-2 text-right text-slate-300">${row.usd_denominated_bn}B</td>
                       </tr>
                     ))}
                   </tbody>

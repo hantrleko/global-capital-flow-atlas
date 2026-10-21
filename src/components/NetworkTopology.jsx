@@ -179,15 +179,15 @@ export default function NetworkTopology({
                 <div class="space-y-1 text-xs font-mono">
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">总资金流转吞吐:</span>
-                    <span class="font-bold text-white">$${d.value} 亿</span>
+                    <span class="font-bold text-white">${d.value >= 1000 ? `${(d.value / 1000).toFixed(2)}T` : `${d.value}B`}</span>
                   </div>
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">对外总债权 (Outflow):</span>
-                    <span class="text-emerald-400 font-semibold">$${d.outVol} 亿</span>
+                    <span class="text-emerald-400 font-semibold">${d.outVol >= 1000 ? `${(d.outVol / 1000).toFixed(2)}T` : `${d.outVol}B`}</span>
                   </div>
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">对内受资 (Inflow):</span>
-                    <span class="text-rose-400 font-semibold">$${d.inVol} 亿</span>
+                    <span class="text-rose-400 font-semibold">${d.inVol >= 1000 ? `${(d.inVol / 1000).toFixed(2)}T` : `${d.inVol}B`}</span>
                   </div>
                   <div class="flex justify-between font-sans border-t border-white/5 pt-1 mt-1">
                     <span class="text-slate-400">网络中介度得分:</span>
@@ -206,9 +206,9 @@ export default function NetworkTopology({
                 </div>
                 <div class="grid grid-cols-2 gap-x-3 gap-y-1 font-mono">
                   <span class="text-slate-400 font-sans">双边规模:</span>
-                  <span class="text-right text-white font-bold">$${e.value} 亿</span>
+                  <span class="text-right text-white font-bold">${e.value >= 1000 ? `$${(e.value / 1000).toFixed(2)}T` : `$${e.value}B`}</span>
                   <span class="text-slate-400 font-sans">美元计价额:</span>
-                  <span class="text-right text-emerald-400 font-semibold">$${e.usdVol} 亿</span>
+                  <span class="text-right text-emerald-400 font-semibold">${e.usdVol >= 1000 ? `$${(e.usdVol / 1000).toFixed(2)}T` : `$${e.usdVol}B`}</span>
                 </div>
               </div>
             `;
@@ -397,7 +397,7 @@ export default function NetworkTopology({
                   </div>
                   <div className="mt-1.5 flex items-center justify-between text-[11px] font-mono text-slate-400">
                     <span className="font-sans">双向吞吐:</span>
-                    <span className="text-white font-medium">${item.totalVolume} 亿</span>
+                    <span className="text-white font-medium">${item.totalVolume >= 1000 ? `${(item.totalVolume / 1000).toFixed(2)}T` : `${item.totalVolume}B`}</span>
                   </div>
                 </div>
               ))}
@@ -430,7 +430,7 @@ export default function NetworkTopology({
                       <span className="font-mono text-[10px] text-slate-500">[{item.code}]</span>
                     </div>
                     <span className="font-mono text-xs font-semibold text-sky-400">
-                      ${item.outVolume} 亿
+                      ${item.outVolume >= 1000 ? `${(item.outVolume / 1000).toFixed(2)}T` : `${item.outVolume}B`}
                     </span>
                   </div>
                   <div className="mt-1.5 flex items-center justify-between text-[11px] font-mono text-slate-400">

@@ -261,7 +261,7 @@ export default function CurrencyHegemonyTracker({
               <div class="space-y-1 text-xs">
                 <div>错配指数: <b class="font-mono text-rose-400 font-bold">${item.cmiScore} / 100</b></div>
                 <div>美元债务占比: <b class="font-mono text-emerald-400 font-bold">${item.usdShare}%</b></div>
-                <div>外汇储备保障: <b class="font-mono text-slate-300">$${item.reserves} 亿</b></div>
+                <div>外汇储备保障: <b class="font-mono text-slate-300">$${item.reserves >= 1000 ? `${(item.reserves / 1000).toFixed(2)}T` : `${item.reserves}B`} (${Math.round(item.reserves * 10).toLocaleString()} 亿美元)</b></div>
               </div>
             </div>
           `;

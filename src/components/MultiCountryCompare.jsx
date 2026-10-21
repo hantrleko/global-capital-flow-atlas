@@ -234,15 +234,21 @@ export default function MultiCountryCompare({
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <span className="text-slate-400 text-[11px]">跨境总债权:</span>
-                    <div className="font-mono font-bold text-blue-400 mt-0.5">${d.claims} 亿</div>
+                    <div className="font-mono font-bold text-blue-400 mt-0.5">
+                      {d.claims >= 1000 ? `$${(d.claims / 1000).toFixed(2)}T` : `$${d.claims}B`}
+                    </div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[11px]">跨境总负债:</span>
-                    <div className="font-mono font-bold text-rose-400 mt-0.5">${d.liab} 亿</div>
+                    <div className="font-mono font-bold text-rose-400 mt-0.5">
+                      {d.liab >= 1000 ? `$${(d.liab / 1000).toFixed(2)}T` : `$${d.liab}B`}
+                    </div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[11px]">官方外汇储备:</span>
-                    <div className="font-mono font-bold text-amber-400 mt-0.5">${d.reserves} 亿</div>
+                    <div className="font-mono font-bold text-amber-400 mt-0.5">
+                      {d.reserves >= 1000 ? `$${(d.reserves / 1000).toFixed(2)}T` : `$${d.reserves}B`}
+                    </div>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[11px]">外债/外汇储备:</span>
