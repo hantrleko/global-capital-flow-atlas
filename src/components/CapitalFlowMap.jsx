@@ -453,7 +453,8 @@ export default function CapitalFlowMap({
             `;
           } else if (params.seriesType === 'scatter' && params.data.claims) {
             const d = params.data;
-            const netSign = d.net >= 0 ? '+' : '';
+            const netSign = d.net > 0 ? '+' : (d.net < 0 ? '-' : '');
+            const absNet = Math.abs(d.net);
             return `
               <div class="font-sans min-w-[230px]">
                 <div class="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
@@ -479,8 +480,8 @@ export default function CapitalFlowMap({
                   <div class="flex justify-between font-sans">
                     <span class="text-slate-400">净外部头寸 (Net):</span>
                     <span class="font-bold ${d.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
-                      ${netSign}${Math.abs(d.net) >= 1000 ? `$${(d.net / 1000).toFixed(2)}T` : `$${d.net}B`}
-                      <span class="text-[10px] font-normal">(${netSign}${Math.round(d.net * 10).toLocaleString()} 亿美元)</span>
+                      ${netSign}${absNet >= 1000 ? `$${(absNet / 1000).toFixed(2)}T` : `$${absNet}B`}
+                      <span class="text-[10px] font-normal">(${netSign}${Math.round(absNet * 10).toLocaleString()} 亿美元)</span>
                     </span>
                   </div>
                   <div class="flex justify-between font-sans">
