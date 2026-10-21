@@ -262,9 +262,9 @@ export default function CapitalFlowMap({
 
     countries.forEach(c => {
       const qData = (lbsQuarter[c.code] || [])[quarterIdx] || {};
-      const claims = qData.claims_usd_bn || c.base_claims;
-      const liab = qData.liabilities_usd_bn || c.base_liab;
-      const net = qData.net_position_usd_bn || (claims - liab);
+      const claims = qData.claims_usd_bn || 0;
+      const liab = qData.liabilities_usd_bn || 0;
+      const net = qData.net_position_usd_bn !== undefined ? qData.net_position_usd_bn : (claims - liab);
       const isSelected = selectedCountry === c.code || focusCountry === c.code;
 
       let valForSize = claims;
@@ -379,7 +379,9 @@ export default function CapitalFlowMap({
             const data = params.data;
             if (flowMode === 'flows') {
               const isExp = data.isExpansion;
-              const sign = data.netChange >= 0 ? '+' : '';
+              const changeSign = data.netChange > 0 ? '+' : data.netChange < 0 ? '-' : '';
+              const absChange = Math.abs(data.netChange);
+              const pctSign = data.netChangePct > 0 ? '+' : '';
               return `
                 <div class="font-sans min-w-[220px]">
                   <div class="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
@@ -392,12 +394,12 @@ export default function CapitalFlowMap({
                     <div class="flex justify-between font-sans">
                       <span class="text-slate-400">季度净变动:</span>
                       <span class="font-bold ${isExp ? 'text-emerald-400' : 'text-rose-400'}">
-                        ${sign}$${Math.abs(data.netChange)}B (${sign}${Math.round(Math.abs(data.netChange) * 10).toLocaleString()} 亿美元)
+                        ${changeSign}$${absChange}B (${changeSign}${Math.round(absChange * 10).toLocaleString()} 亿美元)
                       </span>
                     </div>
                     <div class="flex justify-between font-sans">
                       <span class="text-slate-400">环比变动率:</span>
-                      <span class="text-slate-300 font-semibold">${sign}${data.netChangePct}%</span>
+                      <span class="text-slate-300 font-semibold">${pctSign}${data.netChangePct}%</span>
                     </div>
                     <div class="flex justify-between font-sans">
                       <span class="text-slate-400">当期未偿存量:</span>
@@ -794,8 +796,8 @@ export default function CapitalFlowMap({
   const netPositions = useMemo(() => {
     const list = countries.map(c => {
       const qData = (lbsQuarter[c.code] || [])[dataset.quarters.indexOf(selectedQuarter)] || {};
-      const claims = qData.claims_usd_bn || c.base_claims || 0;
-      const liab = qData.liabilities_usd_bn || c.base_liab || 0;
+      const claims = qData.claims_usd_bn || 0;
+      const liab = qData.liabilities_usd_bn || 0;
       const net = qData.net_position_usd_bn !== undefined ? qData.net_position_usd_bn : (claims - liab);
       return {
         code: c.code,
@@ -1342,7 +1344,7 @@ export default function CapitalFlowMap({
                     </div>
                     {flowMode === 'flows' ? (
                       <span className={`font-mono font-bold text-xs ${c.netChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {c.netChange >= 0 ? '+' : ''}${Math.abs(c.netChange)}B <span className="text-[10px] text-slate-400 font-normal">({c.netChangePct >= 0 ? '+' : ''}{c.netChangePct}%)</span>
+                        {c.netChange > 0 ? '+' : (c.netChange < 0 ? '-' : '')}${Math.abs(c.netChange)}B <span className="text-[10px] text-slate-400 font-normal">({c.netChangePct > 0 ? '+' : ''}{c.netChangePct}%)</span>
                       </span>
                     ) : (
                       <span className="font-mono font-bold text-white text-xs">

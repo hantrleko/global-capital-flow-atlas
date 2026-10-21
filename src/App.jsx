@@ -169,6 +169,44 @@ export default function App() {
     return Object.fromEntries((bisDataset.global_macro || []).map(m => [m.quarter, m]));
   }, []);
 
+  const currentQuarterMacro = globalMacroMap[selectedQuarter] || {};
+  const currentClaimsVal = currentQuarterMacro.total_cross_border_claims_usd_bn
+    ? (currentQuarterMacro.total_cross_border_claims_usd_bn / 1000).toFixed(2)
+    : '47.62';
+
+  const quarterStatusLabel = useMemo(() => {
+    if (selectedQuarter <= '2026Q1') {
+      return {
+        badge: 'BIS SDMX 官方核定',
+        badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+        dotColor: 'bg-emerald-400',
+        text: `官方总额 $${currentClaimsVal}T`
+      };
+    }
+    if (selectedQuarter === '2026Q2') {
+      return {
+        badge: '待核实估算基准',
+        badgeColor: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+        dotColor: 'bg-amber-400',
+        text: `估算基准 $${currentClaimsVal}T (待10月30日官方公布)`
+      };
+    }
+    if (selectedQuarter === '2026Q3') {
+      return {
+        badge: '前瞻情景推演',
+        badgeColor: 'text-purple-400 bg-purple-500/10 border-purple-400/30',
+        dotColor: 'bg-purple-400',
+        text: `情景中值 $${currentClaimsVal}T`
+      };
+    }
+    return {
+      badge: 'NOWCAST 临近预测',
+      badgeColor: 'text-purple-400 bg-purple-500/10 border-purple-400/30',
+      dotColor: 'bg-purple-400',
+      text: `临近预测 ~$${currentClaimsVal}T (情景范围 $47.90T–$49.30T)`
+    };
+  }, [selectedQuarter, currentClaimsVal]);
+
   // Auto-play timer for timeline with variable playback speed
   useEffect(() => {
     if (!isPlaying) return;
@@ -694,10 +732,15 @@ export default function App() {
             <span>EF Lab Quantitative Macro Research</span>
           </div>
 
-          {/* User Requested Data Statement with Methodology Link */}
+          {/* User Requested Data Statement with Methodology Link & Dynamic Provenance */}
           <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-slate-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800/60">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>数据截至 2026Q2 · 国别/双边为模型分配 · </span>
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${quarterStatusLabel.dotColor} animate-pulse`} />
+            <span className={`px-1.5 py-0.5 rounded border text-[10px] ${quarterStatusLabel.badgeColor}`}>
+              {quarterStatusLabel.badge}
+            </span>
+            <span>
+              {selectedQuarter} · {quarterStatusLabel.text} · 国别/双边走廊由 RAS 模型重构分配 · 
+            </span>
             <button
               onClick={() => setIsAppendixOpen(true)}
               className="text-sky-400 hover:text-sky-300 underline underline-offset-2 transition-colors cursor-pointer"
@@ -707,9 +750,9 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3 text-[11px] font-mono text-slate-500">
-            <span>官方口径 $47.8T</span>
+            <span>官方序列截至 2026Q1 ($47.62T)</span>
             <span>·</span>
-            <span>36 季度</span>
+            <span>36 季度跨国网络</span>
             <span>·</span>
             <a
               href="https://github.com/hantrleko/global-capital-flow-atlas"

@@ -72,8 +72,8 @@ export default function CurrencyHegemonyTracker({
   const cmiRanking = useMemo(() => {
     return countries.map(c => {
       const qData = (lbsData[c.code] || [])[currentQIdx] || {};
-      const claims = qData.claims_usd_bn || c.base_claims;
-      const liab = qData.liabilities_usd_bn || c.base_liab;
+      const claims = qData.claims_usd_bn || 0;
+      const liab = qData.liabilities_usd_bn || 0;
       const reserves = c.fx_reserves || 1.0;
       const usdShare = (qData.currency_breakdown?.USD || c.default_usd_share) / 100.0;
 

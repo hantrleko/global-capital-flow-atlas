@@ -37,9 +37,9 @@ export default function MultiCountryCompare({
       const qLbs = (lbsData[code] || [])[currentQIdx] || {};
       const qCbs = (cbsRisk[code] || [])[currentQIdx] || {};
 
-      const claims = qLbs.claims_usd_bn || c.base_claims || 0;
-      const liab = qLbs.liabilities_usd_bn || c.base_liab || 0;
-      const net = qLbs.net_position_usd_bn || (claims - liab);
+      const claims = qLbs.claims_usd_bn || 0;
+      const liab = qLbs.liabilities_usd_bn || 0;
+      const net = qLbs.net_position_usd_bn !== undefined ? qLbs.net_position_usd_bn : (claims - liab);
       const usdShare = qLbs.currency_breakdown?.USD || c.default_usd_share || 50;
       const debtToReserves = qCbs.debt_to_reserves_ratio || 1.0;
       const vulnerability = qCbs.vulnerability_score || 30;

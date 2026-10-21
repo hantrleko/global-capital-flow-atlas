@@ -58,7 +58,8 @@ export default function CountryRiskMatrix({
         const alloc = OFFSHORE_REALLOCATIONS[c.code];
         if (alloc) {
           const qRisk = (cbsRisk[c.code] || [])[currentQIdx] || {};
-          const nominalBorrowing = qRisk.cross_border_borrowings_bn || c.base_liab || 100;
+          const qLbs = (dataset.lbs_data?.[c.code] || [])[currentQIdx] || {};
+          const nominalBorrowing = qRisk.cross_border_borrowings_bn || qLbs.liabilities_usd_bn || 0;
           const reallocatedPool = nominalBorrowing * (1.0 - alloc.domesticPct);
           Object.entries(alloc.parents).forEach(([pCode, pct]) => {
             parentAdditions[pCode] = (parentAdditions[pCode] || 0) + (reallocatedPool * pct);
@@ -69,7 +70,8 @@ export default function CountryRiskMatrix({
 
     return countries.map(c => {
       const qRisk = (cbsRisk[c.code] || [])[currentQIdx] || {};
-      let baseBorrowing = qRisk.cross_border_borrowings_bn || c.base_liab || 100;
+      const qLbs = (dataset.lbs_data?.[c.code] || [])[currentQIdx] || {};
+      let baseBorrowing = qRisk.cross_border_borrowings_bn || qLbs.liabilities_usd_bn || 0;
 
       // Adjust borrowing under Ultimate Risk Basis
       if (riskBasis === 'ultimate') {

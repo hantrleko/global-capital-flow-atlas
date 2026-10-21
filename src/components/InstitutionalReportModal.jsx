@@ -32,7 +32,8 @@ export default function InstitutionalReportModal({
 
   // Breached jurisdictions for early warning
   const ewsBreaches = countries.filter(c => {
-    return c.tier === 'EM' || c.code === 'US' || c.code === 'JP' || c.type === 'offshore_conduit';
+    const isEM = c.tier === 3 || c.tier === '3' || c.tier === 'EM' || c.type === 'emerging_vulnerable';
+    return isEM || c.code === 'US' || c.code === 'JP' || c.type === 'offshore_conduit';
   }).slice(0, 4);
 
   const reportDateStr = new Date().toLocaleDateString('zh-CN', {

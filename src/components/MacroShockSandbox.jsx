@@ -120,12 +120,16 @@ export default function MacroShockSandbox({
     const distressedList = [];
     countries.forEach(c => {
       let riskScore = 0;
-      if (c.tier === 'EM' || c.tier === 'FRONTIER') riskScore += 25;
-      if (fedHikeBps > 50 && (c.tier === 'EM' || c.code === 'TR' || c.code === 'BR' || c.code === 'MX' || c.code === 'ZA')) {
+      // Robust normalized check across number, string and taxonomy codes
+      const isEM = c.tier === 3 || c.tier === '3' || c.tier === 'EM' || c.tier === 'FRONTIER' || 
+                   c.type === 'emerging_vulnerable' || c.bloc === 'Regional_Emerging' || c.bloc === 'BRICS_Plus';
+      
+      if (isEM) riskScore += 25;
+      if (fedHikeBps > 50 && (isEM || c.code === 'TR' || c.code === 'BR' || c.code === 'MX' || c.code === 'ZA')) {
         riskScore += Math.round(fedHikeBps / 15);
       }
       if (c.type === 'offshore_conduit') riskScore += offshoreRunFactor * 18;
-      if (sovereignHaircutPct > 15 && (c.tier === 'EM' || c.code === 'IT' || c.code === 'GR' || c.code === 'TR' || c.code === 'AR')) riskScore += 35;
+      if (sovereignHaircutPct > 15 && (isEM || c.code === 'IT' || c.code === 'GR' || c.code === 'TR' || c.code === 'AR')) riskScore += 35;
       if (fxSwapBasisBps > 100 && (c.code === 'JP' || c.code === 'KR' || c.code === 'TW' || c.code === 'BR')) riskScore += 25;
       if (creditContractionPct > 20) riskScore += 20;
 
