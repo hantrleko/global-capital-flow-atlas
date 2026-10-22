@@ -1,4 +1,4 @@
-import{j as e,s as a}from"./index-Cnf6qsLU.js";import{r as m,B as u,X as y,aB as i,L as h,n as j,w as p,A as r,F as b,aC as l,ar as w,U as S}from"./vendor-icons-Ceh2WcBA.js";import"./vendor-react-CPtGOUt-.js";import"./vendor-echarts-BhXJcmdd.js";function A({isOpen:N,onClose:d}){const[t,g]=m.useState("overview"),[n,x]=m.useState(!1);if(!N)return null;const f=s=>{a.playChime(),navigator.clipboard.writeText(s),x(!0),setTimeout(()=>x(!1),2500)},c=`@software{GlobalCapitalFlowAtlas2026,
+import{j as e,s as a}from"./index-GnSS3Fd6.js";import{r as m,B as u,X as y,aB as i,L as h,n as j,w as p,A as r,F as b,aC as l,ar as w,U as S}from"./vendor-icons-Ceh2WcBA.js";import"./vendor-react-CPtGOUt-.js";import"./vendor-echarts-BhXJcmdd.js";function A({isOpen:N,onClose:d}){const[t,g]=m.useState("overview"),[n,x]=m.useState(!1);if(!N)return null;const f=s=>{a.playChime(),navigator.clipboard.writeText(s),x(!0),setTimeout(()=>x(!1),2500)},c=`@software{GlobalCapitalFlowAtlas2026,
   author = {EF Lab Quantitative Macro Research},
   title = {BIS Global Capital Flow Atlas: Multi-Dimensional Cross-Border Banking & Macroprudential Surveillance Platform},
   year = {2026},
