@@ -17,6 +17,7 @@ export default function CustomDataImporter({
   const [errorMsg, setErrorMsg] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState('');
+  const importSeqRef = React.useRef(0);
 
   if (!isOpen) return null;
 
@@ -42,11 +43,15 @@ export default function CustomDataImporter({
   };
 
   const processFile = (file) => {
+    const currentSeq = ++importSeqRef.current;
     setErrorMsg(null);
+    setParsedData(null); // Clear stale candidate state immediately
     setFileName(file.name);
     const reader = new FileReader();
 
     reader.onload = (e) => {
+      // Async race protection: ignore stale read results
+      if (currentSeq !== importSeqRef.current) return;
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
@@ -55,6 +60,7 @@ export default function CustomDataImporter({
         const json = XLSX.utils.sheet_to_json(worksheet);
 
         if (!json || json.length === 0) {
+          setParsedData(null);
           setErrorMsg('上传的文件为空或未能识别有效数据行。');
           return;
         }
@@ -84,6 +90,7 @@ export default function CustomDataImporter({
         const norm = normalizeCorridorExposures(validated);
 
         if (norm.normalizedLinks.length === 0) {
+          setParsedData(null);
           setErrorMsg('未检测到符合规范的数据列（必须包含 source, target, claims_usd_bn 字段）。');
           return;
         }
@@ -100,6 +107,7 @@ export default function CustomDataImporter({
         });
       } catch (err) {
         console.error(err);
+        setParsedData(null);
         setErrorMsg('文件解析失败，请确保格式为标准的 .xlsx, .xls 或 .csv 文件。');
       }
     };

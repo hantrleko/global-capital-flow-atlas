@@ -826,6 +826,36 @@ function runTestSuite() {
     assert(deRow.rankingEligible === true, 'Germany DE must be ranking eligible');
   }
 
+  // TEST 21: P0/P1 Normalization Currency Field Contract & Stability Non-Zero Participant Guard
+  console.log('\nTest 21: Normalization Currency Field Contract & Stability Non-Zero Participant Guard');
+  {
+    // D01: Corridor normalization field contract preserves usd_denominated_bn
+    const sampleCorridors = [
+      { source: 'US', target: 'GB', claims_usd_bn: 100, usd_denominated_bn: 75, corridor_category: 'Core' },
+      { source: 'US', target: 'JP', claims_usd_bn: 80, usd_denominated_bn: 50, corridor_category: 'Core' }
+    ];
+    const norm = normalizeCorridorExposures(sampleCorridors);
+    assert(norm.normalizedLinks.length === 2, 'Must normalize 2 sample links');
+    assert(norm.normalizedLinks[0].usd_denominated_bn === 75, `Corridor USD volume must be preserved (got ${norm.normalizedLinks[0].usd_denominated_bn})`);
+    assert(norm.normalizedLinks[1].usd_denominated_bn === 50, `Second corridor USD volume must be preserved (got ${norm.normalizedLinks[1].usd_denominated_bn})`);
+    assert(norm.normalizedLinks[0].corridor_category === 'Core', 'Corridor category must be preserved');
+
+    // Verify 2026Q1 official matrix has USD dominant corridors post normalization
+    const norm2026Q1 = normalizeCorridorExposures(dataset.bilateral_matrix['2026Q1']);
+    const domLinks = norm2026Q1.normalizedLinks.filter(l => (l.usd_denominated_bn / l.claims_usd_bn) >= 0.7);
+    assert(domLinks.length === 10, `Post-normalization 2026Q1 must retain exactly 10 USD-dominant corridors >=70% (got ${domLinks.length})`);
+
+    // D05: Zero-increment exclusion from top 3 stability calculation
+    const wb = computeStressWorkbenchAnalysis({
+      dataset,
+      quarter: '2026Q4',
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+    assert(wb.rankingStability.top3StabilityPct > 0, 'Stability percentage must be computed');
+    assert(wb.rankingStability.top3OverlapCount === 3, 'Top 3 non-zero victims overlap must be 3 under TR shock');
+  }
+
   console.log('\n===============================================================');
   console.log(`✅ REGRESSION SUITE COMPLETE: ${testsPassed} passed, ${testsFailed} failed.`);
   console.log('===============================================================\n');

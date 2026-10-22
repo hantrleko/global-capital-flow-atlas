@@ -144,9 +144,11 @@ export function normalizeCorridorExposures(rawRecords = [], options = {}) {
         source: exp.source,
         target: exp.target,
         claims_usd_bn: 0,
+        usd_denominated_bn: 0,
         exposureCount: 0,
         exposureIds: [],
-        rawRecords: []
+        rawRecords: [],
+        sampleRaw: exp.originalRecord
       });
     }
     const corr = corridorMap.get(key);
@@ -154,17 +156,40 @@ export function normalizeCorridorExposures(rawRecords = [], options = {}) {
     corr.exposureCount += 1;
     if (exp.id) corr.exposureIds.push(exp.id);
     corr.rawRecords.push(exp.originalRecord);
+
+    // Track usd_denominated_bn if present on raw record
+    const rawRec = exp.originalRecord || {};
+    const rawUsd = rawRec.usd_denominated_bn !== undefined 
+      ? Number(rawRec.usd_denominated_bn) 
+      : (rawRec.usd_claims_bn !== undefined 
+          ? Number(rawRec.usd_claims_bn) 
+          : (rawRec.usd_pct !== undefined ? (exp.amount * Number(rawRec.usd_pct) / 100) : null));
+    if (rawUsd !== null && !isNaN(rawUsd)) {
+      corr.usd_denominated_bn += rawUsd;
+    }
   }
 
   // Sort corridors deterministically
-  const normalizedLinks = Array.from(corridorMap.values()).map(c => ({
-    source: c.source,
-    target: c.target,
-    claims_usd_bn: Math.round(c.claims_usd_bn * 1e8) / 1e8, // Clean 8-decimal Float64 representation
-    exposureCount: c.exposureCount,
-    exposureIds: c.exposureIds,
-    isAggregated: c.exposureCount > 1
-  }));
+  const normalizedLinks = Array.from(corridorMap.values()).map(c => {
+    const claims = Math.round(c.claims_usd_bn * 1e8) / 1e8;
+    // If usd_denominated_bn was aggregated, use it; otherwise fallback to sample raw or null
+    let usdDenom = Math.round(c.usd_denominated_bn * 1e8) / 1e8;
+    if (usdDenom === 0 && claims > 0 && c.sampleRaw?.usd_denominated_bn === undefined && c.sampleRaw?.usd_claims_bn === undefined) {
+      // Check if sample raw had default ratio or preserve whatever it had
+      usdDenom = c.sampleRaw?.usd_pct ? Math.round(claims * (c.sampleRaw.usd_pct / 100) * 1e8) / 1e8 : Math.round(claims * 0.7 * 1e8) / 1e8;
+    }
+    return {
+      source: c.source,
+      target: c.target,
+      claims_usd_bn: claims,
+      usd_denominated_bn: usdDenom,
+      exposureCount: c.exposureCount,
+      exposureIds: c.exposureIds,
+      isAggregated: c.exposureCount > 1,
+      is_nowcast: c.sampleRaw?.is_nowcast || false,
+      corridor_category: c.sampleRaw?.corridor_category || 'General'
+    };
+  });
 
   normalizedLinks.sort((a, b) => {
     const sCmp = a.source.localeCompare(b.source);
@@ -1526,17 +1551,21 @@ export function computeStressWorkbenchAnalysis({
   const ref15 = regimeResults[1.5] || regimeResults[bufferRegimes[0]];
 
   // Rank Stability Calculation: Compare rankings between min buffer (1.0x) and max buffer (2.0x)
+  // Excludes zero-increment countries: only jurisdictions with meaningful positive incremental shortfall participate in top victim stability
   const resMinBuf = regimeResults[Math.min(...bufferRegimes)];
   const resMaxBuf = regimeResults[Math.max(...bufferRegimes)];
 
-  const minList = (resMinBuf?.impactList || []).filter(i => i.rankingEligible);
-  const maxList = (resMaxBuf?.impactList || []).filter(i => i.rankingEligible);
+  const minList = (resMinBuf?.impactList || []).filter(i => i.rankingEligible && (i.enIncrementalShortfallRaw || 0) > 1e-4);
+  const maxList = (resMaxBuf?.impactList || []).filter(i => i.rankingEligible && (i.enIncrementalShortfallRaw || 0) > 1e-4);
 
-  const top3Min = new Set(minList.slice(0, 3).map(i => i.code));
-  const top3Max = new Set(maxList.slice(0, 3).map(i => i.code));
+  const top3MinList = minList.slice(0, 3).map(i => i.code);
+  const top3MaxList = maxList.slice(0, 3).map(i => i.code);
+  const top3Min = new Set(top3MinList);
+  const top3Max = new Set(top3MaxList);
   let top3OverlapCount = 0;
   top3Min.forEach(c => { if (top3Max.has(c)) top3OverlapCount++; });
-  const top3StabilityPct = Math.round((top3OverlapCount / 3) * 100);
+  const compareBaseCount = Math.max(1, Math.min(3, Math.min(top3MinList.length, top3MaxList.length)));
+  const top3StabilityPct = Math.round((top3OverlapCount / compareBaseCount) * 100);
 
   // Transmission Path Decomposition from reference run
   let totalDirectRaw = 0;

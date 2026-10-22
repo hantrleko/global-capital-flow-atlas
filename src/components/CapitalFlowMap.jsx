@@ -959,7 +959,7 @@ export default function CapitalFlowMap({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 scroll-mt-24">
       {/* Top Refined Glass Control Header */}
       <div className="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">

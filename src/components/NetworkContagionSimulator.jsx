@@ -452,7 +452,7 @@ export default function NetworkContagionSimulator({
   };
 
   return (
-    <div className="glass-panel rounded-2xl p-5 shadow-2xl space-y-5">
+    <div className="glass-panel rounded-2xl p-5 shadow-2xl space-y-5 scroll-mt-24">
       {/* Top Header & Simulation Controls */}
       <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-3">
         <div className="flex items-center gap-2.5">
