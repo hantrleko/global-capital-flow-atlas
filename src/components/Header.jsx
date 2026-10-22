@@ -4,7 +4,8 @@ import {
   DollarSign, Activity, Database, Calendar, TrendingUp, Layers,
   Search, Coins, X, Sun, Moon, ArrowRightLeft, Clock, Sparkles,
   Zap, Radio, Command, HelpCircle, Split, Volume2, VolumeX, Bot,
-  BookOpen, FileText, Sliders, Code, History, UploadCloud, Building2
+  BookOpen, FileText, Sliders, Code, History, UploadCloud, Building2,
+  Compass
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';

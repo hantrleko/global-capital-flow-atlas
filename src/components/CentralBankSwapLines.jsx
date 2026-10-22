@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import { 
   Repeat, DollarSign, ShieldCheck, Activity, Globe,
-  AlertCircle, ArrowRightLeft, Building2, Flame, Layers
+  AlertCircle, ArrowRightLeft, Building2, Flame, Layers, Info
 } from 'lucide-react';
 
 export default function CentralBankSwapLines({

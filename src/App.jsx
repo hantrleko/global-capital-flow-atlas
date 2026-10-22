@@ -351,7 +351,8 @@ export default function App() {
           onOpenCodeExporter={() => setIsCodeExporterOpen(true)}
         />
 
-        <Suspense fallback={<LoadingFallback />}>
+        <ErrorBoundary fallbackTitle="当前主视图分析模块">
+          <Suspense fallback={<LoadingFallback />}>
           {activeTab === 'map' && (
             <CapitalFlowMap
               dataset={activeDataset}
@@ -513,6 +514,7 @@ export default function App() {
             />
           )}
         </Suspense>
+        </ErrorBoundary>
       </main>
 
       {/* Sovereign 360° Detailed Profile Drawer (Overlay) */}
