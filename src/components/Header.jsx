@@ -155,6 +155,9 @@ export default function Header({
                 <span className="text-xs font-semibold text-slate-300 bg-slate-800/90 px-2 py-0.5 rounded-md border border-slate-700">
                   全球资本流动图谱
                 </span>
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                  V1.0
+                </span>
               </h1>
               {selectedQuarter > '2026Q2' ? (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(168,85,247,0.25)]">
