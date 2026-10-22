@@ -12,6 +12,7 @@ import MacroShockSandbox from './components/MacroShockSandbox';
 import InstitutionalReportModal from './components/InstitutionalReportModal';
 import MacroIntelligenceBriefing from './components/MacroIntelligenceBriefing';
 import soundFx from './utils/soundEffects';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Keyboard, X, Bot, Sparkles } from 'lucide-react';
 
 // Lazy-loaded secondary quant components for bundle code-splitting
@@ -374,13 +375,15 @@ export default function App() {
           )}
 
           {activeTab === 'ews' && (
-            <EarlyWarningSystem
-              dataset={activeDataset}
-              selectedQuarter={selectedQuarter}
-              onSelectQuarter={(q) => setSelectedQuarter(q)}
-              onSelectCountry={(code) => setSelectedCountry(code)}
-              onOpenAppendix={() => setIsAppendixOpen(true)}
-            />
+            <ErrorBoundary fallbackTitle="巴塞尔危机早期预警系统 (EWS) 模块">
+              <EarlyWarningSystem
+                dataset={activeDataset}
+                selectedQuarter={selectedQuarter}
+                onSelectQuarter={(q) => setSelectedQuarter(q)}
+                onSelectCountry={(code) => setSelectedCountry(code)}
+                onOpenAppendix={() => setIsAppendixOpen(true)}
+              />
+            </ErrorBoundary>
           )}
 
           {activeTab === 'gsib' && (

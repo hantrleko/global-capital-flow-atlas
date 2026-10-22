@@ -93,219 +93,227 @@ export default function EarlyWarningSystem({
   useEffect(() => {
     if (activeSubTab !== 'quadrant' || !quadrantChartRef.current) return;
 
-    if (!chartInstance.current) {
-      chartInstance.current = echarts.init(quadrantChartRef.current);
-    }
-
-    const seriesData = countryEwsList.map(c => ({
-      name: `${c.name_zh} (${c.code})`,
-      value: [c.ews.credit_to_gdp_gap, c.ews.dsr_gap, c.gdp_usd_bn, c.code],
-      itemStyle: {
-        color: c.ews.traffic_light === 'RED' ? '#ef4444' : c.ews.traffic_light === 'AMBER' ? '#f59e0b' : '#10b981',
-        shadowBlur: 10,
-        shadowColor: c.ews.traffic_light === 'RED' ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.3)'
+    try {
+      if (!chartInstance.current) {
+        chartInstance.current = echarts.init(quadrantChartRef.current, 'dark', { renderer: 'canvas' });
       }
-    }));
 
-    const option = {
-      backgroundColor: 'transparent',
-      tooltip: {
-        trigger: 'item',
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-        borderColor: '#334155',
-        textStyle: { color: '#f8fafc', fontSize: 12 },
-        formatter: (params) => {
-          const d = params.value;
-          return `
-            <div class="font-bold text-white mb-1">${params.name}</div>
-            <div class="text-xs text-slate-300">信贷/GDP 缺口: <span class="font-mono text-sky-400 font-bold">${d[0]}%</span> (Basel CCyB 锚)</div>
-            <div class="text-xs text-slate-300">还本付息率 (DSR) 偏差: <span class="font-mono text-amber-400 font-bold">${d[1]}%</span></div>
-            <div class="text-xs text-slate-400 mt-1">GDP: $${d[2]}B</div>
-          `;
+      const seriesData = countryEwsList.map(c => ({
+        name: `${c.name_zh || c.name || c.code} (${c.code})`,
+        value: [c.ews?.credit_to_gdp_gap ?? 0, c.ews?.dsr_gap ?? 0, c.gdp_usd_bn ?? 1000, c.code],
+        itemStyle: {
+          color: c.ews?.traffic_light === 'RED' ? '#ef4444' : c.ews?.traffic_light === 'AMBER' ? '#f59e0b' : '#10b981',
+          shadowBlur: 10,
+          shadowColor: c.ews?.traffic_light === 'RED' ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.3)'
         }
-      },
-      grid: {
-        left: '8%',
-        right: '8%',
-        top: '12%',
-        bottom: '12%'
-      },
-      xAxis: {
-        type: 'value',
-        name: 'Credit-to-GDP Gap (信贷/GDP缺口 %)',
-        nameLocation: 'middle',
-        nameGap: 30,
-        nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-        axisLine: { lineStyle: { color: '#334155' } },
-        splitLine: { lineStyle: { color: 'rgba(51, 65, 85, 0.3)', type: 'dashed' } },
-        axisLabel: { color: '#94a3b8', formatter: '{value}%' }
-      },
-      yAxis: {
-        type: 'value',
-        name: 'Debt Service Ratio (DSR) Gap (还本付息率偏差 %)',
-        nameLocation: 'middle',
-        nameGap: 35,
-        nameTextStyle: { color: '#94a3b8', fontSize: 11 },
-        axisLine: { lineStyle: { color: '#334155' } },
-        splitLine: { lineStyle: { color: 'rgba(51, 65, 85, 0.3)', type: 'dashed' } },
-        axisLabel: { color: '#94a3b8', formatter: '{value}%' }
-      },
-      series: [
-        {
-          type: 'scatter',
-          data: seriesData,
-          symbolSize: (val) => Math.max(14, Math.min(36, Math.sqrt(val[2]) * 0.45)),
-          label: {
-            show: true,
-            formatter: (params) => params.value[3],
-            position: 'top',
-            color: '#cbd5e1',
-            fontSize: 10,
-            fontFamily: 'monospace'
-          },
-          markLine: {
-            silent: true,
-            lineStyle: { color: '#e2e8f0', type: 'dotted', opacity: 0.4 },
-            data: [
-              { xAxis: 2.0, name: 'CCyB 触发阈值 (+2%)' },
-              { yAxis: 1.5, name: 'DSR 预警阈值 (+1.5%)' }
-            ]
-          },
-          markArea: {
-            silent: true,
-            itemStyle: { color: 'rgba(239, 68, 68, 0.06)' },
-            data: [
-              [
-                { xAxis: 2.0, yAxis: 1.5 },
-                { xAxis: 20, yAxis: 10 }
-              ]
-            ]
+      }));
+
+      const option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          borderColor: '#334155',
+          textStyle: { color: '#f8fafc', fontSize: 12 },
+          formatter: (params) => {
+            const d = params.value || [];
+            return `
+              <div class="font-bold text-white mb-1">${params.name}</div>
+              <div class="text-xs text-slate-300">信贷/GDP 缺口: <span class="font-mono text-sky-400 font-bold">${d[0] ?? 0}%</span> (Basel CCyB 锚)</div>
+              <div class="text-xs text-slate-300">还本付息率 (DSR) 偏差: <span class="font-mono text-amber-400 font-bold">${d[1] ?? 0}%</span></div>
+              <div class="text-xs text-slate-400 mt-1">GDP: $${d[2] ?? 'N/A'}B</div>
+            `;
           }
-        }
-      ]
-    };
+        },
+        grid: {
+          left: '8%',
+          right: '8%',
+          top: '12%',
+          bottom: '12%'
+        },
+        xAxis: {
+          type: 'value',
+          name: 'Credit-to-GDP Gap (信贷/GDP缺口 %)',
+          nameLocation: 'middle',
+          nameGap: 30,
+          nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+          axisLine: { lineStyle: { color: '#334155' } },
+          splitLine: { lineStyle: { color: 'rgba(51, 65, 85, 0.3)', type: 'dashed' } },
+          axisLabel: { color: '#94a3b8', formatter: '{value}%' }
+        },
+        yAxis: {
+          type: 'value',
+          name: 'Debt Service Ratio (DSR) Gap (还本付息率偏差 %)',
+          nameLocation: 'middle',
+          nameGap: 35,
+          nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+          axisLine: { lineStyle: { color: '#334155' } },
+          splitLine: { lineStyle: { color: 'rgba(51, 65, 85, 0.3)', type: 'dashed' } },
+          axisLabel: { color: '#94a3b8', formatter: '{value}%' }
+        },
+        series: [
+          {
+            type: 'scatter',
+            data: seriesData,
+            symbolSize: (val) => Math.max(14, Math.min(36, Math.sqrt(val[2] || 1000) * 0.45)),
+            label: {
+              show: true,
+              formatter: (params) => params.value ? params.value[3] : '',
+              position: 'top',
+              color: '#cbd5e1',
+              fontSize: 10,
+              fontFamily: 'monospace'
+            },
+            markLine: {
+              silent: true,
+              lineStyle: { color: '#e2e8f0', type: 'dotted', opacity: 0.4 },
+              data: [
+                { xAxis: 2.0, name: 'CCyB 触发阈值 (+2%)' },
+                { yAxis: 1.5, name: 'DSR 预警阈值 (+1.5%)' }
+              ]
+            },
+            markArea: {
+              silent: true,
+              itemStyle: { color: 'rgba(239, 68, 68, 0.06)' },
+              data: [
+                [
+                  { xAxis: 2.0, yAxis: 1.5 },
+                  { xAxis: 20, yAxis: 10 }
+                ]
+              ]
+            }
+          }
+        ]
+      };
 
-    chartInstance.current.setOption(option, { notMerge: false, lazyUpdate: true });
+      chartInstance.current.setOption(option, { notMerge: false, lazyUpdate: true });
 
-    const handleResize = () => chartInstance.current?.resize();
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+      const handleResize = () => chartInstance.current?.resize();
+      window.addEventListener('resize', handleResize);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
+    } catch (err) {
+      console.error('Failed to render EWS scatter chart:', err);
+    }
   }, [activeSubTab, countryEwsList]);
 
-  // 28-Quarter Risk Heatmap Evolution Chart (2018Q1 - 2024Q4)
+  // 36-Quarter Risk Heatmap Evolution Chart (2018Q1 - 2026Q4)
   useEffect(() => {
     if (activeSubTab !== 'history_heatmap' || !heatmapChartRef.current) return;
 
-    if (!heatmapChartInstance.current) {
-      heatmapChartInstance.current = echarts.init(heatmapChartRef.current, 'dark');
-      heatmapChartInstance.current.on('click', (params) => {
-        if (params.data && params.data.value) {
-          const [qIdx, cIdx] = params.data.value;
-          const quarters = dataset.quarters || [];
-          const qName = quarters[qIdx];
-          const cCode = countries[cIdx]?.code;
-          if (qName && onSelectQuarter) onSelectQuarter(qName);
-          if (cCode && onSelectCountry) onSelectCountry(cCode);
-        }
+    try {
+      if (!heatmapChartInstance.current) {
+        heatmapChartInstance.current = echarts.init(heatmapChartRef.current, 'dark', { renderer: 'canvas' });
+        heatmapChartInstance.current.on('click', (params) => {
+          if (params.data && params.data.value) {
+            const [qIdx, cIdx] = params.data.value;
+            const quarters = dataset.quarters || [];
+            const qName = quarters[qIdx];
+            const cCode = countries[cIdx]?.code;
+            if (qName && onSelectQuarter) onSelectQuarter(qName);
+            if (cCode && onSelectCountry) onSelectCountry(cCode);
+          }
+        });
+      }
+
+      const quarters = dataset.quarters || [];
+      const countryNames = countries.map(c => `${c.name_zh || c.name || c.code} (${c.code})`);
+
+      // Build data array: [quarterIndex, countryIndex, vulnerabilityScore, rating]
+      const data = [];
+      countries.forEach((c, cIdx) => {
+        const qSeries = cbsRisk[c.code] || [];
+        quarters.forEach((q, qIdx) => {
+          const item = qSeries.find(r => r.quarter === q) || {};
+          const score = item.vulnerability_score ?? 20;
+          data.push([qIdx, cIdx, score, item.rating || 'LOW']);
+        });
       });
-    }
 
-    const quarters = dataset.quarters || [];
-    const countryNames = countries.map(c => `${c.name_zh} (${c.code})`);
-
-    // Build data array: [quarterIndex, countryIndex, vulnerabilityScore, rating]
-    const data = [];
-    countries.forEach((c, cIdx) => {
-      const qSeries = cbsRisk[c.code] || [];
-      quarters.forEach((q, qIdx) => {
-        const item = qSeries.find(r => r.quarter === q) || {};
-        const score = item.vulnerability_score || 20;
-        data.push([qIdx, cIdx, score, item.rating || 'LOW']);
-      });
-    });
-
-    const option = {
-      backgroundColor: 'transparent',
-      tooltip: {
-        position: 'top',
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-        borderColor: '#334155',
-        textStyle: { color: '#f8fafc', fontSize: 11 },
-        formatter: (params) => {
-          const [qIdx, cIdx, score, rating] = params.value;
-          const q = quarters[qIdx];
-          const c = countries[cIdx];
-          return `
-            <div class="font-bold text-white mb-1">${c.name_zh} (${c.code}) · ${q}</div>
-            <div class="text-xs text-slate-300">系统脆弱性评分: <span class="font-mono font-bold text-amber-400">${score}/100</span></div>
-            <div class="text-xs text-slate-300">评级: <span class="font-bold ${score > 70 ? 'text-rose-400' : score > 48 ? 'text-amber-400' : 'text-emerald-400'}">${rating}</span></div>
-            <div class="text-[10px] text-sky-400 mt-1">点击直接切换至该季度并穿透分析</div>
-          `;
-        }
-      },
-      grid: {
-        left: '12%',
-        right: '4%',
-        top: '4%',
-        bottom: '14%'
-      },
-      xAxis: {
-        type: 'category',
-        data: quarters,
-        splitArea: { show: true },
-        axisLine: { lineStyle: { color: '#334155' } },
-        axisLabel: { 
-          color: (val) => val === selectedQuarter ? '#38bdf8' : '#94a3b8',
-          fontWeight: (val) => val === selectedQuarter ? 'bold' : 'normal',
-          fontSize: 10,
-          interval: 0,
-          rotate: 35
-        }
-      },
-      yAxis: {
-        type: 'category',
-        data: countryNames,
-        splitArea: { show: true },
-        axisLine: { lineStyle: { color: '#334155' } },
-        axisLabel: { color: '#cbd5e1', fontSize: 10 }
-      },
-      visualMap: {
-        min: 0,
-        max: 100,
-        calculable: true,
-        orient: 'horizontal',
-        left: 'center',
-        bottom: '1%',
-        inRange: {
-          color: ['#065f46', '#10b981', '#fbbf24', '#f97316', '#ef4444', '#991b1b']
+      const option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          position: 'top',
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          borderColor: '#334155',
+          textStyle: { color: '#f8fafc', fontSize: 11 },
+          formatter: (params) => {
+            const [qIdx, cIdx, score, rating] = params.value || [];
+            const q = quarters[qIdx] || '';
+            const c = countries[cIdx] || {};
+            return `
+              <div class="font-bold text-white mb-1">${c.name_zh || c.name || c.code} (${c.code}) · ${q}</div>
+              <div class="text-xs text-slate-300">系统脆弱性评分: <span class="font-mono font-bold text-amber-400">${score}/100</span></div>
+              <div class="text-xs text-slate-300">评级: <span class="font-bold ${score > 70 ? 'text-rose-400' : score > 48 ? 'text-amber-400' : 'text-emerald-400'}">${rating}</span></div>
+              <div class="text-[10px] text-sky-400 mt-1">点击直接切换至该季度并穿透分析</div>
+            `;
+          }
         },
-        textStyle: { color: '#94a3b8', fontSize: 10 }
-      },
-      series: [
-        {
-          name: 'Vulnerability Score',
-          type: 'heatmap',
-          data: data,
-          label: { show: false },
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowColor: 'rgba(255, 255, 255, 0.5)'
+        grid: {
+          left: '12%',
+          right: '4%',
+          top: '4%',
+          bottom: '14%'
+        },
+        xAxis: {
+          type: 'category',
+          data: quarters,
+          splitArea: { show: true },
+          axisLine: { lineStyle: { color: '#334155' } },
+          axisLabel: { 
+            color: (val) => val === selectedQuarter ? '#38bdf8' : '#94a3b8',
+            fontWeight: (val) => val === selectedQuarter ? 'bold' : 'normal',
+            fontSize: 10,
+            interval: 0,
+            rotate: 35
+          }
+        },
+        yAxis: {
+          type: 'category',
+          data: countryNames,
+          splitArea: { show: true },
+          axisLine: { lineStyle: { color: '#334155' } },
+          axisLabel: { color: '#cbd5e1', fontSize: 10 }
+        },
+        visualMap: {
+          min: 0,
+          max: 100,
+          calculable: true,
+          orient: 'horizontal',
+          left: 'center',
+          bottom: '1%',
+          inRange: {
+            color: ['#065f46', '#10b981', '#fbbf24', '#f97316', '#ef4444', '#991b1b']
+          },
+          textStyle: { color: '#94a3b8', fontSize: 10 }
+        },
+        series: [
+          {
+            name: 'Vulnerability Score',
+            type: 'heatmap',
+            data: data,
+            label: { show: false },
+            emphasis: {
+              itemStyle: {
+                shadowBlur: 10,
+                shadowColor: 'rgba(255, 255, 255, 0.5)'
+              }
             }
           }
-        }
-      ]
-    };
+        ]
+      };
 
-    heatmapChartInstance.current.setOption(option, { notMerge: false, lazyUpdate: true });
+      heatmapChartInstance.current.setOption(option, { notMerge: false, lazyUpdate: true });
 
-    const handleResize = () => heatmapChartInstance.current?.resize();
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+      const handleResize = () => heatmapChartInstance.current?.resize();
+      window.addEventListener('resize', handleResize);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
+    } catch (err) {
+      console.error('Failed to render EWS heatmap chart:', err);
+    }
   }, [activeSubTab, countries, cbsRisk, dataset, selectedQuarter, onSelectQuarter, onSelectCountry]);
 
   return (
