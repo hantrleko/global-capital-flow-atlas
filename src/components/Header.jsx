@@ -521,8 +521,68 @@ export default function Header({
       {/* Structured Domain Navigation Bar */}
       <div className="border-t border-slate-800/80 bg-slate-900/60 px-4 py-2 space-y-1.5 shadow-md">
         <div className="max-w-[1780px] w-full mx-auto">
+          {/* Quick Task Navigation Bar (3 Core Analysis Paths) */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-800/60">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                <Compass className="w-3.5 h-3.5 text-sky-400" /> 分析主路径:
+              </span>
+              <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-xs">
+                <button
+                  onClick={() => {
+                    soundFx.playTick();
+                    onSelectTab('map');
+                  }}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'map' || activeTab === 'network'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="全景透视：全球双边跨国信贷网络与动脉走廊"
+                >
+                  <span>1. 看全局 (Global Atlas)</span>
+                </button>
+                <button
+                  onClick={() => {
+                    soundFx.playTick();
+                    onSelectTab('compare');
+                  }}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'compare' || activeTab === 'risk' || activeTab === 'comparison'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="横向/纵向对比：多国主权风险雷达与跨周期宏观对比"
+                >
+                  <span>2. 比差异 (Benchmark & Regimes)</span>
+                </button>
+                <button
+                  onClick={() => {
+                    soundFx.playTick();
+                    onSelectTab('contagion');
+                  }}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'contagion'
+                      ? 'bg-rose-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="反事实压力测试：Eisenberg-Noe 级联清算与流动性工作台"
+                >
+                  <span>3. 测压力 (Stress Workbench)</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-slate-400 font-mono hidden md:flex items-center gap-2">
+              <span className="text-slate-500">当前任务:</span>
+              <strong className="text-slate-200">
+                {activeTab === 'contagion' ? '压力测试工作台' : (activeTab === 'compare' || activeTab === 'risk' || activeTab === 'comparison' ? '跨国与跨期对照' : '全球资本流向全景')}
+              </strong>
+            </div>
+          </div>
+
           {/* Tier 1: 5 Intelligence Domains & Historical Regimes */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/60 pb-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/60 py-1.5">
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
               <span className="text-[11px] font-mono text-slate-500 uppercase tracking-wider hidden sm:inline mr-1">
                 分析域:

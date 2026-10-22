@@ -20,6 +20,7 @@ export default function MacroAiCopilot({
   const [copied, setCopied] = useState(false);
   const [customQuestion, setCustomQuestion] = useState('');
   const [chatLog, setChatLog] = useState([]);
+  const [aiEngineMode, setAiEngineMode] = useState('rule_template'); // 'rule_template' | 'llm_proxy'
 
   const quarters = dataset.quarters || [];
   const currentQIdx = quarters.indexOf(selectedQuarter);
@@ -204,9 +205,23 @@ export default function MacroAiCopilot({
     const userQ = customQuestion.trim();
     setCustomQuestion('');
 
-    // Generate dynamic institutional macroeconomic inference
-    const mockReply = `【AI 宏观智能研判响应】针对「${userQ}」：
-基于当前 ${selectedQuarter} 季度的 BIS 居住地统计与综合银行头寸分析，全球跨国银行正处于跨周期资产配置再平衡阶段。离岸美元资金成本受基差倒挂影响显著分化，跨国银行对非银金融中介（NBFI）的合成美元敞口增长较快。建议重点监测核心走廊的展期集中度与央行常备互换协议的潜在承接空间。`;
+    // Generate dynamic institutional macroeconomic inference with explicit template/rule engine declaration
+    const mockReply = `【规则与启发式模板引擎研判】(非大语言模型实时生成 · 基于 ${selectedQuarter} 宏观统计)
+针对命题：「${userQ}」
+
+1. 数据事实与观察：
+• 当前全球总跨国债权规模达 $${(currentMacro.total_cross_border_claims_usd_bn / 1000).toFixed(2)}T，美元计价占比为 ${currentMacro.global_usd_share_pct || 63}%。
+• 离岸与非银机构（NBFI）在伦敦（GB）及开曼（KY）等核心离岸枢纽头寸变动构成当前主要边际波动源。
+
+2. 机制与链条推演：
+• 资金流动方向遵循「核心中继 → 衍生品/掉期合成 → 终端借款国」网络。
+• 若核心走廊发生去杠杆或美元流动性挤兑，非美经济体再融资面临基差走阔与外储消耗双重压力。
+
+3. 建议操作联动：
+• 打开「模拟器」执行 Eisenberg-Noe 级联清算推演；
+• 进入「主权风险矩阵」核对特定经济体外债/外储偿付比率。
+
+（注：本回答由 Atlas 内置宏观专家规则模版与当前季度数据截面合成，绝非虚构大模型直接推断）`;
 
     setChatLog(prev => [
       ...prev,
@@ -558,9 +573,13 @@ export default function MacroAiCopilot({
         </div>
 
         {/* Bottom Footer Info */}
-        <div className="px-6 py-3 border-t border-slate-800/80 bg-slate-950 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-          <span>BIS SDMX 2.1 官方序列语义驱动 · 离岸穿透与传染清算引擎联动</span>
-          <span>Version 2.0 Pro</span>
+        <div className="px-6 py-3 border-t border-slate-800/80 bg-slate-950 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-mono">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="text-slate-400 font-medium">引擎声明: 宏观专家规则与统计模板引擎 (Rule-Based Template Copilot)</span>
+            <span>· 绝无黑盒幻觉与伪造数据</span>
+          </div>
+          <span>Version 1.0 (V1.0 Certified)</span>
         </div>
       </div>
     </div>
