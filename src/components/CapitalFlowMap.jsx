@@ -4,6 +4,7 @@ import GlobalFlowGlobe3D from './GlobalFlowGlobe3D';
 import MethodologyFootnote from './MethodologyFootnote';
 import DataClassificationBadge from './DataClassificationBadge';
 import soundFx from '../utils/soundEffects';
+import { normalizeCorridorExposures } from '../utils/eisenbergNoeClearing';
 import { 
   Layers, Eye, Filter, ArrowUpRight, ArrowDownLeft, 
   Info, Download, Target, Compass, Maximize2, Sparkles,
@@ -41,12 +42,18 @@ export default function CapitalFlowMap({
   const countries = dataset.countries || [];
   const countryMap = useMemo(() => Object.fromEntries(countries.map(c => [c.code, c])), [countries]);
   const lbsQuarter = dataset.lbs_data || {};
-  const currentLinks = (dataset.bilateral_matrix || {})[selectedQuarter] || [];
+  const rawCurrentLinks = (dataset.bilateral_matrix || {})[selectedQuarter] || [];
+  const currentLinks = useMemo(() => {
+    return normalizeCorridorExposures(rawCurrentLinks).normalizedLinks;
+  }, [rawCurrentLinks]);
 
   // Compute QoQ Flows / Changes relative to prior quarter
   const quarterIdx = dataset.quarters ? dataset.quarters.indexOf(selectedQuarter) : -1;
   const prevQuarter = quarterIdx > 0 ? dataset.quarters[quarterIdx - 1] : null;
-  const prevLinks = prevQuarter ? ((dataset.bilateral_matrix || {})[prevQuarter] || []) : [];
+  const rawPrevLinks = prevQuarter ? ((dataset.bilateral_matrix || {})[prevQuarter] || []) : [];
+  const prevLinks = useMemo(() => {
+    return normalizeCorridorExposures(rawPrevLinks).normalizedLinks;
+  }, [rawPrevLinks]);
   const prevLinksMap = useMemo(() => {
     return new Map(prevLinks.map(l => [`${l.source}->${l.target}`, l]));
   }, [prevLinks]);

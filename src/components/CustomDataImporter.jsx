@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   UploadCloud, FileSpreadsheet, Download, CheckCircle2, 
-  AlertCircle, X, Sparkles, Shield, ArrowRight, RefreshCw
+  AlertCircle, X, Sparkles, Shield, ArrowRight, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
+import { normalizeCorridorExposures } from '../utils/eisenbergNoeClearing';
 
 export default function CustomDataImporter({
   isOpen,
@@ -58,37 +59,44 @@ export default function CustomDataImporter({
           return;
         }
 
-        // Validate structure
+        // Validate structure & normalize exposures
         const validated = [];
-        let totalVolume = 0;
 
         json.forEach((row, idx) => {
           const src = (row.source || row.Source || row.origin || '').toString().trim().toUpperCase();
           const dst = (row.target || row.Target || row.dest || '').toString().trim().toUpperCase();
           const claims = parseFloat(row.claims_usd_bn || row.Claims || row.claims || 0);
           const usdVol = parseFloat(row.usd_denominated_bn || row.usd_share || claims * 0.7);
+          const id = (row.id || row.Id || row.exposure_id || '').toString().trim();
 
           if (src && dst && !isNaN(claims) && claims > 0) {
             validated.push({
+              id: id || null,
               source: src,
               target: dst,
-              claims_usd_bn: Math.round(claims * 10) / 10,
-              usd_denominated_bn: Math.round(usdVol * 10) / 10
+              claims_usd_bn: claims,
+              usd_denominated_bn: usdVol
             });
-            totalVolume += claims;
           }
         });
 
-        if (validated.length === 0) {
+        // Canonical normalization: deduplicates stable IDs, aggregates multi-tranche exposures, isolates conflicts
+        const norm = normalizeCorridorExposures(validated);
+
+        if (norm.normalizedLinks.length === 0) {
           setErrorMsg('未检测到符合规范的数据列（必须包含 source, target, claims_usd_bn 字段）。');
           return;
         }
 
+        const totalVolume = norm.normalizedLinks.reduce((sum, l) => sum + l.claims_usd_bn, 0);
+
         soundFx.playChime();
         setParsedData({
-          rows: validated,
-          totalVolume: Math.round(totalVolume),
-          count: validated.length
+          rows: norm.normalizedLinks,
+          conflicts: norm.conflicts,
+          rawCount: norm.rawCount,
+          count: norm.normalizedLinks.length,
+          totalVolume: Math.round(totalVolume * 10) / 10
         });
       } catch (err) {
         console.error(err);
@@ -219,12 +227,26 @@ export default function CustomDataImporter({
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span className="font-bold text-white">已成功解析: {fileName}</span>
+                  <span className="font-bold text-white">已规范化解析: {fileName}</span>
                 </div>
                 <span className="text-slate-400 font-mono">
-                  共 {parsedData.count} 条双边走廊 · 总规模 ${(parsedData.totalVolume / 1000).toFixed(2)} 万亿美元
+                  {parsedData.rawCount ? `原始 ${parsedData.rawCount} 笔敞口 → 汇总为 ` : ''}{parsedData.count} 条标准走廊 · 总规模 ${(parsedData.totalVolume / 1000).toFixed(2)} 万亿美元
                 </span>
               </div>
+
+              {parsedData.conflicts && parsedData.conflicts.length > 0 && (
+                <div className="p-2.5 bg-amber-950/40 border border-amber-500/40 rounded-lg text-xs text-amber-200 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-bold">检测到 {parsedData.conflicts.length} 条冲突记录已自动隔离（不参与矩阵计算）：</span>
+                    <ul className="list-disc pl-4 text-slate-300 text-[11px]">
+                      {parsedData.conflicts.slice(0, 3).map((c, i) => (
+                        <li key={i}>{c.reason}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
 
               <div className="max-h-48 overflow-y-auto border border-slate-800 rounded-lg text-xs font-mono">
                 <table className="w-full text-left">

@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import { 
   AlertOctagon, Play, RotateCcw, ShieldAlert, ArrowRight, 
-  TrendingDown, Layers, Zap, Download, Info, ChevronDown, ChevronUp, HelpCircle, FileText
+  TrendingDown, Layers, Zap, Download, Info, ChevronDown, ChevronUp, HelpCircle, FileText,
+  Activity, GitCompare, Sliders, CheckCircle2, BarChart2
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import MethodologyFootnote from './MethodologyFootnote';
@@ -11,6 +12,7 @@ import DataClassificationBadge from './DataClassificationBadge';
 import {
   CLEARING_VERSION_REGISTRY,
   computeClearingScenario,
+  computeStressWorkbenchAnalysis,
   buildDataFingerprint
 } from '../utils/eisenbergNoeClearing';
 
@@ -34,6 +36,7 @@ export default function NetworkContagionSimulator({
 
   // Simulation parameters
   const [simMode, setSimMode] = useState('en_clearing'); // 'en_clearing' | 'behavioral'
+  const [activeViewTab, setActiveViewTab] = useState('single_scenario'); // 'single_scenario' | 'workbench'
   const [enSortMetric, setEnSortMetric] = useState('incremental'); // 'incremental' | 'post_shock' | 'baseline'
   const [showBaselineDiagnostic, setShowBaselineDiagnostic] = useState(false);
   const [activePreset, setActivePreset] = useState('custom');
@@ -282,6 +285,24 @@ export default function NetworkContagionSimulator({
     chartInstance.current.setOption(option, true);
   }, [simResults, simMode, enSortMetric]);
 
+  // Capital Network Stress-Testing Workbench Multi-Regime Analysis (1.0x, 1.5x, 2.0x)
+  const workbenchResults = useMemo(() => {
+    if (simMode !== 'en_clearing') return null;
+    try {
+      return computeStressWorkbenchAnalysis({
+        dataset,
+        quarter: selectedQuarter,
+        currentLinks,
+        epicenter,
+        haircutPct,
+        allowModelProxy
+      });
+    } catch (err) {
+      console.error('Failed to compute workbench analysis:', err);
+      return null;
+    }
+  }, [dataset, selectedQuarter, currentLinks, epicenter, haircutPct, allowModelProxy, simMode]);
+
   const handleDownloadSnapshot = () => {
     if (!chartInstance.current) return;
     const url = chartInstance.current.getDataURL({
@@ -306,10 +327,18 @@ export default function NetworkContagionSimulator({
       ['Model Version', cr.versionMeta.modelVersion],
       ['Data Version', cr.versionMeta.dataVersion],
       ['Dataset Revision', simResults.datasetRevision ?? 1],
+      ['Run Type', cr.runType || 'STRESS_SCENARIO'],
+      ['Run Status Label', cr.runStatusLabel || '外生冲击压力清算情景'],
       ['Quarter', cr.quarter],
       ['Quarter Status', cr.quarterStatus],
       ['Fixed-Point Convergence Status', cr.convergenceStatus],
       ['Fixed-Point Independent Verification Valid', simResults.allFixedPointsValid ? 'TRUE' : 'FALSE'],
+      ['Solver Stop Reason', simResults.shockConvergence?.stopReason || 'CONVERGED_TOLERANCE'],
+      ['Worst Node Code', simResults.shockConvergence?.worstNode?.code || 'None'],
+      ['Worst Node Residual (USD Bn)', simResults.shockConvergence?.worstNode?.residual !== undefined ? simResults.shockConvergence.worstNode.residual.toExponential(4) : 'NA'],
+      ['Worst Node Threshold (USD Bn)', simResults.shockConvergence?.worstNode?.threshold !== undefined ? simResults.shockConvergence.worstNode.threshold.toExponential(4) : 'NA'],
+      ['Partially Incomplete Input Flag', simResults.isPartiallyIncomplete ? 'TRUE' : 'FALSE'],
+      ['Missing Jurisdictions List', (simResults.missingJurisdictions || []).map(m => m.code).join('; ') || 'None'],
       ['Baseline Picard Iterations', simResults.baselineConvergence?.iterCount ?? 'NA'],
       ['Baseline Picard Loop Residual (USD Bn)', simResults.baselineConvergence?.residual !== undefined ? simResults.baselineConvergence.residual.toFixed(8) : 'NA'],
       ['Baseline Operator Max Abs Residual (USD Bn)', simResults.baselineConvergence?.verification?.maxAbsResidual !== undefined ? simResults.baselineConvergence.verification.maxAbsResidual.toFixed(8) : 'NA'],
@@ -334,7 +363,7 @@ export default function NetworkContagionSimulator({
       ['Marginal Incremental Shortfall (USD Bn)', `+${cr.incrementalTotalDisplay}`],
       ['Top Incremental Victim', cr.topVictim ? `${cr.topVictim.name_zh} (${cr.topVictim.code}): ${cr.topVictim.incrementalFormatted}` : 'None'],
       [''],
-      ['Jurisdiction Code', 'Jurisdiction Name', 'Baseline Shortfall (USD Bn)', 'Post-Shock Shortfall (USD Bn)', 'Marginal Incremental Shortfall (USD Bn)', 'FX Reserves (USD Bn)', 'Reserves Provenance Source', 'Reserves Status', 'Incremental / Reserves (%)', 'Direct from Epicenter (USD Bn)', 'Indirect from Cascade (USD Bn)']
+      ['Jurisdiction Code', 'Jurisdiction Name', 'Baseline Shortfall (USD Bn)', 'Post-Shock Shortfall (USD Bn)', 'Marginal Incremental Shortfall (USD Bn)', 'FX Reserves (USD Bn)', 'Reserves Provenance Source', 'Reserves Status', 'Incremental / Reserves (%)', 'Direct from Epicenter (USD Bn)', 'Indirect from Cascade (USD Bn)', 'Ranking Eligible']
     ];
 
     simResults.impactList.forEach(item => {
@@ -349,7 +378,8 @@ export default function NetworkContagionSimulator({
         item.reservesStatus || 'OFFICIAL',
         item.enIncrementalToReservesPct,
         item.enIncrementalDirect,
-        item.enIncrementalIndirect
+        item.enIncrementalIndirect,
+        item.rankingEligible !== false ? 'TRUE' : 'FALSE'
       ]);
     });
 
@@ -359,6 +389,63 @@ export default function NetworkContagionSimulator({
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `bis_clearing_scenario_${cr.epicenterCode}_${cr.quarter}_${cr.haircutPct}pct_${cr.bufferMultiplier}buf.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportWorkbenchCsv = () => {
+    if (!workbenchResults) return;
+    soundFx.playTick();
+    const wb = workbenchResults;
+    const rows = [
+      ['=== BIS Atlas Capital Network Stress-Testing Workbench Report ==='],
+      ['Report Generation Timestamp', new Date().toISOString()],
+      ['Product Version', CLEARING_VERSION_REGISTRY.PRODUCT],
+      ['Model Version', CLEARING_VERSION_REGISTRY.MODEL],
+      ['Data Version', CLEARING_VERSION_REGISTRY.DATA(wb.quarter)],
+      ['Dataset Revision', dataset?.datasetRevision ?? 1],
+      ['Quarter', wb.quarter],
+      ['Epicenter Code', wb.epicenter],
+      ['Epicenter Name', epicenterCountry.name_zh],
+      ['Haircut Percentage', `${wb.haircutPct}%`],
+      ['Buffer Regimes Analyzed', wb.bufferRegimes.map(b => `${b.toFixed(1)}x`).join(', ')],
+      ['Scenario Sensitivity Range (USD Bn)', wb.sensitivityRange.rangeLabel],
+      ['Min Incremental Shortfall (USD Bn)', `$${wb.sensitivityRange.minIncrementalDisplay}B`],
+      ['Max Incremental Shortfall (USD Bn)', `$${wb.sensitivityRange.maxIncrementalDisplay}B`],
+      ['Sensitivity Spread (USD Bn)', `$${wb.sensitivityRange.spreadDisplay}B`],
+      ['Sensitivity Spread Ratio (%)', `+${wb.sensitivityRange.spreadPct}%`],
+      ['Methodology Disclaimer', wb.sensitivityRange.disclaimer],
+      ['Top 3 Victims Overlap Stability (%)', `${wb.rankingStability.top3StabilityPct}%`],
+      ['Ranking Stability Summary', wb.rankingStability.summary],
+      ['Reference 1.5x Total Incremental Loss (USD Bn)', `$${wb.transmissionDecomposition.totalIncremental}B`],
+      ['Reference Direct Loss Share (%)', `${wb.transmissionDecomposition.directSharePct}%`],
+      ['Reference Indirect Cascade Share (%)', `${wb.transmissionDecomposition.indirectSharePct}%`],
+      [''],
+      ['Jurisdiction Code', 'Jurisdiction Name', 'Region', '1.0x Strict Buffer ΔS (USD Bn)', '1.5x Academic Base ΔS (USD Bn)', '2.0x Broad Buffer ΔS (USD Bn)', 'Direct Absorption (USD Bn)', 'Indirect Cascade (USD Bn)', 'Ranking Eligible', 'FX Reserves Status']
+    ];
+
+    wb.jurisdictionComparison.forEach(row => {
+      rows.push([
+        row.code,
+        row.name_zh,
+        row.region,
+        row.delta10,
+        row.delta15,
+        row.delta20,
+        row.directLoss,
+        row.indirectLoss,
+        row.rankingEligible ? 'TRUE' : 'FALSE',
+        row.reservesStatus
+      ]);
+    });
+
+    const csvContent = '\uFEFF' + rows.map(r => r.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `bis_stress_workbench_${wb.epicenter}_${wb.quarter}_${wb.haircutPct}pct.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -468,11 +555,309 @@ export default function NetworkContagionSimulator({
         </div>
       </div>
 
-      {/* Scenario Presets Pill Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <span className="text-xs font-mono text-slate-400 flex items-center gap-1 shrink-0">
-          <Zap className="w-3.5 h-3.5 text-amber-400" /> 经典压力预设:
-        </span>
+      {/* Navigation Tabs: Single Scenario Deep-Dive vs Stress-Testing Workbench */}
+      {simMode === 'en_clearing' && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-slate-900/60 border border-slate-800 rounded-xl">
+          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800 text-xs">
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                setActiveViewTab('single_scenario');
+              }}
+              className={`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeViewTab === 'single_scenario'
+                  ? 'bg-rose-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>⚡ 单一情景深入 (Single Scenario)</span>
+            </button>
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                setActiveViewTab('workbench');
+              }}
+              className={`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeViewTab === 'workbench'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <GitCompare className="w-3.5 h-3.5" />
+              <span>🔬 资本网络压力测试实验台 (Stress-Testing Workbench)</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-900/80 text-purple-200 border border-purple-400/40 font-mono">
+                多机制对照
+              </span>
+            </button>
+          </div>
+
+          <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2">
+            <span className="text-slate-500">流动性机制:</span>
+            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">1.0x 严格外储</span>
+            <span>vs</span>
+            <span className="px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-200 border border-purple-500/30">1.5x 学术基准</span>
+            <span>vs</span>
+            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">2.0x 广义缓冲</span>
+          </div>
+        </div>
+      )}
+
+      {/* RENDER CONTENT BASED ON VIEW TAB */}
+      {simMode === 'en_clearing' && activeViewTab === 'workbench' ? (
+        <div className="space-y-5">
+          {/* Workbench Controls & Parameters */}
+          <div className="p-4 bg-slate-900/90 border border-purple-500/30 rounded-xl flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1 font-semibold">震中经济体 (Trigger Epicenter):</label>
+                <select
+                  value={epicenter}
+                  onChange={(e) => setEpicenter(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 text-white font-bold px-3 py-1.5 rounded-lg focus:outline-none focus:border-purple-500 cursor-pointer"
+                >
+                  {countries.map(c => (
+                    <option key={c.code} value={c.code}>
+                      {c.name_zh} ({c.code}) - {c.region}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-slate-400 mb-1">
+                  <span className="font-semibold">违约减记率 (Haircut):</span>
+                  <span className="font-mono text-rose-400 font-bold ml-2">{haircutPct}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={5}
+                  max={60}
+                  step={5}
+                  value={haircutPct}
+                  onChange={(e) => setHaircutPct(parseInt(e.target.value, 10))}
+                  className="w-44 accent-rose-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-3 text-[11px] font-mono text-slate-400">
+                <span className="text-slate-500">对照机制:</span>
+                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">1.0x 严格外储</span>
+                <span className="text-slate-600">|</span>
+                <span className="px-2 py-0.5 rounded bg-purple-950/80 text-purple-200 border border-purple-500/30 font-bold">1.5x 学术基准</span>
+                <span className="text-slate-600">|</span>
+                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">2.0x 广义缓冲</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleExportWorkbenchCsv}
+              className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg shadow-md transition-colors cursor-pointer flex items-center gap-2 text-xs font-mono"
+            >
+              <FileText className="w-4 h-4" />
+              <span>导出实验台对比矩阵 CSV</span>
+            </button>
+          </div>
+
+          {/* Workbench 3 Analysis Cards */}
+          {workbenchResults && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Card 1: Scenario Sensitivity Range */}
+              <div className="bg-slate-900/80 p-4 rounded-xl border border-purple-500/40 shadow-lg space-y-2">
+                <div className="text-[11px] text-purple-300 uppercase tracking-wider font-mono flex items-center justify-between">
+                  <span>1. 情景敏感性范围 (Sensitivity Range)</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-500/30">
+                    1.0x ~ 2.0x 缓冲
+                  </span>
+                </div>
+                <div className="text-2xl font-bold font-mono text-purple-300">
+                  {workbenchResults.sensitivityRange.rangeLabel}
+                </div>
+                <div className="text-xs text-slate-300 font-mono flex items-center justify-between">
+                  <span>极差 (Spread):</span>
+                  <strong className="text-rose-400 font-bold">
+                    +${workbenchResults.sensitivityRange.spreadDisplay}B (+{workbenchResults.sensitivityRange.spreadPct}%)
+                  </strong>
+                </div>
+                <div className="p-2.5 bg-amber-950/40 border border-amber-500/40 rounded-lg text-[10px] text-amber-200/90 leading-relaxed">
+                  ⚠️ {workbenchResults.sensitivityRange.disclaimer}
+                </div>
+              </div>
+
+              {/* Card 2: Ranking Stability Index */}
+              <div className="bg-slate-900/80 p-4 rounded-xl border border-sky-500/40 shadow-lg space-y-2 flex flex-col justify-between">
+                <div>
+                  <div className="text-[11px] text-sky-300 uppercase tracking-wider font-mono flex items-center justify-between">
+                    <span>2. 受害者排名稳定性 (Ranking Stability)</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-950 text-sky-300 border border-sky-500/30">
+                      Top 3 重合度
+                    </span>
+                  </div>
+                  <div className="text-2xl font-bold font-mono text-sky-400 mt-1">
+                    {workbenchResults.rankingStability.top3StabilityPct}%
+                  </div>
+                  <div className="text-xs text-slate-300 mt-1 font-semibold">
+                    {workbenchResults.rankingStability.summary}
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-800 pt-2">
+                  检验极度紧缩流动性 (1.0x) 与宽松缓冲 (2.0x) 下前 3 大核心受害管辖区的重合率。重合度高达 {workbenchResults.rankingStability.top3StabilityPct}%，表明外溢受创位次具有高结构稳健性，不受外部缓冲规模假设的逆转。
+                </p>
+              </div>
+
+              {/* Card 3: Transmission Decomposition */}
+              <div className="bg-slate-900/80 p-4 rounded-xl border border-rose-500/40 shadow-lg space-y-2 flex flex-col justify-between">
+                <div>
+                  <div className="text-[11px] text-rose-300 uppercase tracking-wider font-mono flex items-center justify-between">
+                    <span>3. 传染传播路径分解 (1.5x 基准)</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-950 text-rose-300 border border-rose-500/30">
+                      双重机制拆解
+                    </span>
+                  </div>
+                  <div className="text-lg font-bold font-mono text-rose-400 mt-1 flex items-center justify-between">
+                    <span>直接吸收: {workbenchResults.transmissionDecomposition.directSharePct}%</span>
+                    <span className="text-purple-300">次生级联: {workbenchResults.transmissionDecomposition.indirectSharePct}%</span>
+                  </div>
+                  {/* Visual Proportion Bar */}
+                  <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden flex mt-2">
+                    <div
+                      className="bg-rose-500 h-full transition-all"
+                      style={{ width: `${Math.max(1, workbenchResults.transmissionDecomposition.directSharePct)}%` }}
+                      title={`直接敞口吸收: ${workbenchResults.transmissionDecomposition.directSharePct}%`}
+                    />
+                    <div
+                      className="bg-purple-500 h-full transition-all"
+                      style={{ width: `${workbenchResults.transmissionDecomposition.indirectSharePct}%` }}
+                      title={`网络次生级联: ${workbenchResults.transmissionDecomposition.indirectSharePct}%`}
+                    />
+                  </div>
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono space-y-1 border-t border-slate-800 pt-2">
+                  <div className="flex justify-between">
+                    <span>直接受震中违约冲击:</span>
+                    <span className="text-rose-400 font-bold">${workbenchResults.transmissionDecomposition.totalDirectDisplay}B</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>网络多轮级联扩散:</span>
+                    <span className="text-purple-300 font-bold">${workbenchResults.transmissionDecomposition.totalIndirectDisplay}B</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Multi-Regime Comparative Table */}
+          {workbenchResults && (
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-2">
+                  <BarChart2 className="w-4 h-4 text-purple-400" />
+                  <h3 className="text-xs font-bold text-white">
+                    全网管辖区多流动性机制对照矩阵 (Cross-Regime Shortfall Matrix)
+                  </h3>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    (按 1.5x 基准增量降序排列)
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  点击行可下钻查看管辖区双边敞口
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-[11px] text-slate-400 font-mono">
+                      <th className="py-2 px-2.5">排名</th>
+                      <th className="py-2 px-2.5">经济体 / 管辖区</th>
+                      <th className="py-2 px-2.5">地区</th>
+                      <th className="py-2 px-2.5 text-right">1.0x 严格外储 (ΔS)</th>
+                      <th className="py-2 px-2.5 text-right text-purple-300 font-bold">1.5x 学术基准 (ΔS)</th>
+                      <th className="py-2 px-2.5 text-right">2.0x 广义缓冲 (ΔS)</th>
+                      <th className="py-2 px-2.5 text-right text-rose-400">直接吸收受损</th>
+                      <th className="py-2 px-2.5 text-right text-purple-400">级联波及受损</th>
+                      <th className="py-2 px-2.5 text-center">外储状态</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {workbenchResults.jurisdictionComparison.map((row, idx) => {
+                      const isEligible = row.rankingEligible;
+                      return (
+                        <tr
+                          key={row.code}
+                          onClick={() => onSelectCountry(row.code)}
+                          className={`hover:bg-slate-800/60 cursor-pointer transition-colors ${
+                            !isEligible ? 'opacity-60 bg-slate-950/30' : ''
+                          }`}
+                        >
+                          <td className="py-2 px-2.5 font-mono text-slate-500">
+                            {isEligible ? `${idx + 1}.` : '—'}
+                          </td>
+                          <td className="py-2 px-2.5 font-bold text-white flex items-center gap-1.5">
+                            <span>{row.name_zh}</span>
+                            <span className="font-mono text-[10px] text-slate-400">({row.code})</span>
+                            {!isEligible && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-500/30">
+                                缺失不排
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-2.5 text-slate-400 font-mono text-[11px]">
+                            {row.region}
+                          </td>
+                          <td className="py-2 px-2.5 text-right font-mono">
+                            {typeof row.delta10 === 'number' ? `+$${row.delta10}B` : 'NA'}
+                          </td>
+                          <td className="py-2 px-2.5 text-right font-mono font-bold text-purple-300">
+                            {typeof row.delta15 === 'number' ? `+$${row.delta15}B` : 'NA'}
+                          </td>
+                          <td className="py-2 px-2.5 text-right font-mono">
+                            {typeof row.delta20 === 'number' ? `+$${row.delta20}B` : 'NA'}
+                          </td>
+                          <td className="py-2 px-2.5 text-right font-mono text-rose-400">
+                            {typeof row.directLoss === 'number' ? `$${row.directLoss}B` : 'NA'}
+                          </td>
+                          <td className="py-2 px-2.5 text-right font-mono text-purple-400">
+                            {typeof row.indirectLoss === 'number' ? `$${row.indirectLoss}B` : 'NA'}
+                          </td>
+                          <td className="py-2 px-2.5 text-center font-mono text-[10px]">
+                            <span className={`px-1.5 py-0.5 rounded border ${
+                              row.reservesStatus === 'OFFICIAL' ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/30' :
+                              row.reservesStatus === 'PENDING_VERIFICATION' ? 'bg-amber-950/80 text-amber-300 border-amber-500/30' :
+                              row.reservesStatus === 'NOWCAST' ? 'bg-sky-950/80 text-sky-300 border-sky-500/30' :
+                              'bg-rose-950/80 text-rose-300 border-rose-500/30'
+                            }`}>
+                              {row.reservesStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-[11px] text-slate-400 leading-relaxed space-y-1">
+                <div>
+                  💡 <strong>资本网络压力测试实验台机制说明：</strong>
+                </div>
+                <div className="pl-3 border-l-2 border-purple-500/40 space-y-1">
+                  <div>· <strong>1.0x 严格外储机制：</strong> 假设外部现金流注入 $e_i$ 严格受限于各国官方公布之外储，测试极度流动性冻结下的资本短缺上限。</div>
+                  <div>· <strong>1.5x 学术基准机制：</strong> 经典 Eisenberg-Noe 宏观金融网络基准设定，允许适度动用二级流动性缓冲与主权财政空间。</div>
+                  <div>· <strong>2.0x 广义缓冲机制：</strong> 考虑双边央行流动性互换协议（Swap Lines）与常备借贷便利介入后的系统韧性。</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Single Scenario View */
+        <div className="space-y-5">
+          {/* Scenario Presets Pill Bar */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <span className="text-xs font-mono text-slate-400 flex items-center gap-1 shrink-0">
+              <Zap className="w-3.5 h-3.5 text-amber-400" /> 经典压力预设:
+            </span>
         {CONTAGION_PRESETS.map(p => (
           <button
             key={p.id}
@@ -711,24 +1096,45 @@ export default function NetworkContagionSimulator({
 
               <div className={`p-3 rounded-xl border ${simResults.allFixedPointsValid ? 'bg-slate-900/80 border-slate-800' : 'bg-rose-950/40 border-rose-500/80 shadow-lg'}`}>
                 <div className="text-[11px] text-slate-400 uppercase tracking-wider font-mono flex items-center justify-between">
-                  <span>4. 不动点收敛与算子独立验证</span>
+                  <span>4. 不动点收敛与逐节点独立验证</span>
                   {simResults.allFixedPointsValid ? (
-                    <span className="text-[10px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/30">双检验通过</span>
+                    <span className="text-[10px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/30">逐节点验证通过</span>
                   ) : (
                     <span className="text-[10px] text-rose-300 bg-rose-900/80 px-1.5 py-0.2 rounded border border-rose-500/50 font-bold">FAILED</span>
                   )}
                 </div>
                 <div className={`text-base font-bold font-mono mt-0.5 ${simResults.allFixedPointsValid ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {simResults.allFixedPointsValid ? 'Picard 收敛 & 算子独立验证通过' : '不动点未收敛或验证未通过'}
+                  {simResults.allFixedPointsValid ? 'Picard 收敛 & 逐节点独立验证通过' : '清算不动点未收敛或验证未通过'}
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
-                  基线: {simResults.baselineConvergence?.iterCount} 轮 (残差 {simResults.baselineConvergence?.verification?.maxAbsResidual < 1e-4 ? '<1e-4' : simResults.baselineConvergence?.verification?.maxAbsResidual?.toFixed(5)} B) / 冲击: {simResults.shockConvergence?.iterCount} 轮 (残差 {simResults.shockConvergence?.verification?.maxAbsResidual < 1e-4 ? '<1e-4' : simResults.shockConvergence?.verification?.maxAbsResidual?.toFixed(5)} B)
+                  基线: {simResults.baselineConvergence?.iterCount} 轮 / 冲击: {simResults.shockConvergence?.iterCount} 轮
+                  {simResults.shockConvergence?.worstNode && (
+                    <span className="text-slate-300 ml-1">
+                      (最差节点: {simResults.shockConvergence.worstNode.code} 残差 {simResults.shockConvergence.worstNode.residual.toExponential(2)})
+                    </span>
+                  )}
                 </div>
                 <div className="text-[10px] text-slate-500 mt-0.5 font-mono">
-                  全网外储: {simResults.coverageMeta?.reservesCoverageRatio || simResults.validReservesCoverage} · 波及负债: {simResults.coverageMeta?.spilloverLiabCoverageRatio || '22/22'} · 容差: 1e-4 B
+                  全网外储: {simResults.coverageMeta?.reservesCoverageRatio || simResults.validReservesCoverage} · 波及负债: {simResults.coverageMeta?.spilloverLiabCoverageRatio || '22/22'} · 终止: {simResults.shockConvergence?.stopReason || 'CONVERGED_TOLERANCE'}
                 </div>
               </div>
             </div>
+
+            {/* Incomplete Data / Missing Jurisdiction Notice */}
+            {simResults.isPartiallyIncomplete && (
+              <div className="p-3 bg-amber-950/80 border border-amber-500/60 rounded-xl text-amber-200 flex items-start gap-3 shadow-lg">
+                <AlertOctagon className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <div className="font-bold text-amber-300">
+                    ⚠️ 存在部分管辖区输入数据缺失（已自动隔离，不计入受害国排名）
+                  </div>
+                  <p className="text-slate-300">
+                    受影响管辖区：{simResults.missingJurisdictions?.map(m => `${m.code} (${m.name_zh || m.name})`).join('、')}。
+                    依据数据质量契约，缺失输入不可假定为零缓冲或零负债，对应经济体清算短缺标为 NA 并排除在脆弱性位次排序之外。
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Expandable Diagnostic Accordion: Why is Baseline Large? */}
             <div className="bg-slate-900/90 border border-purple-500/30 rounded-xl overflow-hidden transition-all">
@@ -934,31 +1340,55 @@ export default function NetworkContagionSimulator({
             <div className="space-y-1.5 max-h-[340px] overflow-y-auto">
               {simResults?.impactList.map((item, idx) => {
                 if (simMode === 'en_clearing') {
+                  const isEligible = item.rankingEligible !== false;
                   return (
                     <div
                       key={item.code}
                       onClick={() => onSelectCountry(item.code)}
-                      className="p-2 bg-slate-950/80 hover:bg-slate-800/80 border border-slate-800/80 rounded-lg cursor-pointer transition-all flex items-center justify-between text-xs"
+                      className={`p-2 rounded-lg cursor-pointer transition-all flex items-center justify-between text-xs border ${
+                        !isEligible
+                          ? 'bg-slate-950/40 border-slate-800/40 opacity-70'
+                          : 'bg-slate-950/80 hover:bg-slate-800/80 border-slate-800/80'
+                      }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-slate-500 text-[11px] w-4">{idx + 1}.</span>
+                        <span className="font-mono text-slate-500 text-[11px] w-4">
+                          {!isEligible ? '—' : `${idx + 1}.`}
+                        </span>
                         <div>
                           <div className="flex items-center gap-1.5">
                             <span className="font-bold text-white">{item.name_zh}</span>
                             <span className="font-mono text-[10px] text-slate-400">({item.code})</span>
+                            {!isEligible && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-500/30">
+                                缺失不排
+                              </span>
+                            )}
                           </div>
                           <div className="text-[10px] text-slate-500 font-mono">
-                            基线 ${item.enBaselineShortfall}B → 冲击后 ${item.enPostShockShortfall}B
+                            {item.isMissingInput ? (
+                              <span className="text-amber-400/80">输入缺失 (外储: {item.reservesStatus})</span>
+                            ) : (
+                              `基线 $${item.enBaselineShortfall}B → 冲击后 $${item.enPostShockShortfall}B`
+                            )}
                           </div>
                         </div>
                       </div>
 
                       <div className="text-right">
                         <div className="font-mono font-bold text-rose-400">
-                          {item.enIncrementalShortfall > 0 ? `+${item.enIncrementalShortfall}B` : '$0.0B'}
-                          <span className="text-[10px] font-normal text-slate-400 ml-1">
-                            (+{Math.round(item.enIncrementalShortfall * 10).toLocaleString()} 亿)
-                          </span>
+                          {!isEligible ? (
+                            <span className="text-slate-400 font-mono">NA</span>
+                          ) : item.enIncrementalShortfall > 0 ? (
+                            `+${item.enIncrementalShortfall}B`
+                          ) : (
+                            '$0.0B'
+                          )}
+                          {isEligible && (
+                            <span className="text-[10px] font-normal text-slate-400 ml-1">
+                              (+{Math.round(item.enIncrementalShortfall * 10).toLocaleString()} 亿)
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] text-amber-400/90 font-mono">
                           {item.enIncrementalToReservesPct !== 'NA' ? `增量/外储: +${item.enIncrementalToReservesPct}%` : '增量/外储: NA'}
@@ -1010,6 +1440,8 @@ export default function NetworkContagionSimulator({
           </div>
         </div>
       </div>
+      </div>
+      )}
 
       {/* Academic Methodology Footnote */}
       <MethodologyFootnote

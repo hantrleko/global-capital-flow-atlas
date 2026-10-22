@@ -12,11 +12,13 @@ import {
   buildBaselineCacheKey,
   buildShockCacheKey,
   computeCanonicalMatrixDigest,
+  normalizeCorridorExposures,
   resolveCountryReserves,
   resolveJurisdictionLiability,
   verifyFixedPointClearingVector,
   resolveCountryInputs,
   solvePicardFixedPoint,
+  computeStressWorkbenchAnalysis,
   CLEARING_VERSION_REGISTRY
 } from '../src/utils/eisenbergNoeClearing.js';
 
@@ -567,6 +569,261 @@ function runTestSuite() {
     assert(cm.spilloverLiabCoveragePct === 100, 'Spillover liab coverage percentage must be 100%');
     assert(cm.validSpilloverLiabCount <= cm.spilloverUniverseCount, 'Spillover count must be subset of spillover universe');
     assert(cm.liabFullCoverageRatio === '23/23', `Full liab coverage ratio must be '23/23' (got ${cm.liabFullCoverageRatio})`);
+  }
+
+  // TEST 16: P0 - Unified Corridor Normalization & Exposure Aggregation
+  console.log('\nTest 16: P0 - Unified Corridor Normalization & Exposure Aggregation');
+  {
+    // A single 100 corridor vs two separate tranches (40 + 60)
+    const singleCorridor = [{ id: 'exp_1', source: 'US', target: 'JP', claims_usd_bn: 100 }];
+    const splitCorridors = [
+      { id: 'exp_2a', source: 'US', target: 'JP', claims_usd_bn: 40 },
+      { id: 'exp_2b', source: 'US', target: 'JP', claims_usd_bn: 60 }
+    ];
+
+    const normSingle = normalizeCorridorExposures(singleCorridor);
+    const normSplit = normalizeCorridorExposures(splitCorridors);
+
+    assert(normSingle.normalizedLinks.length === 1, 'Single corridor must normalize to 1 link');
+    assert(normSplit.normalizedLinks.length === 1, 'Split tranches (40+60) must aggregate to 1 link');
+    assert(Math.abs(normSingle.normalizedLinks[0].claims_usd_bn - 100) < 1e-9, 'Single corridor amount must be 100');
+    assert(Math.abs(normSplit.normalizedLinks[0].claims_usd_bn - 100) < 1e-9, 'Split tranches sum must be exactly 100');
+
+    // Digest equivalence for identical economic exposures
+    const digestSingle = computeCanonicalMatrixDigest(singleCorridor);
+    const digestSplit = computeCanonicalMatrixDigest(splitCorridors);
+    assert(digestSingle === digestSplit, `Canonical matrix digest must be identical (got ${digestSingle})`);
+
+    // Order invariance under shuffling
+    const rawList = [
+      { source: 'GB', target: 'US', claims_usd_bn: 50 },
+      { source: 'US', target: 'JP', claims_usd_bn: 120 },
+      { source: 'DE', target: 'FR', claims_usd_bn: 80 }
+    ];
+    const shuffledList = [
+      { source: 'DE', target: 'FR', claims_usd_bn: 80 },
+      { source: 'GB', target: 'US', claims_usd_bn: 50 },
+      { source: 'US', target: 'JP', claims_usd_bn: 120 }
+    ];
+    const digestRaw = computeCanonicalMatrixDigest(rawList);
+    const digestShuffled = computeCanonicalMatrixDigest(shuffledList);
+    assert(digestRaw === digestShuffled, 'Digest must be invariant under raw record order shuffling');
+
+    // Idempotent re-import of stable ID
+    const duplicateWithSameId = [
+      { id: 'bond_001', source: 'US', target: 'GB', claims_usd_bn: 25 },
+      { id: 'bond_001', source: 'US', target: 'GB', claims_usd_bn: 25 }
+    ];
+    const normDup = normalizeCorridorExposures(duplicateWithSameId);
+    assert(normDup.normalizedLinks.length === 1, 'Identical stable ID duplicate must be deduplicated');
+    assert(normDup.normalizedLinks[0].claims_usd_bn === 25, 'Deduplicated record must preserve single amount');
+    assert(normDup.conflicts.length === 0, 'Identical re-import must produce 0 conflicts');
+
+    // Conflicting records with same ID must be quarantined
+    const conflictingWithSameId = [
+      { id: 'loan_999', source: 'US', target: 'KY', claims_usd_bn: 10 },
+      { id: 'loan_999', source: 'US', target: 'KY', claims_usd_bn: 30 }
+    ];
+    const normConflict = normalizeCorridorExposures(conflictingWithSameId);
+    assert(normConflict.conflicts.length === 1, 'Conflicting ID record must be quarantined into conflicts');
+    assert(normConflict.conflicts[0].reason.includes('CONFLICTING_ID'), 'Conflict reason must specify CONFLICTING_ID');
+  }
+
+  // TEST 17: P0 - Separation of Real Zero, Missing Data, and Scenario Assumed Zero
+  console.log('\nTest 17: P0 - Separation of Real Zero, Missing Data, and Scenario Assumed Zero');
+  {
+    const synDataset = JSON.parse(JSON.stringify(dataset));
+    synDataset.cbs_risk['REAL_ZERO'] = [{ quarter: '2026Q1', fx_reserves_bn: 0 }];
+    synDataset.cbs_risk['MISSING_DATA'] = [{ quarter: '2026Q1', fx_reserves_bn: null }];
+
+    // Real Zero
+    const realZero = resolveCountryReserves({ dataset: synDataset, country: 'REAL_ZERO', quarter: '2026Q1' });
+    assert(realZero.status === 'EXPLICIT_ZERO', 'Observed zero reserves must have EXPLICIT_ZERO status');
+    assert(realZero.value === 0, 'Observed zero reserves value must be 0');
+    assert(realZero.isExplicitZero === true, 'isExplicitZero must be true');
+    assert(realZero.isMissing === false, 'isMissing must be false for explicit zero');
+
+    // Missing Data
+    const missingData = resolveCountryReserves({ dataset: synDataset, country: 'MISSING_DATA', quarter: '2026Q1' });
+    assert(missingData.status === 'MISSING', 'Null reserves must have MISSING status');
+    assert(missingData.value === null, 'Missing reserves value must be null');
+    assert(missingData.isMissing === true, 'isMissing must be true for missing reserves');
+    assert(missingData.isExplicitZero === false, 'isExplicitZero must be false for missing');
+
+    // Scenario Assumed Zero
+    const scenarioZero = resolveCountryReserves({ dataset, country: 'US', quarter: '2026Q1', assumeZeroReserves: true });
+    assert(scenarioZero.status === 'SCENARIO_ASSUMED_ZERO', 'Stress scenario zero reserves must be tagged SCENARIO_ASSUMED_ZERO');
+    assert(scenarioZero.value === 0, 'Scenario assumed zero must yield 0 buffer');
+    assert(scenarioZero.isScenarioAssumed === true, 'isScenarioAssumed must be true');
+
+    // Exclude Missing Jurisdictions from Rankings in computeClearingScenario
+    const syntheticDataset = JSON.parse(JSON.stringify(dataset));
+    syntheticDataset.countries.push({
+      code: 'ZZ',
+      name: 'Synthetic Missing State',
+      name_zh: '虚拟缺失国',
+      region: 'Emerging',
+      tier: 'Peripheral',
+      fx_reserves: {} // completely missing reserves across all quarters
+    });
+
+    const resMissing = computeClearingScenario({
+      dataset: syntheticDataset,
+      quarter: '2026Q4',
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+
+    assert(resMissing.isPartiallyIncomplete === true, 'Dataset with missing country input must set isPartiallyIncomplete = true');
+    assert(resMissing.missingJurisdictions.length === 1, 'Must record 1 missing jurisdiction (ZZ)');
+    assert(resMissing.missingJurisdictions[0].code === 'ZZ', 'Missing jurisdiction must be ZZ');
+
+    const zzImpact = resMissing.impactList.find(i => i.code === 'ZZ');
+    assert(zzImpact !== undefined, 'ZZ must be present in impact list for full visibility');
+    assert(zzImpact.rankingEligible === false, 'ZZ must NOT be eligible for ranking (rankingEligible = false)');
+    assert(zzImpact.enIncrementalShortfall === 'NA', 'ZZ incremental shortfall must be rendered NA');
+    assert(resMissing.currentRun.topVictim.code !== 'ZZ', 'ZZ must never be selected as topVictim');
+  }
+
+  // TEST 18: P0 - Node-by-Node Fixed-Point Verification & Worst Node Reporting
+  console.log('\nTest 18: P0 - Node-by-Node Fixed-Point Verification & Worst Node Reporting');
+  {
+    const res = computeClearingScenario({
+      dataset,
+      quarter: '2026Q4',
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+
+    const baseVerif = res.baselineConvergence?.verification;
+    const shockVerif = res.shockConvergence?.verification;
+
+    assert(baseVerif.fixedPointValid === true, 'Baseline fixed point must pass independent node-by-node verification');
+    assert(shockVerif.fixedPointValid === true, 'Shocked fixed point must pass independent node-by-node verification');
+    assert(shockVerif.nodeVerifications.length === 23, 'Must verify all 23 network nodes individually');
+
+    // Each node must satisfy individual tolerance
+    shockVerif.nodeVerifications.forEach(node => {
+      assert(node.residual <= node.threshold + 1e-9, `Node ${node.code} residual (${node.residual}) must satisfy threshold (${node.threshold})`);
+      assert(node.valid === true, `Node ${node.code} verification must be valid`);
+    });
+
+    // Check worstNode is reported
+    assert(res.shockConvergence.worstNode !== undefined, 'Worst node must be reported in solver convergence');
+    assert(res.shockConvergence.stopReason === 'CONVERGED_TOLERANCE', 'Stop reason must be CONVERGED_TOLERANCE');
+
+    // Test canceling residuals protection: single node violation fails even if aggregate sum cancels out
+    const N = 3;
+    const codes = ['A', 'B', 'C'];
+    const pbar = [100, 100, 100];
+    const e = [50, 50, 50];
+    const Pi = [
+      [0, 0.5, 0.5],
+      [0.5, 0, 0.5],
+      [0.5, 0.5, 0]
+    ];
+    // Candidate vector where node A has +10 error and node B has -10 error (sum of deviations = 0)
+    const cancelingP = [90, 100, 100]; // Node A is underpaying by 10 despite having enough resources
+    const verifCancel = verifyFixedPointClearingVector({
+      N,
+      codes,
+      pbar,
+      e,
+      Pi,
+      pCandidate: cancelingP,
+      absTolerance: 1e-4
+    });
+
+    assert(verifCancel.fixedPointValid === false, 'Canceling residual vector must FAIL verification');
+    assert(verifCancel.worstNode.residual >= 5.0, `Worst node residual must be >= 5.0 (got ${verifCancel.worstNode.residual})`);
+    assert(verifCancel.stopReason === 'TOLERANCE_EXCEEDED', 'Stop reason must report TOLERANCE_EXCEEDED');
+
+    // Test bounds violation: p_i > pbar_i
+    const violatingBoundsP = [150, 100, 100];
+    const verifBounds = verifyFixedPointClearingVector({
+      N,
+      codes,
+      pbar,
+      e,
+      Pi,
+      pCandidate: violatingBoundsP,
+      absTolerance: 1e-4
+    });
+    assert(verifBounds.fixedPointValid === false, 'Bounds violation vector must FAIL verification');
+    assert(verifBounds.stopReason === 'BOUNDS_VIOLATION_UPPER', 'Stop reason must report BOUNDS_VIOLATION_UPPER');
+
+    // Test NaN payment check
+    const nanP = [NaN, 100, 100];
+    const verifNan = verifyFixedPointClearingVector({
+      N,
+      codes,
+      pbar,
+      e,
+      Pi,
+      pCandidate: nanP,
+      absTolerance: 1e-4
+    });
+    assert(verifNan.fixedPointValid === false, 'NaN payment vector must FAIL verification');
+    assert(verifNan.stopReason === 'NON_FINITE_PAYMENT', 'Stop reason must report NON_FINITE_PAYMENT');
+  }
+
+  // TEST 19: P1 - Temporal State & Coverage Unification
+  console.log('\nTest 19: P1 - Temporal State & Coverage Unification');
+  {
+    const res = computeClearingScenario({
+      dataset,
+      quarter: '2026Q4',
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+
+    assert(res.runType === 'STRESS_SCENARIO', 'Scenario runType must be STRESS_SCENARIO');
+    assert(res.runStatusLabel.includes('压力清算情景'), 'Run status label must indicate stress clearing scenario');
+    assert(res.currentRun.quarterStatus === 'NOWCAST_SCENARIO', '2026Q4 quarter status must be NOWCAST_SCENARIO');
+    assert(res.currentRun.versionMeta.productVersion === CLEARING_VERSION_REGISTRY.PRODUCT, 'Product version must match registry');
+    assert(res.coverageMeta.reservesCoverageRatio === '23/23', 'Reserves coverage ratio must be 23/23');
+    assert(res.coverageMeta.spilloverLiabCoverageRatio === '22/22', 'Spillover liab coverage ratio must be 22/22');
+  }
+
+  // TEST 20: Capital Network Stress-Testing Workbench Multi-Regime Analysis
+  console.log('\nTest 20: Capital Network Stress-Testing Workbench Multi-Regime Analysis');
+  {
+    const wb = computeStressWorkbenchAnalysis({
+      dataset,
+      quarter: '2026Q4',
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+
+    assert(wb !== null, 'Workbench analysis result must not be null');
+    assert(wb.bufferRegimes.length === 3, 'Workbench must evaluate 3 buffer regimes (1.0x, 1.5x, 2.0x)');
+    assert(wb.bufferRegimes.includes(1.0) && wb.bufferRegimes.includes(1.5) && wb.bufferRegimes.includes(2.0), 'Must include 1.0, 1.5, 2.0');
+
+    // Sensitivity Range Checks
+    const sr = wb.sensitivityRange;
+    assert(Math.abs(sr.minIncrementalRaw - 273.5) < 0.5, `Min incremental loss ~273.5B (got ${sr.minIncrementalRaw})`);
+    assert(Math.abs(sr.maxIncrementalRaw - 290.0) < 0.5, `Max incremental loss ~290.0B (got ${sr.maxIncrementalRaw})`);
+    assert(Math.abs(sr.spreadDisplay - 16.5) < 0.5, `Spread display ~16.5B (got ${sr.spreadDisplay})`);
+    assert(sr.rangeLabel.includes('$273.5B ~ $290.0B'), `Range label must format as $273.5B ~ $290.0B (got ${sr.rangeLabel})`);
+    assert(sr.disclaimer.includes('绝非统计置信区间，亦非现实已发生经济损失'), 'Disclaimer must contain strict disclaimer text');
+
+    // Ranking Stability Checks
+    const rs = wb.rankingStability;
+    assert(rs.top3StabilityPct === 100, `Top 3 ranking stability must be 100% under TR shock (got ${rs.top3StabilityPct}%)`);
+    assert(rs.top3OverlapCount === 3, 'Top 3 overlap count must be 3');
+
+    // Transmission Decomposition Checks
+    const td = wb.transmissionDecomposition;
+    assert(td.totalIncremental === 284.8, `Reference incremental loss must be 284.8B (got ${td.totalIncremental})`);
+    assert(td.directSharePct > 40 && td.directSharePct < 60, `Direct and indirect shares both substantial (got direct ${td.directSharePct}%, indirect ${td.indirectSharePct}%)`);
+    assert(Math.abs((td.directSharePct + td.indirectSharePct) - 100.0) < 0.2, 'Direct and indirect shares must sum to 100%');
+
+    // Jurisdiction Comparison Matrix Checks
+    assert(wb.jurisdictionComparison.length === 22, 'Jurisdiction comparison matrix must cover all 22 other countries');
+    const deRow = wb.jurisdictionComparison.find(r => r.code === 'DE');
+    assert(deRow !== undefined, 'Germany DE must be in comparison matrix');
+    assert(deRow.delta15 === 69.2, `Germany DE 1.5x delta must be 69.2B (got ${deRow.delta15})`);
+    assert(deRow.rankingEligible === true, 'Germany DE must be ranking eligible');
   }
 
   console.log('\n===============================================================');
