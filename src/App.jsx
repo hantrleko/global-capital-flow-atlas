@@ -18,6 +18,7 @@ import EconometricsCodeExporter from './components/EconometricsCodeExporter';
 import MacroShockSandbox from './components/MacroShockSandbox';
 import InstitutionalReportModal from './components/InstitutionalReportModal';
 import MacroIntelligenceBriefing from './components/MacroIntelligenceBriefing';
+import ExecutiveKpiRow from './components/ExecutiveKpiRow';
 import soundFx from './utils/soundEffects';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Keyboard, X, Bot, Sparkles } from 'lucide-react';
@@ -77,10 +78,15 @@ export default function App() {
   const paramCountry = initialParams.get('country');
   const paramCurrency = initialParams.get('currency');
 
-  // Default to the latest quarter (2026Q4) or deep-linked quarter
+  // Default to the latest official observed quarter (2026Q1) or deep-linked quarter
+  const latestOfficialQuarter = useMemo(() => {
+    const official = quarters.filter(q => q <= '2026Q1');
+    return official[official.length - 1] || '2026Q1';
+  }, [quarters]);
+
   const [selectedQuarter, setSelectedQuarter] = useState(() => {
     if (paramQ && quarters.includes(paramQ)) return paramQ;
-    return quarters[quarters.length - 1] || '2026Q4';
+    return '2026Q1';
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [playSpeed, setPlaySpeed] = useState(1);
@@ -429,15 +435,13 @@ export default function App() {
       <main
         id="main-viewport"
         tabIndex={-1}
-        className="flex-1 max-w-[1780px] w-full mx-auto p-4 md:p-6 space-y-6 scroll-mt-20 outline-none"
+        className="flex-1 max-w-[1780px] w-full mx-auto px-3 sm:px-5 py-2.5 space-y-2.5 scroll-mt-28 outline-none"
       >
-        {/* Executive Macro Intelligence Briefing: 发生了什么 · 哪里变了 · 依据是什么 */}
-        <MacroIntelligenceBriefing
+        {/* 3 Compact Executive KPIs: 全球信贷总额 · 美元计价份额与紧缩 · 核心走廊与枢纽 */}
+        <ExecutiveKpiRow
           dataset={activeDataset}
           selectedQuarter={selectedQuarter}
           selectedCurrency={selectedCurrency}
-          onOpenAppendix={() => setIsAppendixOpen(true)}
-          onOpenCodeExporter={() => setIsCodeExporterOpen(true)}
         />
 
         <ErrorBoundary fallbackTitle="当前主视图分析模块">
@@ -604,6 +608,15 @@ export default function App() {
           )}
         </Suspense>
         </ErrorBoundary>
+
+        {/* Collapsible Deep Intelligence Briefing: 宏观态势速览与研判依据 (位于主图下方，不抢占首屏) */}
+        <MacroIntelligenceBriefing
+          dataset={activeDataset}
+          selectedQuarter={selectedQuarter}
+          selectedCurrency={selectedCurrency}
+          onOpenAppendix={() => setIsAppendixOpen(true)}
+          onOpenCodeExporter={() => setIsCodeExporterOpen(true)}
+        />
       </main>
 
       {/* Sovereign 360° Detailed Profile Drawer (Overlay) */}
@@ -622,8 +635,8 @@ export default function App() {
         />
       )}
 
-      {/* BIS Macro AI Copilot Floating Quick Trigger */}
-      <div className="fixed bottom-6 right-6 z-30">
+      {/* BIS Macro AI Copilot Floating Quick Trigger (Desktop Only to Avoid Mobile Screen Clutter) */}
+      <div className="fixed bottom-6 right-6 z-30 hidden md:flex">
         <button
           onClick={() => {
             soundFx.playChime();
@@ -677,22 +690,24 @@ export default function App() {
       />
 
       {/* Custom Data Ingestion Sandbox Modal */}
-      <Suspense fallback={null}>
-        <CustomDataImporter
-          isOpen={isCustomDataOpen}
-          onClose={() => setIsCustomDataOpen(false)}
-          onApplyCustomData={(matrix, fName) => {
-            setCustomMatrix(matrix);
-            setCustomFileName(fName);
-            setDatasetRevision(r => r + 1);
-          }}
-          onResetToOfficial={() => {
-            setCustomMatrix(null);
-            setCustomFileName(null);
-            setDatasetRevision(r => r + 1);
-          }}
-        />
-      </Suspense>
+      {isCustomDataOpen && (
+        <Suspense fallback={null}>
+          <CustomDataImporter
+            isOpen={isCustomDataOpen}
+            onClose={() => setIsCustomDataOpen(false)}
+            onApplyCustomData={(matrix, fName) => {
+              setCustomMatrix(matrix);
+              setCustomFileName(fName);
+              setDatasetRevision(r => r + 1);
+            }}
+            onResetToOfficial={() => {
+              setCustomMatrix(null);
+              setCustomFileName(null);
+              setDatasetRevision(r => r + 1);
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* BIS Macro AI Copilot Modal Window */}
       <MacroAiCopilot

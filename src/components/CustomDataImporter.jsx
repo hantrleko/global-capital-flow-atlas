@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
 import { 
   UploadCloud, FileSpreadsheet, Download, CheckCircle2, 
   AlertCircle, X, Sparkles, Shield, ArrowRight, RefreshCw, AlertTriangle
@@ -21,8 +20,9 @@ export default function CustomDataImporter({
 
   if (!isOpen) return null;
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     soundFx.playTick();
+    const XLSX = await import('xlsx');
     const templateRows = [
       { source: 'US', target: 'GB', claims_usd_bn: 780.5, usd_denominated_bn: 560.0, sector: 'Bank' },
       { source: 'US', target: 'JP', claims_usd_bn: 620.2, usd_denominated_bn: 420.0, sector: 'Bank' },
@@ -49,10 +49,11 @@ export default function CustomDataImporter({
     setFileName(file.name);
     const reader = new FileReader();
 
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       // Async race protection: ignore stale read results
       if (currentSeq !== importSeqRef.current) return;
       try {
+        const XLSX = await import('xlsx');
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];

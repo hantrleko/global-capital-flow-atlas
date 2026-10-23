@@ -8,7 +8,7 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     });
   });
 
-  test('1. Production Preview Mount & Cold-Start Payload Isolation', async ({ page }) => {
+  test('1. Production Preview Mount, Cold-Start Payload & First-Screen Fold Check', async ({ page }) => {
     const assetFailures = [];
     const coldStartRequests = [];
 
@@ -38,8 +38,11 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     // Cold-Start Payload Assertion: non-initial big partitions MUST NOT be loaded on cold start
     const loadedHistorical = coldStartRequests.some(url => url.includes('hist-bilateral'));
     const loadedCbsRisk = coldStartRequests.some(url => url.includes('cbs-risk'));
+    const loadedXlsx = coldStartRequests.some(url => url.includes('xlsx'));
+
     expect(loadedHistorical, 'historical bilateral partition must NOT be requested on cold start map').toBe(false);
     expect(loadedCbsRisk, 'CBS risk partition must NOT be requested on cold start map').toBe(false);
+    expect(loadedXlsx, 'XLSX parser library must NOT be requested on cold start map').toBe(false);
 
     // Module Bar width at 1280px viewport
     const moduleBar = page.locator('[data-testid="module-nav-container"]');
@@ -47,6 +50,18 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const barBox = await moduleBar.boundingBox();
     expect(barBox, 'Module bar must have a valid bounding box').not.toBeNull();
     expect(barBox.width, 'Module bar width at 1280px must be >= 500px').toBeGreaterThanOrEqual(500);
+
+    // Verify Default Quarter is 2026Q1 (Official)
+    const officialBadge = page.getByText(/官方观测/i).first();
+    await expect(officialBadge).toBeVisible();
+
+    // Verify First-Screen Fold: Map Canvas starts within the upper fold (y <= 380px) and height >= 300px
+    const mapCanvas = page.locator('#main-viewport canvas').first();
+    await expect(mapCanvas).toBeVisible({ timeout: 8000 });
+    const mapBox = await mapCanvas.boundingBox();
+    expect(mapBox, 'Map canvas bounding box must exist').not.toBeNull();
+    expect(mapBox.y, 'Map canvas must start within the first screen fold (y <= 380px)').toBeLessThanOrEqual(380);
+    expect(mapBox.height, 'Map canvas must have at least 300px height for primary visualization').toBeGreaterThanOrEqual(300);
   });
 
   test('2. GitHub Pages Subpath Mount (/global-capital-flow-atlas/)', async ({ page }) => {
@@ -99,11 +114,11 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
         const imgData = ctx.getImageData(0, 0, Math.min(cvs.width, 100), Math.min(cvs.height, 100));
         // Check if there is any non-zero pixel data
         for (let i = 0; i < imgData.data.length; i += 4) {
-          if (imgData.data[i + 3] > 0) return true; // non-transparent pixel exists
+          if (imgData.data[i + 3] > 0) return true;
         }
         return false;
       } catch {
-        return true; // Canvas context protected or webgl
+        return true;
       }
     });
     expect(hasDrawnPixels, 'Scatter canvas must have drawn pixels and not be a blank void').toBe(true);
@@ -147,6 +162,34 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
       }
     });
     expect(remountedPixels, 'Remounted scatter canvas must have active rendered graphics').toBe(true);
+  });
+
+  test('4. Scenario vs Official Mode Toggle and Data Classification Integrity', async ({ page }) => {
+    await page.goto('/');
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    // Verify initial is 2026Q1 Official
+    await expect(page.locator('#current-quarter-display')).toHaveText('2026Q1');
+    await expect(page.getByText('官方观测').first()).toBeVisible();
+
+    // Click '进入前瞻情景'
+    const scenarioBtn = page.getByRole('button', { name: /进入前瞻情景/ });
+    await expect(scenarioBtn).toBeVisible();
+    await scenarioBtn.click();
+
+    // Verify quarter updated to 2026Q4 and status badge changed to '前瞻情景'
+    await expect(page.locator('#current-quarter-display')).toHaveText('2026Q4');
+    await expect(page.getByText('前瞻情景').first()).toBeVisible();
+
+    // Click '返回官方最新'
+    const returnOfficialBtn = page.getByRole('button', { name: /返回官方最新/ });
+    await expect(returnOfficialBtn).toBeVisible();
+    await returnOfficialBtn.click();
+
+    // Verify returned to 2026Q1 Official
+    await expect(page.locator('#current-quarter-display')).toHaveText('2026Q1');
+    await expect(page.getByText('官方观测').first()).toBeVisible();
   });
 
 });

@@ -5,25 +5,25 @@ import {
   Search, Coins, X, Sun, Moon, ArrowRightLeft, Clock, Sparkles,
   Zap, Radio, Command, HelpCircle, Split, Volume2, VolumeX, Bot,
   BookOpen, FileText, Sliders, Code, History, UploadCloud, Building2,
-  Compass, ChevronRight, ChevronLeft
+  Compass, ChevronRight, ChevronLeft, ArrowRight, Check
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
-import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
-import { CURRENCY_LIST, formatValueInCurrency } from '../utils/currencyConversion';
+import { CURRENCY_LIST } from '../utils/currencyConversion';
 import { NAVIGATION_DOMAINS, getTabTaskMeta } from '../utils/navigationConfig';
+import { getDataClassification } from '../utils/dataClassification';
 
 export { NAVIGATION_DOMAINS, getTabTaskMeta };
 
 export default function Header({
-  quarters,
-  selectedQuarter,
+  quarters = [],
+  selectedQuarter = '2026Q1',
   onSelectQuarter,
-  isPlaying,
+  isPlaying = false,
   onTogglePlay,
   playSpeed = 1,
   onChangePlaySpeed,
-  globalMacroMap,
-  activeTab,
+  globalMacroMap = {},
+  activeTab = 'map',
   onSelectTab,
   countries = [],
   onSelectCountry,
@@ -47,7 +47,6 @@ export default function Header({
   onOpenAppendix
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const currentMacro = globalMacroMap[selectedQuarter] || {};
   const currentQuarterIdx = quarters.indexOf(selectedQuarter);
 
   // Active domain calculation
@@ -62,7 +61,7 @@ export default function Header({
   }, [activeTab]);
 
   const currentDisplayDomain = NAVIGATION_DOMAINS.find(d => d.id === selectedDomainId) || activeDomain;
-  const activeTabMeta = useMemo(() => getTabTaskMeta(activeTab), [activeTab]);
+  const classification = useMemo(() => getDataClassification(selectedQuarter), [selectedQuarter]);
 
   // Search filter
   const searchResults = searchQuery.trim() === '' ? [] : countries.filter(c => 
@@ -70,9 +69,6 @@ export default function Header({
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  // Find if current quarter is a special historical regime
-  const currentRegime = HISTORICAL_REGIMES.find(r => r.quarter === selectedQuarter);
 
   const prevQuarter = () => {
     if (currentQuarterIdx > 0) {
@@ -89,676 +85,324 @@ export default function Header({
   };
 
   return (
-    <>
-      <header className="border-b border-slate-800/80 bg-slate-950/95 shadow-md">
-      {/* Top Bar: Title & Status */}
-      <div className="max-w-[1780px] w-full mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-        {/* Logo & Platform Title */}
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600/30 to-indigo-600/30 border border-blue-400/50 flex items-center justify-center text-blue-400 shadow-[0_0_22px_rgba(59,130,246,0.35)]">
-            <Globe className="w-6 h-6 animate-pulse-subtle text-sky-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-lg md:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                BIS Global Capital Flow Atlas
-                <span className="text-xs font-semibold text-slate-300 bg-slate-800/90 px-2 py-0.5 rounded-md border border-slate-700">
-                  全球资本流动图谱
-                </span>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">
+    <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 shadow-lg">
+      <div className="max-w-[1780px] w-full mx-auto px-3 sm:px-5">
+        
+        {/* ROW 1: Compact Branding, Currency, Search & Tool Presets (Height: ~42px) */}
+        <div className="h-11 flex items-center justify-between gap-3 border-b border-slate-800/60">
+          {/* Logo & Title */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600/40 to-indigo-600/40 border border-blue-400/40 flex items-center justify-center text-blue-400 shadow-sm">
+              <Globe className="w-4 h-4 text-sky-400" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+                Global Capital Flow Atlas
+                <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">
                   V1.0
                 </span>
-              </h1>
-              {selectedQuarter > '2026Q2' ? (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(168,85,247,0.25)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                  [前瞻情景推演] 情景假定范围: $47.90T–$49.30T (±1.4%)
-                </span>
-              ) : selectedQuarter === '2026Q2' ? (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.25)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  [待核实估算 · 缓存预估] BIS 官方发布日预定为 2026-10-30: ~$47.82T (待官方入库)
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(16,185,129,0.25)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  [BIS 官方观测核准 · 国别模型分配] SDMX 2.1 (最新公布至 2026Q1: $47.62T)
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              以国际清算银行居住地 (LBS) 与综合银行统计 (CBS) 为基石 · 国际信贷、美元流动性与国家主权敞口监测台
-            </p>
-          </div>
-        </div>
-
-        {/* Global Country Search & Key Metrics Badges */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Methodology & Data Appendix Trigger */}
-          {onOpenAppendix && (
-            <button
-              onClick={() => {
-                soundFx.playChime();
-                onOpenAppendix();
-              }}
-              className="px-2.5 py-1.5 rounded-xl border border-blue-500/40 bg-blue-950/40 text-blue-300 hover:text-white hover:bg-blue-900/40 flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer"
-              title="查看 BIS 数据口径、矩阵平衡算法与学理假定说明"
-            >
-              <FileText className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform" />
-              <span className="hidden sm:inline text-[11px]">方法论附录</span>
-            </button>
-          )}
-
-          {/* Platform Brief / Intro Trigger */}
-          {onOpenIntro && (
-            <button
-              onClick={() => {
-                soundFx.playChime();
-                onOpenIntro();
-              }}
-              className="px-2.5 py-1.5 rounded-xl border border-sky-500/40 bg-sky-950/40 text-sky-300 hover:text-white hover:bg-sky-900/40 flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer"
-              title="查看项目创立初衷、核心意义与平台导读"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform" />
-              <span className="hidden sm:inline text-[11px]">平台导读</span>
-            </button>
-          )}
-
-          {/* Historical Macro Milestones Ribbon Toggle */}
-          {onToggleMilestones && (
-            <button
-              onClick={() => {
-                soundFx.playTick();
-                onToggleMilestones();
-              }}
-              className={`px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer ${
-                isMilestonesOpen
-                  ? 'bg-blue-600 border-sky-400 text-white shadow-[0_0_12px_rgba(56,189,248,0.4)]'
-                  : 'border-slate-700/80 bg-slate-900/90 text-slate-300 hover:text-white hover:border-slate-500'
-              }`}
-              title="展开 / 折叠 2018-2026 宏观历史大事件时间轴"
-            >
-              <History className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" />
-              <span className="hidden sm:inline text-[11px]">大事记</span>
-            </button>
-          )}
-
-          {/* Macro Shock Sandbox Trigger */}
-          {onOpenShockSandbox && (
-            <button
-              onClick={() => {
-                soundFx.playTick();
-                onOpenShockSandbox();
-              }}
-              className="px-2.5 py-1.5 rounded-xl border border-rose-500/40 bg-rose-950/40 text-rose-300 hover:text-white hover:bg-rose-900/40 flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer"
-              title="打开复合宏观冲击调制台与压力测试沙盒"
-            >
-              <Sliders className="w-3.5 h-3.5 text-rose-400 group-hover:scale-110 transition-transform" />
-              <span className="hidden md:inline text-[11px]">冲击沙盒</span>
-            </button>
-          )}
-
-          {/* Institutional Intelligence Briefing Report Trigger */}
-          {onOpenInstitutionalReport && (
-            <button
-              onClick={() => {
-                soundFx.playChime();
-                onOpenInstitutionalReport();
-              }}
-              className="px-2.5 py-1.5 rounded-xl border border-indigo-500/40 bg-indigo-950/40 text-indigo-300 hover:text-white hover:bg-indigo-900/40 flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer"
-              title="生成并打印投委会级 A4 宏观研判简报 (PDF / Markdown)"
-            >
-              <FileText className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
-              <span className="hidden md:inline text-[11px]">投研简报</span>
-            </button>
-          )}
-
-          {/* Econometrics Code Exporter Trigger */}
-          {onOpenCodeExporter && (
-            <button
-              onClick={() => {
-                soundFx.playTick();
-                onOpenCodeExporter();
-              }}
-              className="px-2.5 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:text-white hover:bg-emerald-900/40 flex items-center gap-1.5 text-xs font-mono font-semibold transition-all shadow-sm group cursor-pointer"
-              title="生成 Python / R / Stata 实证计量模型代码"
-            >
-              <Code className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
-              <span className="hidden lg:inline text-[11px]">代码生成</span>
-            </button>
-          )}
-
-          {/* Custom Data Ingestion Sandbox Trigger */}
-          {onOpenCustomData && (
-            <button
-              onClick={() => {
-                soundFx.playTick();
-                onOpenCustomData();
-              }}
-              className={`px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm group cursor-pointer ${
-                customFileName
-                  ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
-                  : 'border-slate-700/80 bg-slate-900/90 text-slate-300 hover:text-white hover:border-slate-500'
-              }`}
-              title="导入机构内部 Excel / CSV 资产敞口或恢复官方基准"
-            >
-              <UploadCloud className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
-              <span className="hidden lg:inline text-[11px] truncate max-w-[120px]">
-                {customFileName ? `私有: ${customFileName}` : '私有数据'}
               </span>
-            </button>
-          )}
+              <span className="hidden lg:inline text-xs text-slate-400 border-l border-slate-800 pl-2">
+                全球资本流动图谱 · BIS IBS 宏观审慎分析平台
+              </span>
+            </div>
+          </div>
 
-          {/* Multi-Currency Denomination Switcher */}
-          {onChangeCurrency && (
-            <div className="flex items-center bg-slate-900 border border-slate-700/80 rounded-xl p-0.5 text-xs font-mono shadow-sm" title="切换全站基准计价货币">
-              {CURRENCY_LIST.map(cur => (
+          {/* Quick Actions & Tools */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Currency Selector */}
+            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
+              {['USD', 'EUR', 'CNY', 'JPY', 'GOLD'].map(cur => (
                 <button
-                  key={cur.id}
-                  onClick={() => {
-                    soundFx.playTick();
-                    onChangeCurrency(cur.id);
-                  }}
-                  className={`px-2 py-0.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
-                    selectedCurrency === cur.id
+                  key={cur}
+                  onClick={() => onChangeCurrency && onChangeCurrency(cur)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono font-semibold transition-all cursor-pointer ${
+                    selectedCurrency === cur
                       ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                   }`}
-                  title={`以 ${cur.name} 为全站基准计价`}
+                  title={`计价币种: ${cur}`}
                 >
-                  <span>{cur.symbol}</span>
-                  <span className="hidden xl:inline">{cur.shortName}</span>
+                  {cur}
                 </button>
               ))}
             </div>
-          )}
 
-          {/* Pro Terminal Command Palette Trigger */}
-          {onOpenCommandPalette && (
-            <button
-              onClick={onOpenCommandPalette}
-              className="px-2.5 py-1.5 rounded-xl border border-slate-700/80 bg-slate-900/90 text-slate-300 hover:text-white hover:border-slate-500 flex items-center gap-1.5 text-xs font-mono transition-all shadow-sm group cursor-pointer"
-              title="快速全局检索与命令面板 (Ctrl+K 或 /)"
-            >
-              <Command className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform" />
-              <span className="hidden sm:inline text-[11px]">命令面板</span>
-              <kbd className="px-1 py-0.2 rounded bg-slate-800 text-[10px] text-slate-400 border border-slate-700">⌘K</kbd>
-            </button>
-          )}
-
-          {/* BIS Macro AI Copilot Trigger */}
-          {onOpenMacroAi && (
-            <button
-              onClick={() => {
-                soundFx.playChime();
-                onOpenMacroAi();
-              }}
-              className="px-2.5 py-1.5 rounded-xl border border-blue-500/50 bg-gradient-to-r from-blue-900/60 to-indigo-900/60 text-sky-200 hover:text-white hover:border-blue-400 flex items-center gap-1.5 text-xs font-semibold transition-all shadow-[0_0_15px_rgba(59,130,246,0.25)] group cursor-pointer"
-              title="打开 BIS 宏观 AI 决策推演智能体 (Macro Copilot 2.0)"
-            >
-              <Bot className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform animate-pulse-subtle" />
-              <span className="hidden md:inline text-[11px]">宏观 AI 大脑</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
-            </button>
-          )}
-
-          {/* Sound Mute / Unmute Toggle */}
-          {onToggleSound && (
-            <button
-              onClick={onToggleSound}
-              className={`p-2 rounded-xl border flex items-center justify-center text-xs transition-all shadow-sm ${
-                isSoundMuted
-                  ? 'bg-slate-900/90 border-slate-700/80 text-slate-500 hover:text-slate-300'
-                  : 'bg-blue-950/40 border-blue-500/40 text-sky-400 hover:bg-blue-900/40'
-              }`}
-              title={isSoundMuted ? '开启彭博终端机械原声音效' : '已开启彭博音效 (点击静音)'}
-            >
-              {isSoundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-sky-400" />}
-            </button>
-          )}
-
-          {/* Keyboard Shortcuts Trigger */}
-          {onOpenShortcuts && (
-            <button
-              onClick={onOpenShortcuts}
-              className="p-1.5 rounded-xl border border-slate-700/80 bg-slate-900/90 text-slate-400 hover:text-white hover:border-slate-500 transition-all text-xs"
-              title="键盘快捷键指引 (按 ? 随时打开)"
-            >
-              <HelpCircle className="w-4 h-4 text-slate-300" />
-            </button>
-          )}
-
-          {/* Theme Switcher Button */}
-          {onToggleTheme && (
-            <button
-              onClick={onToggleTheme}
-              className={`p-2 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all shadow-sm ${
-                theme === 'light'
-                  ? 'bg-amber-100 border-amber-300 text-amber-900 hover:bg-amber-200'
-                  : 'bg-slate-900/90 border-slate-700/80 text-slate-300 hover:text-white hover:bg-slate-800'
-              }`}
-              title={theme === 'light' ? '切换为彭博终端暗色模式' : '切换为金融时报浅色纸媒模式'}
-            >
-              {theme === 'light' ? (
-                <>
-                  <Sun className="w-4 h-4 text-amber-600" />
-                  <span className="hidden sm:inline text-[11px]">FT 浅色纸媒</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-4 h-4 text-sky-400" />
-                  <span className="hidden sm:inline text-[11px]">彭博暗夜</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {/* Quick Country Search Bar */}
-          <div className="relative min-w-[210px]">
-            <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl px-2.5 py-1.5 focus-within:border-sky-500 focus-within:ring-1 focus-within:ring-sky-500/50 transition-all">
-              <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="快速检索经济体 (中/EN/代码)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none w-full"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-white">
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-
-            {/* Search Dropdown */}
-            {searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 bg-slate-900/95 backdrop-blur-xl border border-slate-700 rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto divide-y divide-slate-800">
-                {searchResults.map(c => (
-                  <div
-                    key={c.code}
-                    onClick={() => {
-                      onSelectCountry?.(c.code);
-                      setSearchQuery('');
-                    }}
-                    className="p-2.5 hover:bg-blue-600/20 cursor-pointer flex items-center justify-between text-xs transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sky-400 font-bold">{c.code}</span>
-                      <span className="font-medium text-white">{c.name_zh}</span>
-                      <span className="text-[10px] text-slate-400">({c.name})</span>
-                    </div>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
-                      {c.region}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Metric 1: Total Claims */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-1.5 min-w-[135px] shadow-sm">
-            <div className="text-[10px] uppercase tracking-wider text-slate-400 flex items-center justify-between gap-1 font-mono">
-              <span className="flex items-center gap-1">
-                <TrendingUp className="w-3 h-3 text-sky-400" /> 全球跨境总债权
-              </span>
-              {selectedQuarter > '2026Q2' ? (
-                <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/25 text-purple-300 font-bold border border-purple-500/40">
-                  SCENARIO
-                </span>
-              ) : selectedQuarter === '2026Q2' ? (
-                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/25 text-amber-300 font-bold border border-amber-500/40">
-                  待核实估算
-                </span>
-              ) : (
-                <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-bold border border-emerald-500/40">
-                  OFFICIAL
-                </span>
-              )}
-            </div>
-            <div className="text-base font-bold text-white font-mono flex items-baseline gap-1 mt-0.5">
-              {selectedQuarter > '2026Q2' ? '~' : ''}
-              {formatValueInCurrency(currentMacro.total_cross_border_claims_usd_bn || 0, selectedCurrency, selectedQuarter)}
-              <span className="text-[11px] font-normal text-slate-400">
-                {selectedCurrency === 'USD' ? (selectedQuarter > '2026Q2' ? '预估' : '总债权') : `(${selectedCurrency})`}
-              </span>
-            </div>
-          </div>
-
-          {/* Metric 2: USD Share */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-1.5 min-w-[135px] shadow-sm">
-            <div className="text-[10px] uppercase tracking-wider text-slate-400 flex items-center gap-1 font-mono">
-              <DollarSign className="w-3 h-3 text-emerald-400" /> 美元计价占比
-            </div>
-            <div className="text-base font-bold text-emerald-400 font-mono mt-0.5">
-              {currentMacro.global_usd_share_pct || 0}%
-              <span className="text-[11px] font-normal text-slate-400 ml-1.5">
-                (${((currentMacro.total_usd_cross_border_bn || 0) / 1000).toFixed(2)}T)
-              </span>
-            </div>
-          </div>
-
-          {/* Metric 3: BIS USD Funding Stress */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-1.5 min-w-[150px] shadow-sm">
-            <div className="text-[10px] uppercase tracking-wider text-slate-400 flex items-center gap-1 font-mono">
-              <Activity className="w-3 h-3 text-amber-400" /> 美元融资压力指数
-            </div>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className={`text-base font-bold font-mono ${
-                (currentMacro.bis_usd_funding_stress_index || 0) > 65 
-                  ? 'text-rose-400' 
-                  : (currentMacro.bis_usd_funding_stress_index || 0) > 45 
-                  ? 'text-amber-400' 
-                  : 'text-emerald-400'
-              }`}>
-                {currentMacro.bis_usd_funding_stress_index || 0}
-              </span>
-              <div className="w-16 h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-300 ${
-                    (currentMacro.bis_usd_funding_stress_index || 0) > 65 
-                      ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' 
-                      : (currentMacro.bis_usd_funding_stress_index || 0) > 45 
-                      ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]' 
-                      : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
-                  }`}
-                  style={{ width: `${Math.min(100, currentMacro.bis_usd_funding_stress_index || 0)}%` }}
+            {/* Country Search Bar */}
+            <div className="relative hidden md:block">
+              <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-300 w-36 lg:w-44 focus-within:w-56 focus-within:border-sky-500 transition-all">
+                <Search className="w-3.5 h-3.5 text-slate-400 mr-1.5 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="搜索国家 (代码/名称)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none outline-none text-xs text-white placeholder-slate-400 w-full"
                 />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-white ml-1">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </div>
+
+              {searchResults.length > 0 && (
+                <div className="absolute top-full left-0 mt-1 w-64 max-h-60 overflow-y-auto bg-slate-900/95 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-50 backdrop-blur-xl">
+                  {searchResults.slice(0, 8).map(c => (
+                    <button
+                      key={c.code}
+                      onClick={() => {
+                        onSelectCountry && onSelectCountry(c.code);
+                        setSearchQuery('');
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-blue-600/20 hover:text-sky-300 flex items-center justify-between text-slate-200 transition-colors cursor-pointer"
+                    >
+                      <span className="font-semibold">{c.name_zh} ({c.name})</span>
+                      <span className="font-mono text-[11px] text-sky-400 bg-sky-950/60 px-1 rounded">{c.code}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      </div>
 
-
-      {/* Interactive Timeline & Playback Bar */}
-      <div className="bg-slate-950/95 px-4 py-2.5 border-t border-slate-800/80 shadow-inner">
-        <div className="max-w-[1780px] w-full mx-auto flex flex-col xl:flex-row items-center justify-between gap-3">
-          {/* Controls: Play/Pause, Step, Quarter Dropdown & Year Jumpers */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={prevQuarter}
-              disabled={currentQuarterIdx === 0}
-              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="上一季度 (← 方向键)"
-            >
-              <SkipBack className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={onTogglePlay}
-              className={`px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold shadow-md transition-all ${
-                isPlaying 
-                  ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-[0_0_12px_rgba(217,119,6,0.5)]' 
-                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)]'
-              }`}
-              title="按空格键 Space 播放或暂停"
-            >
-              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              <span>{isPlaying ? '暂停回放' : '动态播放'}</span>
-            </button>
-            <button
-              onClick={nextQuarter}
-              disabled={currentQuarterIdx === quarters.length - 1}
-              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="下一季度 (→ 方向键)"
-            >
-              <SkipForward className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Playback Speed Multiplier */}
-            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono ml-0.5" title="回放速率调节">
-              {[0.5, 1, 1.5, 2].map(spd => (
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-1">
+              {onOpenAppendix && (
                 <button
-                  key={spd}
-                  onClick={() => onChangePlaySpeed?.(spd)}
-                  className={`px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] transition-all font-medium ${
-                    playSpeed === spd
-                      ? 'bg-sky-500/30 text-sky-300 font-bold border border-sky-400/40 shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title={`设置回放倍速: ${spd}x`}
+                  onClick={onOpenAppendix}
+                  className="h-7 px-2 rounded-lg border border-slate-700/80 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500 flex items-center gap-1 text-xs font-medium cursor-pointer"
+                  title="方法论附录"
                 >
-                  {spd}x
+                  <FileText className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="hidden xl:inline text-xs">方法论</span>
                 </button>
-              ))}
-            </div>
+              )}
 
-            {/* Direct Quarter Selector Dropdown */}
-            <div className="flex items-center gap-1 bg-slate-900 border border-blue-500/40 rounded-lg px-2 py-1 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
-              <span className="text-[10px] font-mono text-slate-400">季度:</span>
-              <select
-                value={selectedQuarter}
-                onChange={(e) => onSelectQuarter(e.target.value)}
-                className="bg-transparent text-sky-300 font-mono font-bold text-xs focus:outline-none cursor-pointer"
-              >
-                {quarters.map((q, idx) => (
-                  <option key={q} value={q} className="bg-slate-900 text-white font-mono">
-                    {q} ({idx + 1}/{quarters.length})
-                  </option>
-                ))}
-              </select>
-            </div>
+              {onOpenIntro && (
+                <button
+                  onClick={onOpenIntro}
+                  className="h-7 px-2 rounded-lg border border-slate-700/80 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500 flex items-center gap-1 text-xs font-medium cursor-pointer"
+                  title="平台导读"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="hidden xl:inline text-xs">导读</span>
+                </button>
+              )}
 
-            {/* Quick Year Jump Buttons */}
-            <div className="hidden sm:flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-0.5 rounded-lg ml-1">
-              <span className="text-[10px] text-slate-500 px-1.5 font-mono">年份:</span>
-              {['2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'].map(yr => {
-                const isCurrentYear = selectedQuarter.startsWith(yr);
-                return (
-                  <button
-                    key={yr}
-                    onClick={() => {
-                      soundFx.playTick();
-                      onSelectQuarter(`${yr}Q4`);
-                    }}
-                    className={`px-2 py-0.5 rounded text-[11px] font-mono transition-all ${
-                      isCurrentYear
-                        ? 'bg-blue-600 text-white font-bold shadow-sm'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                    title={`跳转到 ${yr} 年`}
-                  >
-                    {yr}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+              {onOpenShockSandbox && (
+                <button
+                  onClick={onOpenShockSandbox}
+                  className="h-7 px-2 rounded-lg border border-rose-500/30 bg-rose-950/30 text-rose-300 hover:text-white hover:bg-rose-900/40 flex items-center gap-1 text-xs font-medium cursor-pointer"
+                  title="冲击调制沙盒"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="hidden xl:inline text-xs">冲击沙盒</span>
+                </button>
+              )}
 
-          {/* Timeline Range Slider with cyber glow track */}
-          <div className="flex-1 max-w-lg w-full flex items-center gap-2.5">
-            <span className="text-[11px] font-mono text-slate-500 shrink-0">{quarters[0]}</span>
-            <input
-              type="range"
-              min={0}
-              max={quarters.length - 1}
-              value={currentQuarterIdx}
-              onChange={(e) => onSelectQuarter(quarters[parseInt(e.target.value, 10)])}
-              className="w-full accent-sky-400 bg-slate-800 h-2 rounded-lg appearance-none cursor-pointer"
-            />
-            <span className="text-[11px] font-mono text-slate-500 shrink-0">{quarters[quarters.length - 1]}</span>
-          </div>
+              {onOpenCustomData && (
+                <button
+                  onClick={onOpenCustomData}
+                  className={`h-7 px-2 rounded-lg border flex items-center gap-1 text-xs font-medium cursor-pointer ${
+                    customFileName
+                      ? 'border-emerald-500/60 bg-emerald-950/50 text-emerald-300'
+                      : 'border-slate-700/80 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500'
+                  }`}
+                  title="私有数据导入"
+                >
+                  <UploadCloud className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden xl:inline text-xs">{customFileName ? '私有已载入' : '私有数据'}</span>
+                </button>
+              )}
 
-          {/* Historical Macro Event Context Pill */}
-          <div className="text-xs flex items-center gap-2 max-w-md truncate shrink-0">
-            {currentRegime ? (
-              <div className="bg-blue-500/15 border border-blue-500/40 text-blue-300 px-3 py-1 rounded-xl text-xs truncate flex items-center gap-2 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
-                <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
-                <span className="font-semibold">{currentRegime.name}:</span>
-                <span className="opacity-90">{currentRegime.description}</span>
-              </div>
-            ) : (
-              <div className="text-slate-400 text-xs font-mono">
-                环比信贷增速: <span className="text-white font-semibold">{currentMacro.global_qoq_growth_pct || 0}%</span> · 美元融资压力: <span className="text-amber-400">{currentMacro.bis_usd_funding_stress_index || 0}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </header>
-
-    {/* Sleek, Compact Sticky Navigation Bar (Height ~60px, NEVER blocks content) */}
-    <nav aria-label="分析工作区导航" className="border-b border-slate-800/90 bg-slate-950/95 sticky top-0 z-30 backdrop-blur-xl px-3 md:px-4 py-1.5 shadow-xl">
-      <div className="max-w-[1780px] w-full mx-auto space-y-1.5">
-        {/* Row 1: 3 Core Tasks + 5 Domains + Dynamic Task Display */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-slate-800/60">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-mono text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
-              <Compass className="w-3.5 h-3.5 text-sky-400" /> 分析主路径:
-            </span>
-            <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-xs">
+              {/* Theme & Audio Toggles */}
               <button
-                onClick={() => {
-                  soundFx.playTick();
-                  onSelectTab('map');
-                }}
-                className={`px-2.5 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  activeTabMeta.coreTask === 'overview'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="全景透视：全球双边跨国信贷网络与动脉走廊"
+                onClick={onToggleSound}
+                className="h-7 w-7 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                title={isSoundMuted ? '取消静音' : '静音'}
               >
-                <span>1. 看全局</span>
+                {isSoundMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-sky-400" />}
               </button>
               <button
-                onClick={() => {
-                  soundFx.playTick();
-                  onSelectTab('compare');
-                }}
-                className={`px-2.5 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  activeTabMeta.coreTask === 'compare'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="横向/纵向对比：多国主权风险雷达与跨周期宏观对比"
+                onClick={onToggleTheme}
+                className="h-7 w-7 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                title={theme === 'dark' ? '切换亮色主题' : '切换暗色主题'}
               >
-                <span>2. 比差异</span>
-              </button>
-              <button
-                onClick={() => {
-                  soundFx.playTick();
-                  onSelectTab('contagion');
-                }}
-                className={`px-2.5 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  activeTabMeta.coreTask === 'stress'
-                    ? 'bg-rose-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="反事实压力测试：Eisenberg-Noe 级联清算与流动性工作台"
-              >
-                <span>3. 测压力</span>
+                {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-400" />}
               </button>
             </div>
-
-            {/* 5 Domains selector pills */}
-            <div className="hidden sm:flex items-center gap-1 ml-2 border-l border-slate-800/80 pl-2">
-              <span className="text-[11px] font-mono text-slate-500 uppercase tracking-wider hidden md:inline mr-1">
-                领域:
-              </span>
-              {NAVIGATION_DOMAINS.map(dom => {
-                const isDomainActive = dom.id === currentDisplayDomain.id;
-                const hasCurrentTab = dom.tabs.some(t => t.id === activeTab);
-                return (
-                  <button
-                    key={dom.id}
-                    onClick={() => {
-                      soundFx.playTick();
-                      setSelectedDomainId(dom.id);
-                      if (!hasCurrentTab) {
-                        onSelectTab(dom.tabs[0].id);
-                      }
-                    }}
-                    className={`px-2 py-0.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer ${
-                      isDomainActive
-                        ? 'bg-blue-600/25 text-sky-300 border border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
-                    }`}
-                  >
-                    <span>{dom.title}</span>
-                    {hasCurrentTab && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_6px_#38bdf8] animate-pulse" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Dynamic Current Task Name derived from canonical module configuration */}
-          <div className="text-[11px] text-slate-400 font-mono hidden md:flex items-center gap-1.5 shrink-0">
-            <span className="text-slate-500">当前任务:</span>
-            <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-sky-300 font-semibold flex items-center gap-1 shadow-sm">
-              <span className="text-slate-400 font-normal">{activeTabMeta.domainShort} ·</span>
-              <span>{activeTabMeta.label}</span>
-            </span>
-            <span className="text-[10px] text-slate-500 hidden xl:inline font-sans">({activeTabMeta.desc})</span>
           </div>
         </div>
 
-        {/* Row 2: Full-width Subtabs of active domain with horizontal scroll affordance */}
-        <div className="w-full flex items-center justify-between gap-2 pt-0.5">
-          <div id="module-nav-container" data-testid="module-nav-container" className="w-full flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-0.5">
-            <span className="text-[11px] font-mono text-sky-400/80 hidden sm:inline mr-0.5 shrink-0">
-              ↳ 模块:
+        {/* ROW 2: Quarter Navigator, Level 1 Domains & Scenario Mode (Height: ~38px) */}
+        <div className="h-10 flex items-center justify-between gap-3 overflow-x-auto scrollbar-none border-b border-slate-800/50">
+          {/* Quarter Switcher Controls */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+              <button
+                onClick={prevQuarter}
+                disabled={currentQuarterIdx <= 0}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                title="上一季度"
+              >
+                <SkipBack className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={onTogglePlay}
+                className="px-2 py-0.5 rounded text-xs font-semibold text-sky-400 hover:text-white hover:bg-slate-800 flex items-center gap-1 cursor-pointer"
+                title={isPlaying ? '暂停演进' : '自动播放演进'}
+              >
+                {isPlaying ? <Pause className="w-3 h-3 text-amber-400" /> : <Play className="w-3 h-3 text-emerald-400" />}
+              </button>
+              <button
+                onClick={nextQuarter}
+                disabled={currentQuarterIdx >= quarters.length - 1}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                title="下一季度"
+              >
+                <SkipForward className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Current Quarter Display */}
+            <span
+              id="current-quarter-display"
+              data-testid="current-quarter-display"
+              className="text-xs font-mono font-bold text-white px-2 py-0.5 bg-slate-900 border border-slate-700/80 rounded-md"
+            >
+              {selectedQuarter}
             </span>
-            {currentDisplayDomain.tabs.map(tab => {
-              const isTabActive = activeTab === tab.id;
+
+            {/* Canonical Data Classification Badge */}
+            <span className={`inline-flex items-center gap-1.5 text-xs font-mono font-medium px-2 py-0.5 rounded-full border ${classification.badgeClass}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${classification.dotClass} animate-pulse`} />
+              <span>{classification.label}</span>
+              <span className="hidden sm:inline opacity-80">· {classification.provenance}</span>
+            </span>
+          </div>
+
+          {/* Level 1: 5 Domains (Segmented Tabs) */}
+          <div className="flex items-center gap-1 shrink-0 bg-slate-900/60 p-0.5 rounded-lg border border-slate-800/80">
+            {NAVIGATION_DOMAINS.map(dom => {
+              const isDomainActive = dom.id === currentDisplayDomain.id;
+              const hasCurrentTab = dom.tabs.some(t => t.id === activeTab);
               return (
                 <button
-                  key={tab.id}
+                  key={dom.id}
                   onClick={() => {
                     soundFx.playTick();
-                    onSelectTab(tab.id);
+                    setSelectedDomainId(dom.id);
+                    if (!hasCurrentTab) {
+                      onSelectTab(dom.tabs[0].id);
+                    }
                   }}
-                  className={`px-3 py-1 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
-                    isTabActive
-                      ? 'bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)] font-semibold scale-[1.01]'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/80 font-medium'
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    isDomainActive
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                   }`}
-                  title={`${tab.label} · ${tab.desc}`}
                 >
-                  <span>{tab.label}</span>
-                  <span className="text-[10px] hidden 2xl:inline opacity-70 font-mono">
-                    ({tab.desc})
-                  </span>
+                  <span>{dom.title}</span>
+                  {hasCurrentTab && !isDomainActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                  )}
                 </button>
               );
             })}
           </div>
 
-          {/* Quick jump to historical regimes on ultra-wide screens */}
-          <div className="hidden 2xl:flex items-center gap-1.5 text-xs text-slate-400 shrink-0 border-l border-slate-800/80 pl-2">
-            <span className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
-              <Calendar className="w-3 h-3 text-sky-400" /> 历史情景:
-            </span>
-            {HISTORICAL_REGIMES.map(reg => (
+          {/* Right Actions: Quick Presets & Scenario Switcher */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Quick Presets (看全局 / 比差异 / 测压力) */}
+            <div className="hidden lg:flex items-center gap-1 border-r border-slate-800 pr-2">
+              <span className="text-[11px] font-mono text-slate-400 mr-0.5">快捷:</span>
+              {[
+                { id: 'map', label: '看全局', desc: '双边流向图谱' },
+                { id: 'compare', label: '比差异', desc: '多国结构对比' },
+                { id: 'contagion', label: '测压力', desc: '级联违约压力' }
+              ].map(p => {
+                const isActive = activeTab === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      soundFx.playTick();
+                      onSelectTab(p.id);
+                    }}
+                    className={`px-2 py-0.5 rounded text-xs font-medium transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-semibold'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                    title={p.desc}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Prominent Scenario vs Official Mode Toggle */}
+            {selectedQuarter <= '2026Q1' ? (
               <button
-                key={reg.quarter}
+                onClick={() => {
+                  soundFx.playChime();
+                  onSelectQuarter('2026Q4');
+                }}
+                className="px-2.5 py-1 rounded-lg bg-purple-500/15 border border-purple-500/40 text-purple-300 hover:text-white hover:bg-purple-600/30 text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                title="切换至 2026Q3–Q4 宏观前瞻情景与压力敏感性推演"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                <span>进入前瞻情景</span>
+              </button>
+            ) : (
+              <button
                 onClick={() => {
                   soundFx.playTick();
-                  onSelectQuarter(reg.quarter);
+                  onSelectQuarter('2026Q1');
                 }}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-all border cursor-pointer ${
-                  selectedQuarter === reg.quarter
-                    ? 'bg-blue-500/25 text-blue-300 border-blue-400/60 font-bold shadow-[0_0_6px_rgba(59,130,246,0.3)]'
-                    : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
-                }`}
-                title={reg.description}
+                className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:text-white hover:bg-emerald-600/30 text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                title="返回最新 BIS 官方核准发布季度 (2026Q1: $47.62T)"
               >
-                {reg.quarter}
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span>返回官方最新</span>
               </button>
-            ))}
-          </div>
-
-          {/* Mobile/Tablet scroll hint if overflowing */}
-          <div className="text-[10px] text-slate-500 font-mono shrink-0 flex items-center gap-0.5 2xl:hidden opacity-80" title="可横向滑动查看更多模块">
-            <ChevronRight className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
+            )}
           </div>
         </div>
+
+        {/* ROW 3: Level 2 - Full-Width Module Navigation Bar (Height: ~36px) */}
+        <div
+          id="module-nav-container"
+          data-testid="module-nav-container"
+          className="h-9 flex items-center gap-2 overflow-x-auto scrollbar-none py-1"
+        >
+          <span className="text-[11px] font-mono text-slate-400 shrink-0 hidden sm:inline">
+            {currentDisplayDomain.title}模块:
+          </span>
+          {currentDisplayDomain.tabs.map(tab => {
+            const isTabActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  soundFx.playTick();
+                  onSelectTab(tab.id);
+                }}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
+                  isTabActive
+                    ? 'bg-blue-600/30 text-sky-200 border border-blue-500/60 font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
+                }`}
+                title={`${tab.label} · ${tab.desc}`}
+              >
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
       </div>
-    </nav>
-  </>
+    </header>
   );
 }

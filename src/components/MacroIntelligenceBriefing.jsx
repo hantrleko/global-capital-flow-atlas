@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   TrendingUp, Activity, DollarSign, ArrowUpRight, ArrowDownRight, 
   HelpCircle, BookOpen, ShieldCheck, Sparkles, Cpu, Layers, ExternalLink,
-  ChevronRight, ArrowRight
+  ChevronRight, ArrowRight, ChevronDown, ChevronUp
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import { formatValueInCurrency } from '../utils/currencyConversion';
@@ -21,6 +21,7 @@ export default function MacroIntelligenceBriefing({
   onOpenAppendix,
   onOpenCodeExporter
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const quarters = dataset.quarters || [];
   const qIdx = quarters.indexOf(selectedQuarter);
   const prevQuarter = qIdx > 0 ? quarters[qIdx - 1] : null;
@@ -80,18 +81,25 @@ export default function MacroIntelligenceBriefing({
     : 0;
 
   return (
-    <div className="glass-panel rounded-2xl p-4 md:p-5 border border-white/[0.08] shadow-2xl relative overflow-hidden space-y-3.5 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-[#070b14]/90 backdrop-blur-xl">
-      {/* Top Banner Tag */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] pb-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-sky-400 animate-ping shrink-0" />
-          <h3 className="text-xs md:text-sm font-bold text-white tracking-wide flex items-center gap-2">
-            <span>宏观态势速览与研判依据 (Macro Intelligence Briefing)</span>
+    <div className="glass-panel rounded-xl p-3 md:p-4 border border-white/[0.08] shadow-lg relative overflow-hidden space-y-3 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-[#070b14]/90 backdrop-blur-xl">
+      {/* Top Banner Tag with Expand Toggle */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-1">
+        <button
+          onClick={() => setIsExpanded(prev => !prev)}
+          className="flex items-center gap-2.5 text-left cursor-pointer group"
+        >
+          <div className="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0" />
+          <h3 className="text-xs md:text-sm font-bold text-white tracking-wide flex items-center gap-2 group-hover:text-sky-300 transition-colors">
+            <span>宏观研判依据与走廊变动说明 (Macro Evidence & Corridor Dynamics)</span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
               {selectedQuarter}
             </span>
           </h3>
-        </div>
+          <span className="text-xs text-sky-400 font-medium flex items-center gap-1 ml-2">
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <span>{isExpanded ? '收起详情' : '展开三栏深度证据'}</span>
+          </span>
+        </button>
 
         <div className="flex items-center gap-2 text-xs">
           {onOpenAppendix && (
@@ -110,8 +118,9 @@ export default function MacroIntelligenceBriefing({
         </div>
       </div>
 
-      {/* The 3 Core Diagnostic Pillars */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+      {/* The 3 Core Diagnostic Pillars (Expanded on Demand) */}
+      {isExpanded && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-2 border-t border-white/[0.06] animate-fade-in">
         {/* Pillar 1: 发生了什么 (What Happened) */}
         <div className="bg-slate-900/60 border border-white/[0.05] rounded-xl p-3.5 space-y-2 hover:border-sky-500/30 transition-all">
           <div className="flex items-center justify-between">
@@ -293,7 +302,8 @@ export default function MacroIntelligenceBriefing({
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

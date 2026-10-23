@@ -959,19 +959,19 @@ export default function CapitalFlowMap({
   };
 
   return (
-    <div className="space-y-4 scroll-mt-24">
+    <div className="space-y-2.5 scroll-mt-24">
       {/* Top Refined Glass Control Header */}
-      <div className="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-400/25 flex items-center justify-center text-sky-400">
+      <div className="glass-panel rounded-xl px-3.5 py-2 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-400/25 flex items-center justify-center text-sky-400 shrink-0">
             <Radio className="w-4 h-4 animate-pulse text-sky-400" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm md:text-base font-semibold text-white tracking-wide">
-                全球双边跨国信贷流向图谱
+              <h2 className="text-sm font-semibold text-white tracking-wide">
+                全球双边跨国信贷流向图谱 · 全球流向
               </h2>
-              <span className="text-[11px] font-mono bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full">
+              <span className="text-[11px] font-mono bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2 py-0.2 rounded-full">
                 {selectedQuarter}
               </span>
               <DataClassificationBadge
@@ -998,95 +998,93 @@ export default function CapitalFlowMap({
                 onOpenAppendix={onOpenAppendix}
               />
             </div>
-            <p className="text-xs text-slate-400 mt-1 flex items-center gap-2 flex-wrap font-sans">
+            <p className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap font-sans">
               <span>
                 {flowMode === 'positions' 
-                  ? '当前模式: 期末未偿存量 (Amounts Outstanding) · 呈现总资产与敞口深度' 
-                  : '当前模式: 未调整存量变化 (Unadjusted Stock Changes) · 绿为扩张/红为回流'}
+                  ? '期末未偿存量 (Amounts Outstanding) · 呈现总资产与敞口深度' 
+                  : '未调整存量变化 (Stock Changes) · 绿为扩张/红为回流'}
               </span>
-              <span className="text-slate-600 hidden sm:inline">·</span>
-              <span className="text-slate-500 hidden sm:inline">双向曲率测地线防重叠</span>
             </p>
           </div>
         </div>
 
         {/* Refined Functional Controls */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Mode Switcher: Positions (Stocks) vs Unadjusted Stock Changes */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-xl p-1 text-xs shadow-sm">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Mode Switcher */}
+          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-xs shadow-sm">
             <button
               onClick={() => {
                 soundFx.playTick();
                 setFlowMode('positions');
               }}
-              className={`px-2.5 py-1 rounded-lg transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 ${
+              className={`h-7 px-2.5 rounded-md transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
                 flowMode === 'positions'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
-              title="BIS LBS 期末未偿信贷存量 (Amounts Outstanding) · 呈现总资产与敞口深度"
+              title="BIS LBS 期末未偿信贷存量 (Amounts Outstanding)"
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>期末存量 (Positions)</span>
+              <span>期末存量</span>
             </button>
             <button
               onClick={() => {
                 soundFx.playChime();
                 setFlowMode('flows');
               }}
-              className={`px-2.5 py-1 rounded-lg transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 ${
+              className={`h-7 px-2.5 rounded-md transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
                 flowMode === 'flows'
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
-              title="相邻季度未偿存量差分 ΔClaims = Claims(t) - Claims(t-1) (未剔除汇率与断点变动)"
+              title="相邻季度未偿存量差分 ΔClaims"
             >
               <Zap className="w-3.5 h-3.5 text-amber-300" />
-              <span>未调整存量变化 (Stock Changes)</span>
+              <span>存量变动</span>
             </button>
           </div>
 
-          {/* 2D Flat vs 3D Globe Projection Switcher */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-xl p-1 text-xs shadow-sm">
+          {/* 2D / 3D Switcher */}
+          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-xs shadow-sm">
             <button
               onClick={() => {
                 soundFx.playTick();
                 setMapProjection('2d');
               }}
-              className={`px-2.5 py-1 rounded-lg transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
+              className={`h-7 px-2.5 rounded-md transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
                 mapProjection === '2d'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <span>🗺️ 2D 平面投影</span>
+              <span>2D 平面</span>
             </button>
             <button
               onClick={() => {
                 soundFx.playChime();
                 setMapProjection('3d');
               }}
-              className={`px-2.5 py-1 rounded-lg transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
+              className={`h-7 px-2.5 rounded-md transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
                 mapProjection === '3d'
-                  ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-sm'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <span>🌐 3D 数字地球仪</span>
+              <span>3D 拟真</span>
             </button>
           </div>
 
           {/* Corridor Density Curation Toggle */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-xl p-1 text-xs">
+          <div className="hidden sm:flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-xs">
             {[
-              { id: 'backbone', label: '骨干网络 (Top 16)' },
-              { id: 'usd_dominant', label: '美元主导走廊' },
-              { id: 'all', label: '全量走廊 (40对)' }
+              { id: 'backbone', label: '骨干网络' },
+              { id: 'usd_dominant', label: '美元走廊' },
+              { id: 'all', label: '全量走廊' }
             ].map(d => (
               <button
                 key={d.id}
                 onClick={() => setCorridorDensity(d.id)}
-                className={`px-2.5 py-1 rounded-lg transition-all text-xs font-medium ${
+                className={`h-7 px-2 rounded-md transition-all text-xs font-medium cursor-pointer ${
                   corridorDensity === d.id
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -1098,14 +1096,14 @@ export default function CapitalFlowMap({
           </div>
 
           {/* Focus Country Isolation */}
-          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/60 rounded-xl px-2.5 py-1.5 text-xs">
-            <Target className="w-3.5 h-3.5 text-sky-400" />
+          <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/60 rounded-lg px-2 py-1 text-xs">
+            <Target className="w-3 h-3 text-sky-400" />
             <select
               value={focusCountry}
               onChange={(e) => setFocusCountry(e.target.value)}
-              className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
+              className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-xs"
             >
-              <option value="ALL">🌐 全局穿透视角</option>
+              <option value="ALL">🌐 全局视角</option>
               {countries.map(c => (
                 <option key={c.code} value={c.code}>
                   {c.name_zh} ({c.code})
@@ -1115,7 +1113,7 @@ export default function CapitalFlowMap({
           </div>
 
           {/* Node Size Metric Switcher */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-xl p-1 text-xs">
+          <div className="hidden lg:flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-xs">
             {[
               { id: 'claims', label: '总债权' },
               { id: 'liab', label: '总负债' },
@@ -1124,7 +1122,7 @@ export default function CapitalFlowMap({
               <button
                 key={m.id}
                 onClick={() => setMetricView(m.id)}
-                className={`px-2.5 py-1 rounded-lg transition-all text-xs font-medium ${
+                className={`h-7 px-2 rounded-md transition-all text-xs font-medium cursor-pointer ${
                   metricView === m.id
                     ? 'bg-sky-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -1138,31 +1136,31 @@ export default function CapitalFlowMap({
           {/* Toggle Labels */}
           <button
             onClick={() => setShowLabels(!showLabels)}
-            className={`px-2.5 py-1.5 rounded-xl border text-xs transition-colors ${
+            className={`h-7 px-2 rounded-lg border text-xs transition-colors cursor-pointer ${
               showLabels
                 ? 'bg-slate-800 border-slate-600 text-white'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
             }`}
             title="显示或隐藏节点地名文字"
           >
-            {showLabels ? '标签: 开启' : '标签: 极简'}
+            {showLabels ? '标签: 开启' : '标签: 关'}
           </button>
 
           {/* Export PNG */}
           <button
             onClick={handleExportPng}
-            className="p-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white transition-colors"
+            className="h-7 w-7 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
             title="导出当前高清无损地图 PNG"
           >
-            <Download className="w-4 h-4 text-sky-400" />
+            <Download className="w-3.5 h-3.5 text-sky-400" />
           </button>
         </div>
       </div>
 
       {/* Pro-Analytics Desk (Map + Real-Time Intelligence Dossier) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        {/* Main Map Canvas Column */}
-        <div className="xl:col-span-8 2xl:col-span-9 glass-panel rounded-2xl relative overflow-hidden shadow-2xl border border-white/[0.06] min-h-[640px] flex flex-col">
+        {/* Main Map Canvas Column with Viewport-Adaptive Responsive Height */}
+        <div className="xl:col-span-8 2xl:col-span-9 glass-panel rounded-2xl relative overflow-hidden shadow-2xl border border-white/[0.06] min-h-[350px] flex flex-col">
           {mapProjection === '3d' ? (
             <GlobalFlowGlobe3D
               countries={countries}
@@ -1177,10 +1175,10 @@ export default function CapitalFlowMap({
             />
           ) : (
             <>
-              {/* Ocean Background Canvas with deep velvet atmosphere */}
+              {/* Ocean Background Canvas with adaptive height */}
               <div 
                 ref={chartRef} 
-                className="w-full h-[640px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
+                className="w-full h-[calc(100vh-340px)] min-h-[350px] max-h-[640px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
               />
 
               {/* Floating Viewport Preset Pills (Bottom-Left for 2D mode) */}

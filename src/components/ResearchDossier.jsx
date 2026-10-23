@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
 import { 
   FileText, Download, Code2, BookOpen, CheckCircle2, 
   ExternalLink, Copy, Check, ShieldCheck, Database,
@@ -23,9 +22,10 @@ export default function ResearchDossier({
   const currentMacro = (dataset.global_macro || []).find(m => m.quarter === selectedQuarter) || {};
 
   // Export full multi-sheet Excel Workbook (.xlsx)
-  const handleExportXlsx = () => {
+  const handleExportXlsx = async () => {
     setIsExportingXlsx(true);
     try {
+      const XLSX = await import('xlsx');
       const wb = XLSX.utils.book_new();
 
       // Sheet 0: Methodology, Units & Mathematical Conservation Notes

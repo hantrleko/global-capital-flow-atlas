@@ -178,9 +178,16 @@ export default function EarlyWarningSystem({
               show: true,
               formatter: (params) => params.value ? params.value[3] : '',
               position: 'top',
+              distance: 5,
+              minMargin: 4,
               color: '#cbd5e1',
-              fontSize: 10,
-              fontFamily: 'monospace'
+              fontSize: 11,
+              fontFamily: 'monospace',
+              fontWeight: 600
+            },
+            labelLayout: {
+              hideOverlap: true,
+              moveOverlap: 'shiftY'
             },
             markLine: {
               silent: true,
@@ -665,7 +672,7 @@ export default function EarlyWarningSystem({
               id="ews-quadrant-chart"
               data-testid="ews-quadrant-chart"
               ref={quadrantChartRef}
-              className="w-full h-[520px]"
+              className="w-full h-[calc(100vh-340px)] min-h-[350px] max-h-[580px]"
             />
           </div>
 
