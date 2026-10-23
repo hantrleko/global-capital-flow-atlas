@@ -24,11 +24,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Playwright Chromium with OS Dependencies
+        run: npx playwright install --with-deps chromium
+
       - name: Run Methodology Regression Suite (Eisenberg-Noe Clearing Engine)
         run: npm test
 
       - name: Verify Production Vite Build
         run: npm run build
 
-      - name: Run Real Browser Headless E2E Regression Suite
+      - name: Run Playwright Real Browser E2E Gate (Root, Subpath, Chart Lifecycle)
         run: npm run test:e2e

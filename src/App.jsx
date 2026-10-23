@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
-import bisDataset from './data/bis_atlas_dataset.json';
+import {
+  getDatasetSnapshot,
+  loadHistoricalBilateral,
+  loadCbsRisk,
+  isQuarterLoaded,
+  isCbsRiskLoaded,
+  subscribeDataset
+} from './services/dataLoader';
 import Header from './components/Header';
 import CapitalFlowMap from './components/CapitalFlowMap';
 import CountryDrawer from './components/CountryDrawer';
@@ -44,7 +51,17 @@ const LoadingFallback = () => (
 );
 
 export default function App() {
-  const quarters = bisDataset.quarters || [];
+  const [datasetState, setDatasetState] = useState(() => getDatasetSnapshot());
+  const [isLoadingPartition, setIsLoadingPartition] = useState(false);
+  const [partitionError, setPartitionError] = useState(null);
+
+  useEffect(() => {
+    return subscribeDataset((updated) => {
+      setDatasetState(updated);
+    });
+  }, []);
+
+  const quarters = datasetState.quarters || [];
 
   // Parse Deep Linking URL search parameters
   const initialParams = useMemo(() => {
@@ -146,20 +163,52 @@ export default function App() {
     localStorage.setItem('bis_atlas_currency', newCur);
   };
 
+  // On-demand partition fetching: historical bilateral
+  useEffect(() => {
+    if (!isQuarterLoaded(selectedQuarter)) {
+      setIsLoadingPartition(true);
+      loadHistoricalBilateral()
+        .then(() => setPartitionError(null))
+        .catch(() => {
+          setPartitionError('历史季度信贷数据加载失败，请检查网络');
+        })
+        .finally(() => {
+          setIsLoadingPartition(false);
+        });
+    }
+  }, [selectedQuarter]);
+
+  // On-demand partition fetching: CBS risk data
+  useEffect(() => {
+    const riskTabs = ['ews', 'risk', 'gsib', 'maturity', 'compare', 'dossier', 'contagion', 'shadow'];
+    const needsCbs = riskTabs.includes(activeTab) || Boolean(selectedCountry);
+    if (needsCbs && !isCbsRiskLoaded()) {
+      setIsLoadingPartition(true);
+      loadCbsRisk()
+        .then(() => setPartitionError(null))
+        .catch(() => {
+          setPartitionError('宏观审慎指标数据加载失败，请检查网络');
+        })
+        .finally(() => {
+          setIsLoadingPartition(false);
+        });
+    }
+  }, [activeTab, selectedCountry]);
+
   // Active dataset that transparently overlays custom uploaded matrix in memory with explicit datasetRevision
   const activeDataset = useMemo(() => {
     const base = customMatrix ? {
-      ...bisDataset,
+      ...datasetState,
       bilateral_matrix: {
-        ...bisDataset.bilateral_matrix,
+        ...datasetState.bilateral_matrix,
         [selectedQuarter]: customMatrix
       }
-    } : bisDataset;
+    } : datasetState;
     return {
       ...base,
       datasetRevision
     };
-  }, [customMatrix, selectedQuarter, datasetRevision]);
+  }, [customMatrix, selectedQuarter, datasetRevision, datasetState]);
 
   const toggleSound = () => {
     const next = soundFx.toggleMute();
@@ -184,8 +233,8 @@ export default function App() {
 
   // Global macro dictionary keyed by quarter
   const globalMacroMap = useMemo(() => {
-    return Object.fromEntries((bisDataset.global_macro || []).map(m => [m.quarter, m]));
-  }, []);
+    return Object.fromEntries((datasetState.global_macro || []).map(m => [m.quarter, m]));
+  }, [datasetState]);
 
   const currentQuarterMacro = globalMacroMap[selectedQuarter] || {};
   const currentClaimsVal = currentQuarterMacro.total_cross_border_claims_usd_bn
@@ -320,7 +369,7 @@ export default function App() {
         globalMacroMap={globalMacroMap}
         activeTab={activeTab}
         onSelectTab={handleSelectTab}
-        countries={bisDataset.countries}
+        countries={activeDataset.countries}
         onSelectCountry={(code) => setSelectedCountry(code)}
         theme={theme}
         onToggleTheme={toggleTheme}
@@ -352,6 +401,29 @@ export default function App() {
         isOpen={isMilestonesOpen}
         onToggle={() => setIsMilestonesOpen(prev => !prev)}
       />
+
+      {/* On-demand partition fetch indicator */}
+      {isLoadingPartition && (
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-2 bg-slate-900/95 border border-sky-500/50 text-sky-300 text-xs px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(56,189,248,0.3)] backdrop-blur animate-fade-in pointer-events-none">
+          <div className="w-3 h-3 rounded-full border-2 border-sky-400 border-t-transparent animate-spin" />
+          <span className="font-mono font-medium">按需载入高维数据分片...</span>
+        </div>
+      )}
+      {partitionError && (
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-2.5 bg-rose-950/95 border border-rose-500/50 text-rose-200 text-xs px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(244,63,94,0.3)] backdrop-blur animate-fade-in">
+          <span>{partitionError}</span>
+          <button
+            onClick={() => {
+              setPartitionError(null);
+              loadHistoricalBilateral();
+              loadCbsRisk();
+            }}
+            className="underline font-bold text-white hover:text-rose-100 cursor-pointer"
+          >
+            重试
+          </button>
+        </div>
+      )}
 
       {/* Main Analysis Viewport */}
       <main
@@ -537,7 +609,7 @@ export default function App() {
       {/* Sovereign 360° Detailed Profile Drawer (Overlay) */}
       {selectedCountry && (
         <CountryDrawer
-          dataset={bisDataset}
+          dataset={activeDataset}
           countryCode={selectedCountry}
           selectedQuarter={selectedQuarter}
           onClose={() => setSelectedCountry(null)}
@@ -581,14 +653,14 @@ export default function App() {
         isOpen={isCodeExporterOpen}
         onClose={() => setIsCodeExporterOpen(false)}
         selectedQuarter={selectedQuarter}
-        countries={bisDataset.countries}
+        countries={activeDataset.countries}
       />
 
       {/* Macro Shock Sandbox Modal */}
       <MacroShockSandbox
         isOpen={isShockSandboxOpen}
         onClose={() => setIsShockSandboxOpen(false)}
-        dataset={bisDataset}
+        dataset={activeDataset}
         selectedQuarter={selectedQuarter}
         onApplyShock={(shock) => {
           setContagionConfig(shock);
@@ -626,7 +698,7 @@ export default function App() {
       <MacroAiCopilot
         isOpen={isMacroAiOpen}
         onClose={() => setIsMacroAiOpen(false)}
-        dataset={bisDataset}
+        dataset={activeDataset}
         selectedQuarter={selectedQuarter}
         onSelectQuarter={setSelectedQuarter}
         onSelectTab={handleSelectTab}
@@ -638,7 +710,7 @@ export default function App() {
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
-        countries={bisDataset.countries}
+        countries={activeDataset.countries}
         quarters={quarters}
         selectedQuarter={selectedQuarter}
         onSelectQuarter={(q) => {

@@ -433,6 +433,7 @@ export default function EarlyWarningSystem({
               return (
                 <button
                   key={tab.id}
+                  data-testid={`ews-subtab-${tab.id}`}
                   onClick={() => setActiveSubTab(tab.id)}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                     activeSubTab === tab.id
@@ -455,7 +456,7 @@ export default function EarlyWarningSystem({
 
       {/* Subtab 1: Early Warning Matrix */}
       {activeSubTab === 'matrix' && (
-        <div className="space-y-4">
+        <div data-testid="ews-matrix-table" className="space-y-4">
           {/* Controls: Region filter, traffic light filter, search */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 p-3 rounded-xl">
             <div className="flex items-center gap-2 flex-wrap">
@@ -660,7 +661,12 @@ export default function EarlyWarningSystem({
               </span>
             </div>
 
-            <div ref={quadrantChartRef} className="w-full h-[520px]" />
+            <div
+              id="ews-quadrant-chart"
+              data-testid="ews-quadrant-chart"
+              ref={quadrantChartRef}
+              className="w-full h-[520px]"
+            />
           </div>
 
           {/* Quadrant Interpretation Guide */}

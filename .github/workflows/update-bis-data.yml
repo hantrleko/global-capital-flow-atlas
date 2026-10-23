@@ -34,6 +34,9 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci
 
+      - name: Install Playwright Chromium with OS Dependencies
+        run: npx playwright install --with-deps chromium
+
       - name: Run BIS Data Calibration Pipeline (Generate Candidate Dataset)
         run: |
           python scripts/fetch_bis_data.py

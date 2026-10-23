@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 scratch/
 .tmp-browser-profile/
+test-results/
+playwright-report/

@@ -699,7 +699,7 @@ export default function Header({
 
         {/* Row 2: Full-width Subtabs of active domain with horizontal scroll affordance */}
         <div className="w-full flex items-center justify-between gap-2 pt-0.5">
-          <div className="w-full flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-0.5">
+          <div id="module-nav-container" data-testid="module-nav-container" className="w-full flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-0.5">
             <span className="text-[11px] font-mono text-sky-400/80 hidden sm:inline mr-0.5 shrink-0">
               ↳ 模块:
             </span>

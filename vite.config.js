@@ -12,8 +12,17 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('bis_atlas_dataset.json')) {
-            return 'bis-dataset';
+          if (id.includes('core_atlas_dataset.json')) {
+            return 'core-dataset';
+          }
+          if (id.includes('historical_bilateral_2022_2026.json')) {
+            return 'hist-bilateral-recent';
+          }
+          if (id.includes('historical_bilateral_2018_2021.json')) {
+            return 'hist-bilateral-past';
+          }
+          if (id.includes('cbs_risk.json')) {
+            return 'cbs-risk';
           }
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
             return 'vendor-react';
@@ -30,6 +39,6 @@ export default defineConfig({
         }
       }
     },
-    chunkSizeWarningLimit: 3200
+    chunkSizeWarningLimit: 1200
   }
 });
