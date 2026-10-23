@@ -4,9 +4,10 @@ import {
   X, Globe2, TrendingUp, DollarSign, Shield, Building2, 
   ArrowUpRight, ArrowDownLeft, Layers, Percent, AlertTriangle,
   Zap, ArrowRight, ShieldAlert, CheckCircle2, Sliders, ExternalLink,
-  ShieldCheck, RefreshCw
+  ShieldCheck, RefreshCw, Sparkles
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
+import { getDataClassification } from '../utils/dataClassification';
 
 export default function CountryDrawer({
   dataset,
@@ -166,6 +167,8 @@ export default function CountryDrawer({
     onClose();
   };
 
+  const classification = useMemo(() => getDataClassification(selectedQuarter), [selectedQuarter]);
+
   return (
     <div className="fixed inset-y-0 right-0 z-40 w-full max-w-lg bg-slate-950/95 border-l border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-y-auto flex flex-col justify-between p-5 backdrop-blur-2xl animate-fade-in font-sans">
       <div>
@@ -176,16 +179,23 @@ export default function CountryDrawer({
               {country.code}
             </div>
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                {country.name_zh}
-                <span className="text-xs font-normal text-slate-400 font-mono">({country.name})</span>
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-white flex items-center gap-1.5">
+                  {country.name_zh}
+                  <span className="text-xs font-normal text-slate-400 font-mono">({country.name})</span>
+                </h3>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${classification.badgeClass}`}>
+                  {selectedQuarter} · {classification.label}
+                </span>
+              </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-[11px] text-slate-400 font-medium">{country.region}</span>
                 <span className="text-slate-600">·</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-sky-300 font-mono border border-slate-700">
                   {country.bloc || country.type}
                 </span>
+                <span className="text-slate-600 hidden sm:inline">·</span>
+                <span className="text-[10px] text-slate-400 hidden sm:inline font-mono">{classification.provenance}</span>
               </div>
             </div>
           </div>
@@ -194,11 +204,20 @@ export default function CountryDrawer({
               soundFx.playTick();
               onClose();
             }}
-            className="p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer"
+            aria-label="关闭抽屉"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Prominent Scenario Watermark Banner if in Scenario Mode */}
+        {classification.isScenario && (
+          <div className="mb-3 px-3 py-2 rounded-xl bg-purple-950/40 border border-purple-500/40 text-purple-200 text-xs flex items-center gap-2 font-mono">
+            <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+            <span className="leading-snug">前瞻探索情景：当前呈现非官方统计事实，为空间引力模型推演数据</span>
+          </div>
+        )}
 
         {/* Multi-Tab Switcher */}
         <div className="flex border-b border-slate-800 bg-slate-900/60 p-1 rounded-xl gap-1 mb-4">

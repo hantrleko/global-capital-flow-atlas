@@ -6,6 +6,7 @@ import {
   Shuffle, Download, Sparkles, Zap, Layers, Info 
 } from 'lucide-react';
 import DataClassificationBadge from './DataClassificationBadge';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 
 export default function NetworkTopology({
   dataset,
@@ -260,77 +261,83 @@ export default function NetworkTopology({
     });
   }, [currentLinks, countries, centralityMetrics, layoutType, minEdgeWeight, selectedCountry]);
 
-  const handleExportPng = () => {
+  const handleExportPng = async () => {
     if (!chartInstance.current) return;
-    const url = chartInstance.current.getDataURL({
+    const rawUrl = chartInstance.current.getDataURL({
       type: 'png',
       pixelRatio: 2,
       backgroundColor: '#070a12'
     });
+    const watermarkedUrl = await addWatermarkToDataUrl(
+      rawUrl,
+      selectedQuarter,
+      '全球银行间跨境金融网络拓扑'
+    );
     const a = document.createElement('a');
-    a.href = url;
+    a.href = watermarkedUrl;
     a.download = `BIS_Network_Topology_${selectedQuarter}.png`;
     a.click();
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Top Glass Command Bar */}
-      <div className="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-400/25 flex items-center justify-center text-indigo-400">
+      <div className="glass-panel rounded-xl px-3.5 py-2 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-400/25 flex items-center justify-center text-indigo-400 shrink-0">
             <Share2 className="w-4 h-4 text-indigo-400" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm md:text-base font-semibold text-white tracking-wide">
+              <h2 className="text-sm font-semibold text-white tracking-wide">
                 全球银行间跨境金融网络拓扑与中心度剖析
               </h2>
-              <span className="text-[11px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
+              <span className="text-[11px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2 py-0.2 rounded-full">
                 {selectedQuarter}
               </span>
               <DataClassificationBadge
                 classification={selectedQuarter > '2026Q2' ? 'NOWCAST_PREDICTION' : 'MODEL_RECONSTRUCTED'}
+                quarter={selectedQuarter}
                 sourceText="双边重构信贷矩阵"
                 methodText="复杂网络特征向量中心度 (Eigenvector Centrality) 测算"
                 onOpenAppendix={onOpenAppendix}
               />
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              基于图论测算各司法管辖区的信贷中介度 (Brokerage) 与网络集聚度 · 揭示核心-边缘与离岸转口中枢结构
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              基于图论测算各辖区信贷中介度 (Brokerage) 与网络集聚度 · 揭示核心-边缘与离岸中枢
             </p>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Layout Toggle */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-xl p-1 text-xs">
+          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-xs shadow-sm">
             <button
               onClick={() => setLayoutType('force')}
-              className={`px-3 py-1.5 rounded-lg transition-all text-xs font-medium flex items-center gap-1.5 ${
+              className={`h-7 px-2.5 rounded-md transition-all text-xs font-medium flex items-center gap-1.5 cursor-pointer ${
                 layoutType === 'force'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Shuffle className="w-3.5 h-3.5" /> 力导向布局 (Force)
+              <Shuffle className="w-3 h-3" /> 力导向
             </button>
             <button
               onClick={() => setLayoutType('circular')}
-              className={`px-3 py-1.5 rounded-lg transition-all text-xs font-medium flex items-center gap-1.5 ${
+              className={`h-7 px-2.5 rounded-md transition-all text-xs font-medium flex items-center gap-1.5 cursor-pointer ${
                 layoutType === 'circular'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <CircleDot className="w-3.5 h-3.5" /> 环形层级布局 (Circular)
+              <CircleDot className="w-3 h-3" /> 环形层级
             </button>
           </div>
 
           {/* Min Edge Weight Filter Slider */}
-          <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-700/60 rounded-xl px-3 py-1.5 text-xs">
-            <span className="text-slate-400">门槛过滤:</span>
+          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/60 rounded-lg px-2.5 h-7 text-xs">
+            <span className="text-slate-400 text-[11px]">门槛:</span>
             <input
               type="range"
               min={20}
@@ -338,29 +345,29 @@ export default function NetworkTopology({
               step={10}
               value={minEdgeWeight}
               onChange={(e) => setMinEdgeWeight(parseInt(e.target.value, 10))}
-              className="w-24 accent-sky-400 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer"
+              className="w-20 accent-sky-400 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer"
             />
-            <span className="font-mono text-sky-400 font-semibold min-w-[50px]">&ge; ${minEdgeWeight}B</span>
+            <span className="font-mono text-sky-400 font-semibold text-[11px] min-w-[45px]">&ge; ${minEdgeWeight}B</span>
           </div>
 
           {/* PNG Export */}
           <button
             onClick={handleExportPng}
-            className="p-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white transition-colors"
-            title="导出拓扑图 PNG"
+            className="h-7 w-7 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
+            title="导出拓扑图 PNG (自动嵌入官方/情景数据身份水印)"
           >
-            <Download className="w-4 h-4 text-indigo-400" />
+            <Download className="w-3.5 h-3.5 text-indigo-400" />
           </button>
         </div>
       </div>
 
       {/* Main Grid: Chart + Analytics Sidebars */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Left Network Graph Canvas */}
-        <div className="lg:col-span-3 glass-panel rounded-2xl p-2 relative overflow-hidden shadow-2xl border border-white/[0.06] min-h-[580px] flex flex-col">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+        {/* Left Network Graph Canvas with Viewport-Adaptive Responsive Height */}
+        <div className="lg:col-span-3 glass-panel rounded-xl p-2 relative overflow-hidden shadow-2xl border border-white/[0.06] min-h-[350px] flex flex-col">
           <div 
             ref={chartRef} 
-            className="w-full h-[580px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
+            className="w-full h-[calc(100vh-340px)] min-h-[350px] max-h-[640px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
           />
         </div>
 

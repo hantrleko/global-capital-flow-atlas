@@ -110,13 +110,15 @@ export default function Header({
 
           {/* Quick Actions & Tools */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Currency Selector */}
+            {/* Currency Selector (Top 3 on mobile, all 5 on sm+) */}
             <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
-              {['USD', 'EUR', 'CNY', 'JPY', 'GOLD'].map(cur => (
+              {['USD', 'EUR', 'CNY', 'JPY', 'GOLD'].map((cur, idx) => (
                 <button
                   key={cur}
                   onClick={() => onChangeCurrency && onChangeCurrency(cur)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-mono font-semibold transition-all cursor-pointer ${
+                  className={`px-1.5 sm:px-2 py-0.5 rounded text-[11px] font-mono font-semibold transition-all cursor-pointer ${
+                    idx >= 3 ? 'hidden sm:inline-block' : ''
+                  } ${
                     selectedCurrency === cur
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -170,7 +172,7 @@ export default function Header({
               {onOpenAppendix && (
                 <button
                   onClick={onOpenAppendix}
-                  className="h-7 px-2 rounded-lg border border-slate-700/80 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500 flex items-center gap-1 text-xs font-medium cursor-pointer"
+                  className="hidden sm:flex h-7 px-2 rounded-lg border border-slate-700/80 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500 items-center gap-1 text-xs font-medium cursor-pointer"
                   title="方法论附录"
                 >
                   <FileText className="w-3.5 h-3.5 text-sky-400" />
@@ -181,7 +183,7 @@ export default function Header({
               {onOpenIntro && (
                 <button
                   onClick={onOpenIntro}
-                  className="h-7 px-2 rounded-lg border border-slate-700/80 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500 flex items-center gap-1 text-xs font-medium cursor-pointer"
+                  className="hidden sm:flex h-7 px-2 rounded-lg border border-slate-700/80 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500 items-center gap-1 text-xs font-medium cursor-pointer"
                   title="平台导读"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-sky-400" />
@@ -192,7 +194,7 @@ export default function Header({
               {onOpenShockSandbox && (
                 <button
                   onClick={onOpenShockSandbox}
-                  className="h-7 px-2 rounded-lg border border-rose-500/30 bg-rose-950/30 text-rose-300 hover:text-white hover:bg-rose-900/40 flex items-center gap-1 text-xs font-medium cursor-pointer"
+                  className="hidden md:flex h-7 px-2 rounded-lg border border-rose-500/30 bg-rose-950/30 text-rose-300 hover:text-white hover:bg-rose-900/40 items-center gap-1 text-xs font-medium cursor-pointer"
                   title="冲击调制沙盒"
                 >
                   <Sliders className="w-3.5 h-3.5 text-rose-400" />
@@ -203,7 +205,7 @@ export default function Header({
               {onOpenCustomData && (
                 <button
                   onClick={onOpenCustomData}
-                  className={`h-7 px-2 rounded-lg border flex items-center gap-1 text-xs font-medium cursor-pointer ${
+                  className={`hidden md:flex h-7 px-2 rounded-lg border items-center gap-1 text-xs font-medium cursor-pointer ${
                     customFileName
                       ? 'border-emerald-500/60 bg-emerald-950/50 text-emerald-300'
                       : 'border-slate-700/80 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500'

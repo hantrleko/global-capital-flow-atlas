@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as echarts from 'echarts';
 import { GitCommit, Grid, Layers, Filter, Info, Download, ArrowRight } from 'lucide-react';
 import DataClassificationBadge from './DataClassificationBadge';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 
 export default function BilateralRoutingMatrix({
   dataset,
@@ -264,30 +265,35 @@ export default function BilateralRoutingMatrix({
     }
   }, [subView, sankeyData, heatmapData]);
 
-  const handleDownloadSnapshot = () => {
+  const handleDownloadSnapshot = async () => {
     if (!chartInstance.current) return;
-    const url = chartInstance.current.getDataURL({
+    const rawUrl = chartInstance.current.getDataURL({
       type: 'png',
       pixelRatio: 2,
       backgroundColor: '#080c14'
     });
+    const watermarkedUrl = await addWatermarkToDataUrl(
+      rawUrl,
+      selectedQuarter,
+      subView === 'sankey' ? '资本多级路由桑基图' : '双边借贷敞口热力矩阵'
+    );
     const a = document.createElement('a');
-    a.href = url;
+    a.href = watermarkedUrl;
     a.download = `bis_capital_routing_${subView}_${selectedQuarter}.png`;
     a.click();
   };
 
   return (
-    <div className="glass-panel rounded-2xl p-5 shadow-2xl space-y-4">
+    <div className="glass-panel rounded-xl p-3.5 sm:p-4 shadow-2xl space-y-3">
       {/* Control Bar */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-            {subView === 'sankey' ? <GitCommit className="w-5 h-5" /> : <Grid className="w-5 h-5" />}
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 gap-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+            {subView === 'sankey' ? <GitCommit className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
                 {subView === 'sankey' 
                   ? '跨国资本多级路由桑基图 (Multi-Tier Capital Routing)' 
                   : '双边借贷敞口全景热力矩阵 (Bilateral Exposure Matrix)'}
@@ -297,23 +303,24 @@ export default function BilateralRoutingMatrix({
               </span>
               <DataClassificationBadge
                 classification={selectedQuarter > '2026Q2' ? 'NOWCAST_PREDICTION' : 'MODEL_RECONSTRUCTED'}
+                quarter={selectedQuarter}
                 sourceText="BIS LBS / CBS 矩阵分配"
                 methodText="最大熵 RAS 多级穿透分配算法"
                 onOpenAppendix={onOpenAppendix}
               />
             </div>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-[11px] text-slate-400 mt-0.5">
               透视「出资母国 → 离岸转口中枢 → 实体借款部门」的资金穿透链路 · 揭示跨辖区多级转口流向
             </p>
           </div>
         </div>
 
         {/* View Switchers */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-xs">
             <button
               onClick={() => setSubView('sankey')}
-              className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${
+              className={`h-7 px-2.5 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
                 subView === 'sankey'
                   ? 'bg-amber-600 text-white font-semibold shadow-sm'
                   : 'text-slate-400 hover:text-white'
@@ -324,7 +331,7 @@ export default function BilateralRoutingMatrix({
             </button>
             <button
               onClick={() => setSubView('heatmap')}
-              className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${
+              className={`h-7 px-2.5 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
                 subView === 'heatmap'
                   ? 'bg-amber-600 text-white font-semibold shadow-sm'
                   : 'text-slate-400 hover:text-white'
@@ -335,7 +342,7 @@ export default function BilateralRoutingMatrix({
             </button>
           </div>
 
-          <div className="h-5 w-px bg-slate-800 mx-1" />
+          <div className="h-5 w-px bg-slate-800 mx-1 hidden sm:block" />
 
           {/* Currency Filter */}
           <div className="flex items-center gap-1.5 text-xs">
@@ -343,7 +350,7 @@ export default function BilateralRoutingMatrix({
             <select
               value={currencyFilter}
               onChange={(e) => setCurrencyFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 text-slate-200 px-2 py-1.5 rounded text-xs focus:outline-none focus:border-amber-500"
+              className="bg-slate-900 border border-slate-800 text-slate-200 px-2 h-7 rounded text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
             >
               <option value="all">全币种计价</option>
               <option value="usd_only">仅追踪美元通道 (USD-Only)</option>
@@ -352,16 +359,16 @@ export default function BilateralRoutingMatrix({
 
           <button
             onClick={handleDownloadSnapshot}
-            className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
-            title="导出高清图表 PNG"
+            className="h-7 w-7 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
+            title="导出高清图表 PNG (自动嵌入官方/情景数据身份水印)"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Chart Canvas */}
-      <div ref={chartRef} className="w-full h-[540px] rounded-lg overflow-hidden" />
+      {/* Chart Canvas with Responsive Height */}
+      <div ref={chartRef} className="w-full h-[calc(100vh-340px)] min-h-[350px] max-h-[600px] rounded-lg overflow-hidden" />
 
       {/* Analytical Footnote */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-xs text-slate-400 border-t border-slate-900">

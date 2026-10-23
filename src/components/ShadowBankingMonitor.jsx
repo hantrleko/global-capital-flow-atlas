@@ -4,6 +4,7 @@ import {
   Building, EyeOff, ShieldAlert, Layers, TrendingUp, 
   HelpCircle, Download, FileWarning, ExternalLink 
 } from 'lucide-react';
+import DataClassificationBadge from './DataClassificationBadge';
 
 export default function ShadowBankingMonitor({
   dataset,
@@ -190,27 +191,35 @@ export default function ShadowBankingMonitor({
   }, []);
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-2xl space-y-5">
+    <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-2xl space-y-3">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-amber-600/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-            <EyeOff className="w-6 h-6" />
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 gap-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-amber-600/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+            <EyeOff className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              离岸影子银行与非银机构表外负债透视 (Offshore NBFIs & Shadow Banking)
-              <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+                离岸影子银行与非银机构表外负债透视 (Offshore NBFIs & Shadow Banking)
+              </h2>
+              <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.2 rounded border border-slate-800">
                 {selectedQuarter}
               </span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+              <DataClassificationBadge
+                classification={selectedQuarter > '2026Q2' ? 'NOWCAST_PREDICTION' : 'MODEL_RECONSTRUCTED'}
+                quarter={selectedQuarter}
+                sourceText="BIS Quarterly Review (Borio et al.)"
+                methodText="离岸外汇掉期表外美元负债估算"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
               透视开曼群岛、卢森堡、伦敦等离岸中继的非银金融中介 (NBFIs) 杠杆与外汇掉期 (FX Swaps) 隐藏盲区
             </p>
           </div>
         </div>
 
-        <div className="text-xs text-amber-400 bg-amber-950/40 border border-amber-500/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-mono">
+        <div className="text-xs text-amber-400 bg-amber-950/40 border border-amber-500/30 px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-mono">
           <FileWarning className="w-3.5 h-3.5" /> 全球表外美元掉期盲区估算: &gt;$85 万亿美元
         </div>
       </div>

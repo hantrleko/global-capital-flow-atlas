@@ -359,7 +359,7 @@ export default function App() {
   }, [quarters]);
 
   return (
-    <div className="min-h-screen cyber-bg-glow text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen cyber-bg-glow text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden">
       {/* Top Header & Interactive Timeline Bar */}
       <Header
         quarters={quarters}

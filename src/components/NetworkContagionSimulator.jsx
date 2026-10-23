@@ -8,6 +8,8 @@ import {
 import soundFx from '../utils/soundEffects';
 import MethodologyFootnote from './MethodologyFootnote';
 import DataClassificationBadge from './DataClassificationBadge';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
+import { getDataClassification } from '../utils/dataClassification';
 
 import {
   CLEARING_VERSION_REGISTRY,
@@ -303,15 +305,20 @@ export default function NetworkContagionSimulator({
     }
   }, [dataset, selectedQuarter, currentLinks, epicenter, haircutPct, allowModelProxy, simMode]);
 
-  const handleDownloadSnapshot = () => {
+  const handleDownloadSnapshot = async () => {
     if (!chartInstance.current) return;
-    const url = chartInstance.current.getDataURL({
+    const rawUrl = chartInstance.current.getDataURL({
       type: 'png',
       pixelRatio: 2,
       backgroundColor: '#080c14'
     });
+    const watermarkedUrl = await addWatermarkToDataUrl(
+      rawUrl, 
+      selectedQuarter, 
+      `级联违约传染仿真 · ${epicenterCountry.name_zh || epicenter} (${haircutPct}% Haircut)`
+    );
     const a = document.createElement('a');
-    a.href = url;
+    a.href = watermarkedUrl;
     a.download = `bis_contagion_simulation_${epicenter}_${selectedQuarter}.png`;
     a.click();
   };

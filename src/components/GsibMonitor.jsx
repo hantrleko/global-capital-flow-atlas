@@ -8,6 +8,7 @@ import { GSIB_BANKS, GSIB_BUCKETS } from '../data/gsibData';
 import { formatValueInCurrency } from '../utils/currencyConversion';
 import soundFx from '../utils/soundEffects';
 import MethodologyFootnote from './MethodologyFootnote';
+import DataClassificationBadge from './DataClassificationBadge';
 
 export default function GsibMonitor({
   dataset,
@@ -71,23 +72,30 @@ export default function GsibMonitor({
   }, [activeBank, stressShockPct, countryNameMap]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header Bar */}
-      <div className="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-400/25 flex items-center justify-center text-purple-400">
-            <Building2 className="w-5 h-5 text-purple-300" />
+      <div className="glass-panel rounded-xl px-3.5 py-2 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-400/25 flex items-center justify-center text-purple-400 shrink-0">
+            <Building2 className="w-4 h-4 text-purple-300" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm md:text-base font-semibold text-white tracking-wide">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-semibold text-white tracking-wide">
                 G-SIB 全球系统重要性银行穿透透镜
               </h2>
-              <span className="text-[11px] font-mono bg-purple-500/10 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full">
-                FSB &amp; Basel III Surcharge
+              <span className="text-[11px] font-mono bg-purple-500/10 text-purple-300 border border-purple-500/30 px-2 py-0.2 rounded-full">
+                {selectedQuarter}
               </span>
+              <DataClassificationBadge
+                classification={selectedQuarter > '2026Q2' ? 'NOWCAST_PREDICTION' : 'OFFICIAL_OBSERVED'}
+                quarter={selectedQuarter}
+                sourceText="FSB & Basel Committee G-SIB Registry"
+                methodText="巴塞尔监管资本加计与跨国银行穿透"
+                onOpenAppendix={onOpenAppendix}
+              />
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-400 mt-0.5">
               从主权宏观信用下沉至跨国巨头银行资产负债表 · 资本充足率、跨境债权与中介走廊穿透
             </p>
           </div>
@@ -95,18 +103,18 @@ export default function GsibMonitor({
 
         {/* Search & Filters */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs">
-            <Search className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-lg px-2 h-7 text-xs">
+            <Search className="w-3 h-3 text-slate-400" />
             <input
               type="text"
-              placeholder="搜索银行 (中/英/代码)..."
+              placeholder="搜索银行..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent text-white placeholder-slate-500 focus:outline-none w-36"
+              className="bg-transparent text-white placeholder-slate-500 focus:outline-none w-28 text-xs"
             />
           </div>
 
-          <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl p-1 text-xs">
+          <div className="flex items-center bg-slate-900 border border-slate-700/80 rounded-lg p-0.5 text-xs">
             {['ALL', '4', '3', '2', '1'].map(b => (
               <button
                 key={b}
@@ -114,7 +122,7 @@ export default function GsibMonitor({
                   soundFx.playTick();
                   setSelectedBucket(b);
                 }}
-                className={`px-2 py-0.5 rounded-lg text-xs font-mono transition-all ${
+                className={`px-2 py-0.5 rounded text-xs font-mono transition-all cursor-pointer ${
                   selectedBucket === b
                     ? 'bg-purple-600 text-white font-bold shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -125,12 +133,12 @@ export default function GsibMonitor({
             ))}
           </div>
 
-          <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 text-xs">
-            <span className="text-slate-400 mr-1.5 font-mono">母国:</span>
+          <div className="flex items-center bg-slate-900 border border-slate-700/80 rounded-lg px-2 h-7 text-xs">
+            <span className="text-slate-400 mr-1 text-[11px] font-mono">母国:</span>
             <select
               value={selectedCountryFilter}
               onChange={(e) => setSelectedCountryFilter(e.target.value)}
-              className="bg-transparent text-white font-mono focus:outline-none cursor-pointer"
+              className="bg-transparent text-white font-mono focus:outline-none cursor-pointer text-xs"
             >
               {allCountriesWithGsibs.map(c => (
                 <option key={c} value={c} className="bg-slate-900 text-white">
@@ -143,10 +151,10 @@ export default function GsibMonitor({
       </div>
 
       {/* Main Content Grid: Bank Cards on Left, Detailed Balance Sheet & Stress Tester on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         {/* Left Column: Bank Cards List (7 cols) */}
-        <div className="lg:col-span-7 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[640px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700">
+        <div className="lg:col-span-7 space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[calc(100vh-320px)] min-h-[350px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700">
             {filteredBanks.map(bank => {
               const isSelected = bank.id === activeBank.id;
               const bucketMeta = GSIB_BUCKETS[bank.bucket] || GSIB_BUCKETS[1];

@@ -3,6 +3,9 @@ import * as echarts from 'echarts';
 import GlobalFlowGlobe3D from './GlobalFlowGlobe3D';
 import MethodologyFootnote from './MethodologyFootnote';
 import DataClassificationBadge from './DataClassificationBadge';
+import MobileFilterDrawer from './MobileFilterDrawer';
+import MobileInspectCard from './MobileInspectCard';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 import soundFx from '../utils/soundEffects';
 import { normalizeCorridorExposures } from '../utils/eisenbergNoeClearing';
 import { 
@@ -38,6 +41,8 @@ export default function CapitalFlowMap({
   const [focusCountry, setFocusCountry] = useState('ALL'); // 'ALL' or countryCode
   const [geoPreset, setGeoPreset] = useState('global'); // 'global' | 'asia' | 'europe' | 'americas'
   const [showLabels, setShowLabels] = useState(true);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [inspectedEntity, setInspectedEntity] = useState(null);
 
   const countries = dataset.countries || [];
   const countryMap = useMemo(() => Object.fromEntries(countries.map(c => [c.code, c])), [countries]);
@@ -99,15 +104,35 @@ export default function CapitalFlowMap({
 
       chartInstance.current.on('click', (params) => {
         if (params.data && params.data.countryCode) {
-          onSelectCountry(params.data.countryCode);
+          const cCode = params.data.countryCode;
+          const matchedCountry = countryMap[cCode] || {};
+          setInspectedEntity({
+            type: 'country',
+            data: {
+              code: cCode,
+              name_zh: matchedCountry.name_zh || cCode,
+              name: matchedCountry.name || cCode,
+              claims: params.data.claims,
+              liab: params.data.liab,
+              net: params.data.net,
+              currency: params.data.currency || {}
+            }
+          });
+          onSelectCountry(cCode);
         } else if (params.seriesType === 'lines' && params.data && params.data.sourceCode) {
-          setSelectedCorridor({
+          const corr = {
             source: params.data.sourceCode,
             target: params.data.targetCode,
             fromName: params.data.fromName,
             toName: params.data.toName,
-            value: params.data.value,
-            usdVol: params.data.usdVol
+            claims_usd_bn: params.data.value,
+            usd_denominated_bn: params.data.usdVol,
+            usdShare: params.data.value > 0 ? Math.round((params.data.usdVol / params.data.value) * 100) : 0
+          };
+          setSelectedCorridor(corr);
+          setInspectedEntity({
+            type: 'corridor',
+            data: corr
           });
         }
       });
@@ -945,15 +970,16 @@ export default function CapitalFlowMap({
     return () => window.removeEventListener('resize', handleResize);
   }, [selectedCorridor, corridorHistory, selectedQuarter]);
 
-  const handleExportPng = () => {
+  const handleExportPng = async () => {
     if (!chartInstance.current) return;
-    const url = chartInstance.current.getDataURL({
+    const rawUrl = chartInstance.current.getDataURL({
       type: 'png',
       pixelRatio: 2,
       backgroundColor: '#060913'
     });
+    const watermarkedUrl = await addWatermarkToDataUrl(rawUrl, selectedQuarter, '全球双边跨国信贷流向图谱');
     const a = document.createElement('a');
-    a.href = url;
+    a.href = watermarkedUrl;
     a.download = `BIS_Global_Capital_Flow_Map_${selectedQuarter}.png`;
     a.click();
   };
@@ -1136,7 +1162,7 @@ export default function CapitalFlowMap({
           {/* Toggle Labels */}
           <button
             onClick={() => setShowLabels(!showLabels)}
-            className={`h-7 px-2 rounded-lg border text-xs transition-colors cursor-pointer ${
+            className={`h-7 px-2 rounded-lg border text-xs transition-colors cursor-pointer hidden sm:flex items-center ${
               showLabels
                 ? 'bg-slate-800 border-slate-600 text-white'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
@@ -1146,11 +1172,25 @@ export default function CapitalFlowMap({
             {showLabels ? '标签: 开启' : '标签: 关'}
           </button>
 
+          {/* Mobile Filter Drawer Trigger (Mobile-only >= 44px tap target) */}
+          <button
+            onClick={() => {
+              soundFx.playTick();
+              setIsMobileFilterOpen(true);
+            }}
+            data-testid="open-mobile-filter-drawer"
+            className="md:hidden min-h-[36px] px-2.5 rounded-lg bg-slate-900 border border-slate-700/80 text-sky-400 hover:text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+            aria-label="打开进阶筛选"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>筛选</span>
+          </button>
+
           {/* Export PNG */}
           <button
             onClick={handleExportPng}
             className="h-7 w-7 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
-            title="导出当前高清无损地图 PNG"
+            title="导出当前高清无损地图 PNG (自动嵌入官方/情景数据身份水印)"
           >
             <Download className="w-3.5 h-3.5 text-sky-400" />
           </button>
@@ -1182,7 +1222,7 @@ export default function CapitalFlowMap({
               />
 
               {/* Floating Viewport Preset Pills (Bottom-Left for 2D mode) */}
-              <div className="absolute bottom-5 left-5 z-20 flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-1.5 text-xs shadow-xl">
+              <div className="absolute bottom-5 left-5 z-20 hidden sm:flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-1.5 text-xs shadow-xl">
                 <span className="text-[11px] text-slate-400 px-2 flex items-center gap-1">
                   <Compass className="w-3.5 h-3.5 text-sky-400" /> 区域聚焦:
                 </span>
@@ -1207,6 +1247,14 @@ export default function CapitalFlowMap({
               </div>
             </>
           )}
+
+          {/* Tap-to-Inspect Card on Mobile (Directly beneath canvas) */}
+          <MobileInspectCard
+            inspectedEntity={inspectedEntity}
+            onClose={() => setInspectedEntity(null)}
+            onSelectCountry={onSelectCountry}
+            selectedQuarter={selectedQuarter}
+          />
 
           {/* Floating Focus Mode Banner (Top-Left) */}
           {focusCountry !== 'ALL' && (
@@ -1583,6 +1631,24 @@ export default function CapitalFlowMap({
           onOpenAppendix={onOpenAppendix}
         />
       </div>
+
+      {/* Mobile Drawer for Advanced Settings (Touch targets >= 44px) */}
+      <MobileFilterDrawer
+        isOpen={isMobileFilterOpen}
+        onClose={() => setIsMobileFilterOpen(false)}
+        mapProjection={mapProjection}
+        setMapProjection={setMapProjection}
+        corridorDensity={corridorDensity}
+        setCorridorDensity={setCorridorDensity}
+        focusCountry={focusCountry}
+        setFocusCountry={setFocusCountry}
+        countries={countries}
+        metricView={metricView}
+        setMetricView={setMetricView}
+        showLabels={showLabels}
+        setShowLabels={setShowLabels}
+        onExportPng={handleExportPng}
+      />
     </div>
   );
 }

@@ -2,8 +2,9 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import { 
   Clock, ShieldAlert, AlertTriangle, CheckCircle2, TrendingDown,
-  Layers, Filter, ArrowUpRight, ShieldCheck, Flame, Info
+  Layers, Filter, ArrowUpRight, ShieldCheck, Flame, Info 
 } from 'lucide-react';
+import DataClassificationBadge from './DataClassificationBadge';
 
 export default function MaturityRolloverMonitor({
   dataset,
@@ -284,52 +285,58 @@ export default function MaturityRolloverMonitor({
   }, [maturityRows, onSelectCountry]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Top Banner & KPI Badges */}
-      <div className="glass-panel rounded-2xl p-5 shadow-2xl">
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-rose-600/20 border border-rose-500/40 flex items-center justify-center text-rose-400">
-              <Clock className="w-5 h-5" />
+      <div className="glass-panel rounded-xl p-3.5 sm:p-4 shadow-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-rose-600/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+              <Clock className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm font-bold text-white">
                   CBS 债务期限结构与转期挤兑风险监控 (Residual Maturity &amp; Rollover Risk)
                 </h2>
-                <span className="text-[11px] font-mono bg-rose-950/80 text-rose-300 border border-rose-600/40 px-2 py-0.5 rounded">
+                <span className="text-[11px] font-mono bg-rose-950/80 text-rose-300 border border-rose-600/40 px-2 py-0.2 rounded">
                   {selectedQuarter}
                 </span>
+                <DataClassificationBadge
+                  classification={selectedQuarter > '2026Q2' ? 'NOWCAST_PREDICTION' : 'OFFICIAL_OBSERVED'}
+                  quarter={selectedQuarter}
+                  sourceText="BIS CBS Table B / IMF IFS 储备统计"
+                  methodText="Greenspan-Guidotti 外债转期覆盖率"
+                />
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-[11px] text-slate-400 mt-0.5">
                 依据 BIS 综合银行统计 (CBS) 穿透监测 1 年内短期债务、离岸同业借贷与格林斯潘-古多蒂 (Greenspan-Guidotti) 储备覆盖度
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* KPI 1: Short Term Debt Total */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 min-w-[130px]">
-              <div className="text-[10px] text-slate-400 uppercase font-mono">全球短期跨国债务</div>
-              <div className="text-base font-bold text-rose-400 font-mono">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 min-w-[120px]">
+              <div className="text-[10px] text-slate-400 uppercase font-mono">全球短期债务</div>
+              <div className="text-sm font-bold text-rose-400 font-mono">
                 ${(aggregateStats.totalSt / 1000).toFixed(2)}T
-                <span className="text-[11px] text-slate-500 font-normal ml-1">({aggregateStats.stShareAvg}%)</span>
+                <span className="text-[10px] text-slate-500 font-normal ml-1">({aggregateStats.stShareAvg}%)</span>
               </div>
             </div>
 
             {/* KPI 2: Hazard Jurisdictions */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 min-w-[140px]">
-              <div className="text-[10px] text-slate-400 uppercase font-mono">古多蒂赤字红线国家</div>
-              <div className="text-base font-bold text-rose-500 font-mono flex items-center gap-1.5">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 min-w-[125px]">
+              <div className="text-[10px] text-slate-400 uppercase font-mono">古多蒂赤字红线</div>
+              <div className="text-sm font-bold text-rose-500 font-mono flex items-center gap-1">
                 <span>{aggregateStats.deficitCount} 个经济体</span>
-                <AlertTriangle className="w-4 h-4 text-rose-400 animate-pulse" />
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
               </div>
             </div>
 
             {/* KPI 3: Vulnerable */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 min-w-[130px]">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 min-w-[115px]">
               <div className="text-[10px] text-slate-400 uppercase font-mono">转期预警关注</div>
-              <div className="text-base font-bold text-amber-400 font-mono">
+              <div className="text-sm font-bold text-amber-400 font-mono">
                 {aggregateStats.vulnerableCount} 个经济体
               </div>
             </div>

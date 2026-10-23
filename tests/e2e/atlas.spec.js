@@ -192,4 +192,41 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(page.getByText('官方观测').first()).toBeVisible();
   });
 
+  test('5. Mobile Viewport (390x844 iPhone 14) Interaction, Drawer & Touch Target Check', async ({ page }) => {
+    // Set viewport to mobile standard 390x844 (iPhone 14)
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    // Check no horizontal scrollbar on body
+    const hasHorizontalOverflow = await page.evaluate(() => {
+      return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+    });
+    expect(hasHorizontalOverflow, 'Mobile viewport must NOT have horizontal scroll overflow').toBe(false);
+
+    // Verify Mobile Filter Drawer Trigger is visible and has accessible touch target
+    const filterBtn = page.getByTestId('open-mobile-filter-drawer');
+    await expect(filterBtn).toBeVisible();
+    const btnBox = await filterBtn.boundingBox();
+    expect(btnBox.height, 'Filter button height must be >= 36px').toBeGreaterThanOrEqual(36);
+
+    // Click to open drawer
+    await filterBtn.click();
+    const drawer = page.getByTestId('mobile-filter-drawer');
+    await expect(drawer).toBeVisible();
+
+    // Verify drawer close button has >= 44px touch target
+    const closeBtn = page.getByTestId('close-mobile-filter-drawer');
+    await expect(closeBtn).toBeVisible();
+    const closeBox = await closeBtn.boundingBox();
+    expect(closeBox.width, 'Close button touch width must be >= 44px').toBeGreaterThanOrEqual(44);
+    expect(closeBox.height, 'Close button touch height must be >= 44px').toBeGreaterThanOrEqual(44);
+
+    // Close drawer
+    await closeBtn.click();
+    await expect(drawer).not.toBeVisible();
+  });
+
 });

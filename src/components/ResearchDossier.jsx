@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { 
   FileText, Download, Code2, BookOpen, CheckCircle2, 
   ExternalLink, Copy, Check, ShieldCheck, Database,
-  Table, Play, Wifi, RefreshCw, AlertCircle
+  Table, Play, Wifi, RefreshCw, AlertCircle, Sparkles
 } from 'lucide-react';
+import { getDataClassification } from '../utils/dataClassification';
 
 export default function ResearchDossier({
   dataset,
@@ -29,8 +30,13 @@ export default function ResearchDossier({
       const wb = XLSX.utils.book_new();
 
       // Sheet 0: Methodology, Units & Mathematical Conservation Notes
+      const classification = getDataClassification(selectedQuarter);
       const metaRows = [
         { 'Attribute': 'Project Name', 'Specification': 'BIS Global Capital Flow Atlas' },
+        { 'Attribute': 'Target Quarter', 'Specification': selectedQuarter },
+        { 'Attribute': 'Data Classification', 'Specification': classification.label },
+        { 'Attribute': 'Classification Provenance', 'Specification': classification.provenance },
+        { 'Attribute': 'Official Status', 'Specification': classification.isOfficial ? 'VERIFIED_OFFICIAL_BIS_IBS' : 'FORWARD_SCENARIO_PROJECTION' },
         { 'Attribute': 'Monetary Unit', 'Specification': 'Billion US Dollars (USD Bn) — $1,000 Bn = $1.00 Trillion USD' },
         { 'Attribute': 'Core Accounting Metric', 'Specification': 'Amounts Outstanding / Positions (期末未偿存量), strictly distinguished from Net Flows (期间变动)' },
         { 'Attribute': 'Official Verified Quarters', 'Specification': '2018Q1 – 2026Q1 (BIS SDMX WS_LBS_D_PUB Table A6.2 Verified)' },
@@ -140,8 +146,8 @@ export default function ResearchDossier({
       const wsSwaps = XLSX.utils.json_to_sheet(swapRows);
       XLSX.utils.book_append_sheet(wb, wsSwaps, '5_Central_Bank_Swaps');
 
-      // Generate download
-      XLSX.writeFile(wb, `BIS_Global_Capital_Flow_Atlas_${selectedQuarter}.xlsx`);
+      // Generate download with classification label
+      XLSX.writeFile(wb, `BIS_Global_Capital_Flow_Atlas_${selectedQuarter}_[${classification.label}].xlsx`);
     } catch (err) {
       console.error('Failed to export xlsx:', err);
     } finally {
