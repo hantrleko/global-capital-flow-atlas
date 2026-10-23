@@ -89,12 +89,30 @@ export default function EarlyWarningSystem({
   const amberCount = countryEwsList.filter(c => c.ews.traffic_light === 'AMBER').length;
   const greenCount = countryEwsList.filter(c => c.ews.traffic_light === 'GREEN').length;
 
-  // Initialize or update ECharts quadrant scatter chart
+  // Initialize or update ECharts quadrant scatter chart with full unmount/remount lifecycle management
   useEffect(() => {
     if (activeSubTab !== 'quadrant' || !quadrantChartRef.current) return;
 
+    let resizeHandler = null;
     try {
+      // 1. Detect if existing instance is attached to a detached/stale DOM node
+      if (chartInstance.current) {
+        try {
+          if (chartInstance.current.isDisposed() || chartInstance.current.getDom() !== quadrantChartRef.current) {
+            chartInstance.current.dispose();
+            chartInstance.current = null;
+          }
+        } catch {
+          chartInstance.current = null;
+        }
+      }
+
+      // 2. Ensure container DOM has no lingering or zombie ECharts instances
       if (!chartInstance.current) {
+        const existingInstance = echarts.getInstanceByDom(quadrantChartRef.current);
+        if (existingInstance) {
+          existingInstance.dispose();
+        }
         chartInstance.current = echarts.init(quadrantChartRef.current, 'dark', { renderer: 'canvas' });
       }
 
@@ -186,24 +204,51 @@ export default function EarlyWarningSystem({
         ]
       };
 
-      chartInstance.current.setOption(option, { notMerge: false, lazyUpdate: true });
+      chartInstance.current.setOption(option, { notMerge: true, lazyUpdate: true });
 
-      const handleResize = () => chartInstance.current?.resize();
-      window.addEventListener('resize', handleResize);
-      return () => {
-        window.removeEventListener('resize', handleResize);
-      };
+      resizeHandler = () => chartInstance.current?.resize();
+      window.addEventListener('resize', resizeHandler);
     } catch (err) {
       console.error('Failed to render EWS scatter chart:', err);
     }
+
+    return () => {
+      if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+      if (chartInstance.current) {
+        try {
+          chartInstance.current.dispose();
+        } catch {
+          // ignore
+        }
+        chartInstance.current = null;
+      }
+    };
   }, [activeSubTab, countryEwsList]);
 
   // 36-Quarter Risk Heatmap Evolution Chart (2018Q1 - 2026Q4)
   useEffect(() => {
     if (activeSubTab !== 'history_heatmap' || !heatmapChartRef.current) return;
 
+    let resizeHandler = null;
     try {
+      // 1. Detect if existing instance is attached to a detached/stale DOM node
+      if (heatmapChartInstance.current) {
+        try {
+          if (heatmapChartInstance.current.isDisposed() || heatmapChartInstance.current.getDom() !== heatmapChartRef.current) {
+            heatmapChartInstance.current.dispose();
+            heatmapChartInstance.current = null;
+          }
+        } catch {
+          heatmapChartInstance.current = null;
+        }
+      }
+
+      // 2. Ensure container DOM has no lingering or zombie ECharts instances
       if (!heatmapChartInstance.current) {
+        const existingInstance = echarts.getInstanceByDom(heatmapChartRef.current);
+        if (existingInstance) {
+          existingInstance.dispose();
+        }
         heatmapChartInstance.current = echarts.init(heatmapChartRef.current, 'dark', { renderer: 'canvas' });
         heatmapChartInstance.current.on('click', (params) => {
           if (params.data && params.data.value) {
@@ -304,16 +349,25 @@ export default function EarlyWarningSystem({
         ]
       };
 
-      heatmapChartInstance.current.setOption(option, { notMerge: false, lazyUpdate: true });
+      heatmapChartInstance.current.setOption(option, { notMerge: true, lazyUpdate: true });
 
-      const handleResize = () => heatmapChartInstance.current?.resize();
-      window.addEventListener('resize', handleResize);
-      return () => {
-        window.removeEventListener('resize', handleResize);
-      };
+      resizeHandler = () => heatmapChartInstance.current?.resize();
+      window.addEventListener('resize', resizeHandler);
     } catch (err) {
       console.error('Failed to render EWS heatmap chart:', err);
     }
+
+    return () => {
+      if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+      if (heatmapChartInstance.current) {
+        try {
+          heatmapChartInstance.current.dispose();
+        } catch {
+          // ignore
+        }
+        heatmapChartInstance.current = null;
+      }
+    };
   }, [activeSubTab, countries, cbsRisk, dataset, selectedQuarter, onSelectQuarter, onSelectCountry]);
 
   return (

@@ -119,6 +119,19 @@ export default function App() {
     }
   }, [selectedQuarter, activeTab, selectedCountry, selectedCurrency]);
 
+  const handleSelectTab = (tabId) => {
+    setActiveTab(tabId);
+    // Smoothly reposition scroll to main analysis viewport so stale scroll coordinates do not obscure view
+    requestAnimationFrame(() => {
+      const mainViewport = document.getElementById('main-viewport') || document.querySelector('main');
+      if (mainViewport) {
+        mainViewport.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  };
+
   const handleCopyDeepLink = () => {
     soundFx.playChime();
     const currentUrl = window.location.href;
@@ -306,7 +319,7 @@ export default function App() {
         onChangePlaySpeed={setPlaySpeed}
         globalMacroMap={globalMacroMap}
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         countries={bisDataset.countries}
         onSelectCountry={(code) => setSelectedCountry(code)}
         theme={theme}
@@ -341,7 +354,11 @@ export default function App() {
       />
 
       {/* Main Analysis Viewport */}
-      <main className="flex-1 max-w-[1780px] w-full mx-auto p-4 md:p-6 space-y-6">
+      <main
+        id="main-viewport"
+        tabIndex={-1}
+        className="flex-1 max-w-[1780px] w-full mx-auto p-4 md:p-6 space-y-6 scroll-mt-20 outline-none"
+      >
         {/* Executive Macro Intelligence Briefing: 发生了什么 · 哪里变了 · 依据是什么 */}
         <MacroIntelligenceBriefing
           dataset={activeDataset}
@@ -502,7 +519,7 @@ export default function App() {
               selectedQuarter={selectedQuarter}
               onSelectQuarter={(q) => setSelectedQuarter(q)}
               onSelectCountry={(code) => setSelectedCountry(code)}
-              onSelectTab={setActiveTab}
+              onSelectTab={handleSelectTab}
               onSetContagionConfig={setContagionConfig}
             />
           )}
@@ -554,7 +571,7 @@ export default function App() {
         isOpen={isIntroOpen}
         onClose={() => setIsIntroOpen(false)}
         onExploreFeature={(tab) => {
-          setActiveTab(tab);
+          handleSelectTab(tab);
           setIsIntroOpen(false);
         }}
       />
@@ -575,7 +592,7 @@ export default function App() {
         selectedQuarter={selectedQuarter}
         onApplyShock={(shock) => {
           setContagionConfig(shock);
-          setActiveTab('contagion');
+          handleSelectTab('contagion');
         }}
       />
 
@@ -612,7 +629,7 @@ export default function App() {
         dataset={bisDataset}
         selectedQuarter={selectedQuarter}
         onSelectQuarter={setSelectedQuarter}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         onSelectCountry={setSelectedCountry}
         activeTab={activeTab}
       />
@@ -629,7 +646,7 @@ export default function App() {
           setIsPlaying(false);
         }}
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         onSelectCountry={(code) => setSelectedCountry(code)}
         theme={theme}
         onToggleTheme={toggleTheme}

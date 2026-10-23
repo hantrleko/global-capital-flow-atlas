@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Globe, ShieldAlert, 
   DollarSign, Activity, Database, Calendar, TrendingUp, Layers,
@@ -10,62 +10,9 @@ import {
 import soundFx from '../utils/soundEffects';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
 import { CURRENCY_LIST, formatValueInCurrency } from '../utils/currencyConversion';
+import { NAVIGATION_DOMAINS, getTabTaskMeta } from '../utils/navigationConfig';
 
-export const NAVIGATION_DOMAINS = [
-  {
-    id: 'flows',
-    title: '🌐 资本网络与流向',
-    short: '流向拓扑',
-    tabs: [
-      { id: 'map', label: '信贷流向地图', desc: 'Bilateral Claims & Positions' },
-      { id: 'network', label: '金融网络拓扑', desc: 'Centrality & Core-Periphery' },
-      { id: 'routing', label: '资本路由矩阵', desc: 'Sankey Routing & NxN Heatmap' }
-    ]
-  },
-  {
-    id: 'vulnerability',
-    title: '⚡ 早期预警与传染',
-    short: '系统性风险',
-    tabs: [
-      { id: 'ews', label: '巴塞尔早期预警 (EWS)', desc: 'Credit Gap & CCyB Buffer' },
-      { id: 'gsib', label: 'G-SIB 顶级银行透镜', desc: 'Top 30 Systemic Banks' },
-      { id: 'contagion', label: '银行级联传染模拟', desc: 'Eisenberg-Noe Contagion' },
-      { id: 'shadow', label: '影子银行与非银透视', desc: 'Offshore NBFIs & FX Swaps' },
-      { id: 'maturity', label: '期限结构与转期挤兑', desc: 'CBS Residual Maturity' }
-    ]
-  },
-  {
-    id: 'currency',
-    title: '💵 美元与货币格局',
-    short: '货币格局',
-    tabs: [
-      { id: 'usd', label: '美元融资与部门信贷', desc: 'Global Dollar Credit' },
-      { id: 'currency', label: '多极货币竞争与错配', desc: 'Currency Hegemony & CMI' },
-      { id: 'swaps', label: '央行互换线与基差', desc: 'Central Bank Swaps & Basis' },
-      { id: 'fragmentation', label: '地缘金融碎片与阵营', desc: 'Geopolitical Blocs' }
-    ]
-  },
-  {
-    id: 'sovereign',
-    title: '🛡️ 主权风险与实证',
-    short: '主权与模型',
-    tabs: [
-      { id: 'risk', label: '国家风险与外债敞口', desc: 'CBS Exposure & Stress Testing' },
-      { id: 'compare', label: '多国宏观雷达对照', desc: 'Multi-Jurisdiction Benchmark' },
-      { id: 'gravity', label: '实证引力模型探索', desc: 'Empirical Banking Gravity' }
-    ]
-  },
-  {
-    id: 'intelligence',
-    title: '📑 研报与历史复盘',
-    short: '历史研报',
-    tabs: [
-      { id: 'comparison', label: '跨周期宏观对比', desc: 'Macro Regime Diff Engine' },
-      { id: 'playbook', label: '历史风暴情景剧场', desc: 'Crisis Case Studies & Swaps' },
-      { id: 'dossier', label: '宏观研报与数据导出', desc: 'Research Memo & BIS SDMX' }
-    ]
-  }
-];
+export { NAVIGATION_DOMAINS, getTabTaskMeta };
 
 export default function Header({
   quarters,
@@ -115,6 +62,7 @@ export default function Header({
   }, [activeTab]);
 
   const currentDisplayDomain = NAVIGATION_DOMAINS.find(d => d.id === selectedDomainId) || activeDomain;
+  const activeTabMeta = useMemo(() => getTabTaskMeta(activeTab), [activeTab]);
 
   // Search filter
   const searchResults = searchQuery.trim() === '' ? [] : countries.filter(c => 
@@ -141,7 +89,8 @@ export default function Header({
   };
 
   return (
-    <header className="border-b border-slate-800/80 bg-slate-950/85 sticky top-0 z-30 backdrop-blur-xl shadow-2xl">
+    <>
+      <header className="border-b border-slate-800/80 bg-slate-950/95 shadow-md">
       {/* Top Bar: Title & Status */}
       <div className="max-w-[1780px] w-full mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
         {/* Logo & Platform Title */}
@@ -522,160 +471,6 @@ export default function Header({
         </div>
       </div>
 
-      {/* Structured Domain Navigation Bar */}
-      <div className="border-t border-slate-800/80 bg-slate-900/60 px-4 py-2 space-y-1.5 shadow-md">
-        <div className="max-w-[1780px] w-full mx-auto">
-          {/* Quick Task Navigation Bar (3 Core Analysis Paths) */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-800/60">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
-                <Compass className="w-3.5 h-3.5 text-sky-400" /> 分析主路径:
-              </span>
-              <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-xs">
-                <button
-                  onClick={() => {
-                    soundFx.playTick();
-                    onSelectTab('map');
-                  }}
-                  className={`px-3 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    activeTab === 'map' || activeTab === 'network'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="全景透视：全球双边跨国信贷网络与动脉走廊"
-                >
-                  <span>1. 看全局 (Global Atlas)</span>
-                </button>
-                <button
-                  onClick={() => {
-                    soundFx.playTick();
-                    onSelectTab('compare');
-                  }}
-                  className={`px-3 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    activeTab === 'compare' || activeTab === 'risk' || activeTab === 'comparison'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="横向/纵向对比：多国主权风险雷达与跨周期宏观对比"
-                >
-                  <span>2. 比差异 (Benchmark & Regimes)</span>
-                </button>
-                <button
-                  onClick={() => {
-                    soundFx.playTick();
-                    onSelectTab('contagion');
-                  }}
-                  className={`px-3 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    activeTab === 'contagion'
-                      ? 'bg-rose-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="反事实压力测试：Eisenberg-Noe 级联清算与流动性工作台"
-                >
-                  <span>3. 测压力 (Stress Workbench)</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="text-[11px] text-slate-400 font-mono hidden md:flex items-center gap-2">
-              <span className="text-slate-500">当前任务:</span>
-              <strong className="text-slate-200">
-                {activeTab === 'contagion' ? '压力测试工作台' : (activeTab === 'compare' || activeTab === 'risk' || activeTab === 'comparison' ? '跨国与跨期对照' : '全球资本流向全景')}
-              </strong>
-            </div>
-          </div>
-
-          {/* Tier 1: 5 Intelligence Domains & Historical Regimes */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/60 py-1.5">
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
-              <span className="text-[11px] font-mono text-slate-500 uppercase tracking-wider hidden sm:inline mr-1">
-                分析域:
-              </span>
-              {NAVIGATION_DOMAINS.map(dom => {
-                const isDomainActive = dom.id === currentDisplayDomain.id;
-                const hasCurrentTab = dom.tabs.some(t => t.id === activeTab);
-                return (
-                  <button
-                    key={dom.id}
-                    onClick={() => {
-                      soundFx.playTick();
-                      setSelectedDomainId(dom.id);
-                      if (!hasCurrentTab) {
-                        onSelectTab(dom.tabs[0].id);
-                      }
-                    }}
-                    className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      isDomainActive
-                        ? 'bg-blue-600/25 text-sky-300 border border-blue-500/50 shadow-[0_0_12px_rgba(59,130,246,0.3)]'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
-                    }`}
-                  >
-                    <span>{dom.title}</span>
-                    {hasCurrentTab && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_6px_#38bdf8] animate-pulse" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Quick jump to historical regimes */}
-            <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-400 shrink-0">
-              <span className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
-                <Calendar className="w-3 h-3 text-sky-400" /> 历史风暴情景:
-              </span>
-              {HISTORICAL_REGIMES.map(reg => (
-                <button
-                  key={reg.quarter}
-                  onClick={() => {
-                    soundFx.playTick();
-                    onSelectQuarter(reg.quarter);
-                  }}
-                  className={`px-2 py-0.5 rounded text-[11px] font-mono transition-all border cursor-pointer ${
-                    selectedQuarter === reg.quarter
-                      ? 'bg-blue-500/25 text-blue-300 border-blue-400/60 font-bold shadow-[0_0_8px_rgba(59,130,246,0.3)]'
-                      : 'bg-slate-800/60 text-slate-400 border-slate-700/60 hover:text-white hover:bg-slate-700'
-                  }`}
-                  title={reg.description}
-                >
-                  {reg.quarter}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tier 2: Specific Functional Tabs of Active Domain */}
-          <div className="flex items-center gap-2 overflow-x-auto pt-1">
-            <span className="text-[11px] font-mono text-sky-400/70 hidden sm:inline">
-              ↳ 功能模块:
-            </span>
-            <div className="flex items-center gap-1.5 overflow-x-auto">
-              {currentDisplayDomain.tabs.map(tab => {
-                const isTabActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      soundFx.playTick();
-                      onSelectTab(tab.id);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      isTabActive
-                        ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.45)] font-semibold scale-[1.02]'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800/80 font-medium'
-                    }`}
-                  >
-                    <span>{tab.label}</span>
-                    <span className="text-[10px] hidden xl:inline opacity-70 font-mono">
-                      ({tab.desc})
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Interactive Timeline & Playback Bar */}
       <div className="bg-slate-950/95 px-4 py-2.5 border-t border-slate-800/80 shadow-inner">
@@ -802,5 +597,162 @@ export default function Header({
         </div>
       </div>
     </header>
+
+    {/* Sleek, Compact Sticky Navigation Bar (Height ~60px, NEVER blocks content) */}
+    <nav aria-label="分析工作区导航" className="border-b border-slate-800/90 bg-slate-950/95 sticky top-0 z-30 backdrop-blur-xl px-3 md:px-4 py-1.5 shadow-xl">
+      <div className="max-w-[1780px] w-full mx-auto space-y-1.5">
+        {/* Row 1: 3 Core Tasks + 5 Domains + Dynamic Task Display */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-slate-800/60">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-mono text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+              <Compass className="w-3.5 h-3.5 text-sky-400" /> 分析主路径:
+            </span>
+            <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-xs">
+              <button
+                onClick={() => {
+                  soundFx.playTick();
+                  onSelectTab('map');
+                }}
+                className={`px-2.5 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTabMeta.coreTask === 'overview'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="全景透视：全球双边跨国信贷网络与动脉走廊"
+              >
+                <span>1. 看全局</span>
+              </button>
+              <button
+                onClick={() => {
+                  soundFx.playTick();
+                  onSelectTab('compare');
+                }}
+                className={`px-2.5 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTabMeta.coreTask === 'compare'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="横向/纵向对比：多国主权风险雷达与跨周期宏观对比"
+              >
+                <span>2. 比差异</span>
+              </button>
+              <button
+                onClick={() => {
+                  soundFx.playTick();
+                  onSelectTab('contagion');
+                }}
+                className={`px-2.5 py-1 rounded-md font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTabMeta.coreTask === 'stress'
+                    ? 'bg-rose-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="反事实压力测试：Eisenberg-Noe 级联清算与流动性工作台"
+              >
+                <span>3. 测压力</span>
+              </button>
+            </div>
+
+            {/* 5 Domains selector pills */}
+            <div className="hidden sm:flex items-center gap-1 ml-2 border-l border-slate-800/80 pl-2">
+              <span className="text-[11px] font-mono text-slate-500 uppercase tracking-wider hidden md:inline mr-1">
+                领域:
+              </span>
+              {NAVIGATION_DOMAINS.map(dom => {
+                const isDomainActive = dom.id === currentDisplayDomain.id;
+                const hasCurrentTab = dom.tabs.some(t => t.id === activeTab);
+                return (
+                  <button
+                    key={dom.id}
+                    onClick={() => {
+                      soundFx.playTick();
+                      setSelectedDomainId(dom.id);
+                      if (!hasCurrentTab) {
+                        onSelectTab(dom.tabs[0].id);
+                      }
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+                      isDomainActive
+                        ? 'bg-blue-600/25 text-sky-300 border border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
+                    }`}
+                  >
+                    <span>{dom.title}</span>
+                    {hasCurrentTab && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_6px_#38bdf8] animate-pulse" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Dynamic Current Task Name derived from canonical module configuration */}
+          <div className="text-[11px] text-slate-400 font-mono hidden md:flex items-center gap-1.5 shrink-0">
+            <span className="text-slate-500">当前任务:</span>
+            <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-sky-300 font-semibold flex items-center gap-1 shadow-sm">
+              <span className="text-slate-400 font-normal">{activeTabMeta.domainShort} ·</span>
+              <span>{activeTabMeta.label}</span>
+            </span>
+            <span className="text-[10px] text-slate-500 hidden xl:inline font-sans">({activeTabMeta.desc})</span>
+          </div>
+        </div>
+
+        {/* Row 2: Subtabs of active domain + Historical storm regime jumpers */}
+        <div className="flex items-center justify-between gap-2 overflow-x-auto">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+            <span className="text-[11px] font-mono text-sky-400/80 hidden sm:inline mr-0.5 shrink-0">
+              ↳ 模块:
+            </span>
+            {currentDisplayDomain.tabs.map(tab => {
+              const isTabActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    soundFx.playTick();
+                    onSelectTab(tab.id);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+                    isTabActive
+                      ? 'bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)] font-semibold'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/80 font-medium'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span className="text-[10px] hidden 2xl:inline opacity-70 font-mono">
+                    ({tab.desc})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick jump to historical regimes */}
+          <div className="hidden xl:flex items-center gap-1.5 text-xs text-slate-400 shrink-0">
+            <span className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
+              <Calendar className="w-3 h-3 text-sky-400" /> 历史情景:
+            </span>
+            {HISTORICAL_REGIMES.map(reg => (
+              <button
+                key={reg.quarter}
+                onClick={() => {
+                  soundFx.playTick();
+                  onSelectQuarter(reg.quarter);
+                }}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-all border cursor-pointer ${
+                  selectedQuarter === reg.quarter
+                    ? 'bg-blue-500/25 text-blue-300 border-blue-400/60 font-bold shadow-[0_0_6px_rgba(59,130,246,0.3)]'
+                    : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+                }`}
+                title={reg.description}
+              >
+                {reg.quarter}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </nav>
+  </>
   );
 }

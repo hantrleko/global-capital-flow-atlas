@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 jobs:
-  update-and-deploy:
+  validate-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -25,41 +25,50 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Run BIS Data Calibration Pipeline
-        run: |
-          python scripts/fetch_bis_data.py
-
-      - name: Commit Updated Dataset if Changed
-        id: git_check
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [[ -n $(git status -s src/data/bis_atlas_dataset.json) ]]; then
-            git add src/data/bis_atlas_dataset.json
-            git commit -m "chore(data): automate BIS SDMX quarterly data update"
-            git push origin main
-            echo "updated=true" >> $GITHUB_OUTPUT
-          else
-            echo "No data changes detected."
-            echo "updated=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Install Node Dependencies
         run: npm ci
 
-      - name: Run Integrity Tests
+      - name: Run BIS Data Calibration Pipeline (Generate Candidate Dataset)
+        run: |
+          python scripts/fetch_bis_data.py
+
+      - name: Inspect Candidate Dataset Status
+        id: candidate_check
+        run: |
+          if [[ -n $(git status -s src/data/bis_atlas_dataset.json) ]]; then
+            echo "Candidate dataset changes detected. Pre-commit validation required."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No dataset changes detected."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Mandatory Pre-commit Gate: candidate data MUST pass all clearing engine and regression tests
+      - name: Run Integrity Tests on Candidate Dataset
         run: npm test
 
+      # Mandatory Build Gate: verify production compilation with candidate data
       - name: Build Production Assets
         run: npm run build
 
+      # Commit & Push ONLY after tests and build have completely succeeded
+      - name: Commit & Push Verified Dataset to Main
+        if: steps.candidate_check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/bis_atlas_dataset.json
+          git commit -m "chore(data): automate verified BIS SDMX quarterly data update [CI verified]"
+          git push origin main
+
       - name: Deploy to GitHub Pages
+        if: steps.candidate_check.outputs.changed == 'true'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

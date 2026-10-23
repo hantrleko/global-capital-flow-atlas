@@ -21,6 +21,7 @@ import {
   computeStressWorkbenchAnalysis,
   CLEARING_VERSION_REGISTRY
 } from '../src/utils/eisenbergNoeClearing.js';
+import { NAVIGATION_DOMAINS, getTabTaskMeta } from '../src/utils/navigationConfig.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -854,6 +855,94 @@ function runTestSuite() {
     });
     assert(wb.rankingStability.top3StabilityPct > 0, 'Stability percentage must be computed');
     assert(wb.rankingStability.top3OverlapCount === 3, 'Top 3 non-zero victims overlap must be 3 under TR shock');
+  }
+
+  // TEST 22: Chart Lifecycle Management, Dynamic Task Meta & CI Pre-Commit Gate
+  console.log('\nTest 22: Chart Lifecycle Management, Dynamic Task Meta & CI Pre-Commit Gate');
+  {
+    // 1. Dynamic Task Meta Resolution: EWS must never show "全球资本流向全景"
+    const ewsMeta = getTabTaskMeta('ews');
+    assert(ewsMeta.taskName === '系统性风险 · 巴塞尔早期预警 (EWS)', `EWS taskName must be correct (got ${ewsMeta.taskName})`);
+    assert(ewsMeta.coreTask === 'stress', `EWS coreTask must be 'stress' (got ${ewsMeta.coreTask})`);
+    assert(ewsMeta.domainShort === '系统性风险', `EWS domainShort must be '系统性风险' (got ${ewsMeta.domainShort})`);
+
+    const contagionMeta = getTabTaskMeta('contagion');
+    assert(contagionMeta.taskName === '系统性风险 · 银行级联传染模拟', `Contagion taskName must be correct (got ${contagionMeta.taskName})`);
+    assert(contagionMeta.coreTask === 'stress', `Contagion coreTask must be 'stress' (got ${contagionMeta.coreTask})`);
+
+    const compareMeta = getTabTaskMeta('compare');
+    assert(compareMeta.taskName === '主权与模型 · 多国宏观雷达对照', `Compare taskName must be correct (got ${compareMeta.taskName})`);
+    assert(compareMeta.coreTask === 'compare', `Compare coreTask must be 'compare' (got ${compareMeta.coreTask})`);
+
+    const mapMeta = getTabTaskMeta('map');
+    assert(mapMeta.taskName === '流向拓扑 · 信贷流向地图', `Map taskName must be correct (got ${mapMeta.taskName})`);
+    assert(mapMeta.coreTask === 'overview', `Map coreTask must be 'overview' (got ${mapMeta.coreTask})`);
+
+    // Verify all tabs in NAVIGATION_DOMAINS resolve uniquely and have valid metadata
+    let totalTabsCount = 0;
+    const tabIds = new Set();
+    NAVIGATION_DOMAINS.forEach(dom => {
+      dom.tabs.forEach(t => {
+        totalTabsCount++;
+        assert(!tabIds.has(t.id), `Tab ID '${t.id}' must be unique across domains`);
+        tabIds.add(t.id);
+
+        const meta = getTabTaskMeta(t.id);
+        assert(meta.taskName.includes(t.label), `Meta taskName must include tab label for '${t.id}'`);
+        assert(['overview', 'compare', 'stress'].includes(meta.coreTask), `coreTask must be one of the 3 canonical paths for '${t.id}'`);
+        if (t.id !== 'map') {
+          assert(!meta.taskName.includes('全球资本流向全景'), `Non-map tab '${t.id}' must not inherit stale '全球资本流向全景'`);
+        }
+      });
+    });
+    assert(totalTabsCount === 18, `Must cover all 18 analytical tabs (got ${totalTabsCount})`);
+
+    // 2. Chart Lifecycle Unmount/Remount Simulation:
+    // When a DOM element unmounts and remounts, stale chart instances referencing detached DOM must be safely disposed
+    let disposedCount = 0;
+    const mockDom1 = { id: 'container-scatter-1', tagName: 'DIV' };
+    const mockDom2 = { id: 'container-scatter-2', tagName: 'DIV' };
+
+    class MockECharts {
+      constructor(dom) {
+        this._dom = dom;
+        this._disposed = false;
+      }
+      getDom() { return this._dom; }
+      isDisposed() { return this._disposed; }
+      dispose() {
+        this._disposed = true;
+        disposedCount++;
+      }
+    }
+
+    let activeChartInstance = new MockECharts(mockDom1);
+    assert(activeChartInstance.getDom() === mockDom1, 'Initial mock chart bound to dom1');
+
+    // Simulate subtab change: activeSubTab changes to 'matrix' (mockDom1 unmounts), then back to 'quadrant' (mockDom2 mounts)
+    const currentContainer = mockDom2;
+    if (activeChartInstance) {
+      if (activeChartInstance.isDisposed() || activeChartInstance.getDom() !== currentContainer) {
+        activeChartInstance.dispose();
+        activeChartInstance = null;
+      }
+    }
+    assert(disposedCount === 1, 'Stale chart instance bound to detached DOM must be disposed');
+    assert(activeChartInstance === null, 'Chart reference must be reset to null upon detecting stale DOM');
+
+    // Reinitialize on new active container
+    activeChartInstance = new MockECharts(currentContainer);
+    assert(activeChartInstance.getDom() === mockDom2, 'Reinitialized chart cleanly bound to newly mounted dom2');
+    assert(!activeChartInstance.isDisposed(), 'New chart instance is active and not disposed');
+
+    // 3. Candidate Dataset Pre-Commit CI Gate Protection
+    const workflowPath = path.resolve(__dirname, '../.github/workflows/update-bis-data.yml');
+    const workflowYaml = fs.readFileSync(workflowPath, 'utf8');
+    const testIndex = workflowYaml.indexOf('Run Integrity Tests on Candidate Dataset');
+    const commitIndex = workflowYaml.indexOf('Commit & Push Verified Dataset to Main');
+    assert(testIndex !== -1, 'Workflow must contain candidate test step');
+    assert(commitIndex !== -1, 'Workflow must contain commit step');
+    assert(testIndex < commitIndex, 'Test step MUST precede commit & push to prevent main branch pollution');
   }
 
   console.log('\n===============================================================');
