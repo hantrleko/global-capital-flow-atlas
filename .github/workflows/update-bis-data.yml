@@ -57,6 +57,9 @@ jobs:
       - name: Build Production Assets
         run: npm run build
 
+      - name: Run Real Browser Headless E2E Regression Suite
+        run: npm run test:e2e
+
       # Commit & Push ONLY after tests and build have completely succeeded
       - name: Commit & Push Verified Dataset to Main
         if: steps.candidate_check.outputs.changed == 'true'

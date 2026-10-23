@@ -29,3 +29,6 @@ jobs:
 
       - name: Verify Production Vite Build
         run: npm run build
+
+      - name: Run Real Browser Headless E2E Regression Suite
+        run: npm run test:e2e

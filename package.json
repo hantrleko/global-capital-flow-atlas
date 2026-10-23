@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node tests/clearing_engine.test.js",
-    "predeploy": "npm run test && npm run build",
+    "test:e2e": "node tests/browser_e2e.test.js",
+    "predeploy": "npm run test && npm run build && npm run test:e2e",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {

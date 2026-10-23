@@ -5,7 +5,7 @@ import {
   Search, Coins, X, Sun, Moon, ArrowRightLeft, Clock, Sparkles,
   Zap, Radio, Command, HelpCircle, Split, Volume2, VolumeX, Bot,
   BookOpen, FileText, Sliders, Code, History, UploadCloud, Building2,
-  Compass
+  Compass, ChevronRight, ChevronLeft
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
@@ -697,9 +697,9 @@ export default function Header({
           </div>
         </div>
 
-        {/* Row 2: Subtabs of active domain + Historical storm regime jumpers */}
-        <div className="flex items-center justify-between gap-2 overflow-x-auto">
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+        {/* Row 2: Full-width Subtabs of active domain with horizontal scroll affordance */}
+        <div className="w-full flex items-center justify-between gap-2 pt-0.5">
+          <div className="w-full flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-0.5">
             <span className="text-[11px] font-mono text-sky-400/80 hidden sm:inline mr-0.5 shrink-0">
               ↳ 模块:
             </span>
@@ -712,11 +712,12 @@ export default function Header({
                     soundFx.playTick();
                     onSelectTab(tab.id);
                   }}
-                  className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+                  className={`px-3 py-1 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
                     isTabActive
-                      ? 'bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)] font-semibold'
+                      ? 'bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)] font-semibold scale-[1.01]'
                       : 'text-slate-300 hover:text-white hover:bg-slate-800/80 font-medium'
                   }`}
+                  title={`${tab.label} · ${tab.desc}`}
                 >
                   <span>{tab.label}</span>
                   <span className="text-[10px] hidden 2xl:inline opacity-70 font-mono">
@@ -727,8 +728,8 @@ export default function Header({
             })}
           </div>
 
-          {/* Quick jump to historical regimes */}
-          <div className="hidden xl:flex items-center gap-1.5 text-xs text-slate-400 shrink-0">
+          {/* Quick jump to historical regimes on ultra-wide screens */}
+          <div className="hidden 2xl:flex items-center gap-1.5 text-xs text-slate-400 shrink-0 border-l border-slate-800/80 pl-2">
             <span className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
               <Calendar className="w-3 h-3 text-sky-400" /> 历史情景:
             </span>
@@ -749,6 +750,11 @@ export default function Header({
                 {reg.quarter}
               </button>
             ))}
+          </div>
+
+          {/* Mobile/Tablet scroll hint if overflowing */}
+          <div className="text-[10px] text-slate-500 font-mono shrink-0 flex items-center gap-0.5 2xl:hidden opacity-80" title="可横向滑动查看更多模块">
+            <ChevronRight className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
           </div>
         </div>
       </div>
