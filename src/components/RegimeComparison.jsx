@@ -5,10 +5,13 @@ import {
   Layers, ArrowUpRight, ArrowDownRight, Compass, Download 
 } from 'lucide-react';
 import { HISTORICAL_REGIMES } from '../utils/macroScenarios';
+import DataClassificationBadge from './DataClassificationBadge';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 
 export default function RegimeComparison({
   dataset,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const quarters = dataset.quarters || [];
   const [quarterA, setQuarterA] = useState('2019Q4'); // Baseline
@@ -161,40 +164,52 @@ export default function RegimeComparison({
   }, [corridorDiffs, quarterA, quarterB, topExpanding, topContracting]);
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-2xl space-y-5">
+    <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 sm:p-3.5 shadow-xl space-y-3">
       {/* Selector & KPI Top Bar */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-4 gap-4">
-        <div>
-          <h2 className="text-sm font-bold text-white flex items-center gap-2">
-            <ArrowRightLeft className="w-4 h-4 text-purple-400" />
-            跨宏观周期信贷差分对比分析 (Macro Regime Diff Engine)
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            对比两个关键宏观节点的国际银行信贷扩张、美元抽离与结构性再平衡
-          </p>
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
+            <ArrowRightLeft className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+                跨宏观周期信贷差分对比分析 (Macro Regime Diff Engine)
+              </h2>
+              <DataClassificationBadge
+                quarter={quarterB}
+                sourceText="BIS 跨期双边矩阵差分比较"
+                methodText="未调整存量变化差分 ΔClaims"
+                onOpenAppendix={onOpenAppendix}
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              对比两个关键宏观节点的国际银行信贷扩张、美元抽离与结构性再平衡
+            </p>
+          </div>
         </div>
 
         {/* Dual Quarter Selectors */}
-        <div className="flex items-center gap-3 bg-slate-900 p-2 rounded-lg border border-slate-800 text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">基准季度 (A):</span>
+        <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-lg border border-slate-800 text-xs">
+          <div className="flex items-center gap-1">
+            <span className="text-slate-400">基准 (A):</span>
             <select
               value={quarterA}
               onChange={(e) => setQuarterA(e.target.value)}
-              className="bg-slate-800 border border-slate-700 text-slate-200 px-2 py-1 rounded font-mono font-bold focus:outline-none focus:border-purple-500"
+              className="bg-slate-800 border border-slate-700 text-slate-200 px-1.5 py-0.5 rounded font-mono font-bold focus:outline-none focus:border-purple-500 text-xs cursor-pointer"
             >
               {quarters.map(q => <option key={q} value={q}>{q}</option>)}
             </select>
           </div>
 
-          <span className="text-slate-500 font-bold">VS</span>
+          <span className="text-slate-500 font-bold">→</span>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">对比季度 (B):</span>
+          <div className="flex items-center gap-1">
+            <span className="text-slate-400">对比 (B):</span>
             <select
               value={quarterB}
               onChange={(e) => setQuarterB(e.target.value)}
-              className="bg-slate-800 border border-slate-700 text-slate-200 px-2 py-1 rounded font-mono font-bold focus:outline-none focus:border-purple-500"
+              className="bg-slate-800 border border-slate-700 text-slate-200 px-1.5 py-0.5 rounded font-mono font-bold focus:outline-none focus:border-purple-500 text-xs cursor-pointer"
             >
               {quarters.map(q => <option key={q} value={q}>{q}</option>)}
             </select>
@@ -249,7 +264,7 @@ export default function RegimeComparison({
             <span>主要双边信贷走廊扩张 / 收缩排行榜</span>
             <span className="text-slate-400 font-mono text-[11px]">{quarterA} → {quarterB}</span>
           </div>
-          <div ref={chartRef} className="w-full h-[360px]" />
+          <div ref={chartRef} className="w-full h-[calc(100vh-420px)] min-h-[300px] max-h-[520px]" />
         </div>
 
         {/* Detailed Breakdown Tables (5 cols) */}

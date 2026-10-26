@@ -3,13 +3,16 @@ import * as echarts from 'echarts';
 import { 
   Split, ShieldCheck, Globe, TrendingUp, AlertTriangle, 
   Layers, ArrowRight, ShieldAlert, Sparkles, Filter, Sliders,
-  HelpCircle, Compass
+  HelpCircle, Compass, Download
 } from 'lucide-react';
+import DataClassificationBadge from './DataClassificationBadge';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 
 export default function FinancialFragmentation({
   dataset,
   selectedQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const [activeSubTab, setActiveSubTab] = useState('evolution'); // 'evolution' | 'blocs' | 'sanctions_sim'
   const [sanctionsSeverity, setSanctionsSeverity] = useState(40); // 0% to 100%
@@ -194,44 +197,46 @@ export default function FinancialFragmentation({
         <div className="absolute -top-12 -right-12 w-64 h-64 bg-rose-600/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <div className="space-y-1.5 max-w-3xl">
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400">
-                <Split className="w-5 h-5" />
+          <div className="space-y-1 max-w-3xl">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="p-1.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400">
+                <Split className="w-4 h-4" />
               </span>
-              <h2 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+              <h2 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
                 全球金融碎片化与地缘阵营追踪 (Financial Fragmentation)
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono border border-rose-400/40">
-                  BIS 2024 Special Focus · {selectedQuarter}
-                </span>
               </h2>
+              <span className="text-[11px] font-mono px-2 py-0.2 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/40">
+                {selectedQuarter}
+              </span>
+              <DataClassificationBadge
+                quarter={selectedQuarter}
+                sourceText="BIS IBS 与 IMF 阵营重构数据"
+                methodText="地缘分裂与友岸外包指数监测"
+                onOpenAppendix={onOpenAppendix}
+              />
             </div>
-            <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
-              根据 BIS 年度经济报告与 IMF 资本流动前沿研究：追踪全球跨境信贷在
-              <strong className="text-white"> G7核心盟国</strong>、
-              <strong className="text-white"> 金砖国家体系 (BRICS+)</strong> 与
-              <strong className="text-white"> 离岸中立管道 (Offshore Conduits)</strong> 之间的结构性分流，量化
-              “友岸外包 (Friend-Shoring)” 对全球流动性割裂的深远影响。
+            <p className="text-xs text-slate-300 leading-relaxed">
+              追踪全球跨境信贷在 G7 盟国、金砖体系 (BRICS+) 与离岸中立中继站 (Offshore Conduits) 之间的结构性分流，量化友岸外包对全球流动性割裂的影响。
             </p>
           </div>
 
           {/* Key KPIs */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-center min-w-[130px]">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 text-center min-w-[110px]">
               <div className="text-[10px] uppercase font-mono text-slate-400">
                 地缘金融分裂指数
               </div>
-              <div className="text-2xl font-bold font-mono text-rose-400 mt-0.5">
+              <div className="text-lg font-bold font-mono text-rose-400 mt-0.5">
                 {currentFrag.fragmentation_index || 0}
                 <span className="text-xs font-normal text-slate-500 ml-1">/ 100</span>
               </div>
             </div>
 
-            <div className="bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-center min-w-[130px]">
+            <div className="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 text-center min-w-[110px]">
               <div className="text-[10px] uppercase font-mono text-slate-400">
                 友岸外包放贷占比
               </div>
-              <div className="text-2xl font-bold font-mono text-sky-400 mt-0.5">
+              <div className="text-lg font-bold font-mono text-sky-400 mt-0.5">
                 {currentFrag.friend_shoring_share_pct || 0}%
               </div>
             </div>
@@ -239,21 +244,21 @@ export default function FinancialFragmentation({
         </div>
 
         {/* View Switcher */}
-        <div className="mt-6 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+        <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-1.5">
             {[
-              { id: 'evolution', label: '📈 碎片化历史演化趋势 (2018-2024)', icon: TrendingUp },
-              { id: 'blocs', label: '🌐 四大地缘金融阵营架构', icon: Globe },
-              { id: 'sanctions_sim', label: '⚡ 制裁切断与脱钩压力测试', icon: Sliders }
+              { id: 'evolution', label: '碎片化演化趋势', icon: TrendingUp },
+              { id: 'blocs', label: '四大阵营架构', icon: Globe },
+              { id: 'sanctions_sim', label: '脱钩压力测试', icon: Sliders }
             ].map(tab => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveSubTab(tab.id)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                     activeSubTab === tab.id
-                      ? 'bg-rose-600 text-white shadow-[0_0_12px_rgba(244,63,94,0.5)]'
+                      ? 'bg-rose-600 text-white shadow-sm'
                       : 'bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700'
                   }`}
                 >
@@ -272,20 +277,20 @@ export default function FinancialFragmentation({
 
       {/* Subtab 1: Evolution Chart */}
       {activeSubTab === 'evolution' && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 shadow-xl space-y-2">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-rose-400" />
+              <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-rose-400" />
                 全球资本流动的分道扬镳：友岸外包激增与跨阵营信贷萎缩
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                2022年后，受地缘政治摩擦、制裁风险与供应链脱钩影响，跨阵营直接信贷明显回撤，离岸枢纽中继作用加速凸显。
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                受地缘摩擦、制裁风险与供应链脱钩影响，跨阵营直接信贷明显回撤，离岸枢纽中继作用加速凸显。
               </p>
             </div>
           </div>
 
-          <div ref={trendChartRef} className="w-full h-[500px]" />
+          <div ref={trendChartRef} className="w-full h-[calc(100vh-380px)] min-h-[320px] max-h-[560px]" />
         </div>
       )}
 

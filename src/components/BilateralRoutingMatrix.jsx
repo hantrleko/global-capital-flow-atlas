@@ -45,33 +45,39 @@ export default function BilateralRoutingMatrix({
     const borrowers = ['非银影子银行 (NBFIs)', '跨国银行同业 (Interbank)', '实体跨国企业 (Corporates)', '新兴市场与主权 (EM Sovereigns)'];
     borrowers.forEach(b => addNode(b, '#10b981', 2));
 
-    // Generate dynamic links calibrated to selectedQuarter
+    // Generate dynamic links calibrated to selectedQuarter and real bilateral matrix
+    const findLinkVal = (src, dst, fallback) => {
+      const l = currentLinks.find(item => item.source === src && item.target === dst);
+      if (!l) return fallback;
+      return currencyFilter === 'usd_only' ? (l.usd_denominated_bn || Math.round(l.claims_usd_bn * 0.8)) : l.claims_usd_bn;
+    };
+
     const stressFactor = (dataset.global_macro[currentQIdx]?.bis_usd_funding_stress_index || 35) / 50.0;
     
-    // Tier 1 -> Tier 2
-    links.push({ source: '美国 (US)', target: '开曼离岸中心 (KY)', value: Math.round(640 * (currencyFilter === 'usd_only' ? 0.95 : 1.0)) });
-    links.push({ source: '美国 (US)', target: '伦敦离岸美元池 (GB)', value: Math.round(890 * (currencyFilter === 'usd_only' ? 0.9 : 1.0)) });
-    links.push({ source: '日本 (JP)', target: '伦敦离岸美元池 (GB)', value: Math.round(520 * (currencyFilter === 'usd_only' ? 0.8 : 1.0)) });
-    links.push({ source: '日本 (JP)', target: '新加坡亚洲美元 (SG)', value: Math.round(380 * (currencyFilter === 'usd_only' ? 0.75 : 1.0)) });
-    links.push({ source: '英国 (GB)', target: '开曼离岸中心 (KY)', value: Math.round(580 * (currencyFilter === 'usd_only' ? 0.9 : 1.0)) });
-    links.push({ source: '德国 (DE)', target: '卢森堡基金中继 (LU)', value: Math.round(340 * (currencyFilter === 'usd_only' ? 0.4 : 1.0)) });
-    links.push({ source: '法国 (FR)', target: '卢森堡基金中继 (LU)', value: Math.round(310 * (currencyFilter === 'usd_only' ? 0.45 : 1.0)) });
-    links.push({ source: '瑞士 (CH)', target: '伦敦离岸美元池 (GB)', value: Math.round(280 * (currencyFilter === 'usd_only' ? 0.7 : 1.0)) });
+    // Tier 1 -> Tier 2 (Anchored to real bilateral matrix)
+    links.push({ source: '美国 (US)', target: '开曼离岸中心 (KY)', value: findLinkVal('US', 'KY', 640) });
+    links.push({ source: '美国 (US)', target: '伦敦离岸美元池 (GB)', value: findLinkVal('US', 'GB', 890) });
+    links.push({ source: '日本 (JP)', target: '伦敦离岸美元池 (GB)', value: findLinkVal('JP', 'GB', 520) });
+    links.push({ source: '日本 (JP)', target: '新加坡亚洲美元 (SG)', value: findLinkVal('JP', 'SG', 380) });
+    links.push({ source: '英国 (GB)', target: '开曼离岸中心 (KY)', value: findLinkVal('GB', 'KY', 580) });
+    links.push({ source: '德国 (DE)', target: '卢森堡基金中继 (LU)', value: findLinkVal('DE', 'LU', 340) });
+    links.push({ source: '法国 (FR)', target: '卢森堡基金中继 (LU)', value: findLinkVal('FR', 'LU', 310) });
+    links.push({ source: '瑞士 (CH)', target: '伦敦离岸美元池 (GB)', value: findLinkVal('CH', 'GB', 280) });
 
     // Tier 2 -> Tier 3
-    links.push({ source: '开曼离岸中心 (KY)', target: '非银影子银行 (NBFIs)', value: Math.round(780 * (currencyFilter === 'usd_only' ? 0.92 : 1.0)) });
-    links.push({ source: '开曼离岸中心 (KY)', target: '实体跨国企业 (Corporates)', value: Math.round(440 * (currencyFilter === 'usd_only' ? 0.88 : 1.0)) });
-    links.push({ source: '伦敦离岸美元池 (GB)', target: '跨国银行同业 (Interbank)', value: Math.round(920 * (currencyFilter === 'usd_only' ? 0.85 : 1.0)) });
-    links.push({ source: '伦敦离岸美元池 (GB)', target: '新兴市场与主权 (EM Sovereigns)', value: Math.round(410 * (currencyFilter === 'usd_only' ? 0.82 : 1.0) / stressFactor) });
-    links.push({ source: '新加坡亚洲美元 (SG)', target: '实体跨国企业 (Corporates)', value: Math.round(260 * (currencyFilter === 'usd_only' ? 0.78 : 1.0)) });
-    links.push({ source: '新加坡亚洲美元 (SG)', target: '新兴市场与主权 (EM Sovereigns)', value: Math.round(120 * (currencyFilter === 'usd_only' ? 0.75 : 1.0)) });
-    links.push({ source: '香港跨境门户 (HK)', target: '实体跨国企业 (Corporates)', value: Math.round(360 * (currencyFilter === 'usd_only' ? 0.7 : 1.0)) });
-    links.push({ source: '香港跨境门户 (HK)', target: '跨国银行同业 (Interbank)', value: Math.round(250 * (currencyFilter === 'usd_only' ? 0.75 : 1.0)) });
-    links.push({ source: '卢森堡基金中继 (LU)', target: '非银影子银行 (NBFIs)', value: Math.round(420 * (currencyFilter === 'usd_only' ? 0.5 : 1.0)) });
-    links.push({ source: '卢森堡基金中继 (LU)', target: '新兴市场与主权 (EM Sovereigns)', value: Math.round(230 * (currencyFilter === 'usd_only' ? 0.45 : 1.0)) });
+    links.push({ source: '开曼离岸中心 (KY)', target: '非银影子银行 (NBFIs)', value: Math.round(findLinkVal('KY', 'US', 780) * 0.7) });
+    links.push({ source: '开曼离岸中心 (KY)', target: '实体跨国企业 (Corporates)', value: Math.round(findLinkVal('KY', 'GB', 440) * 0.5) });
+    links.push({ source: '伦敦离岸美元池 (GB)', target: '跨国银行同业 (Interbank)', value: Math.round(findLinkVal('GB', 'US', 920) * 0.8) });
+    links.push({ source: '伦敦离岸美元池 (GB)', target: '新兴市场与主权 (EM Sovereigns)', value: Math.round((findLinkVal('GB', 'TR', 210) + findLinkVal('GB', 'BR', 200)) / stressFactor) });
+    links.push({ source: '新加坡亚洲美元 (SG)', target: '实体跨国企业 (Corporates)', value: Math.round(findLinkVal('SG', 'CN', 260) * 0.7) });
+    links.push({ source: '新加坡亚洲美元 (SG)', target: '新兴市场与主权 (EM Sovereigns)', value: Math.round(findLinkVal('SG', 'IN', 120) * 0.8) });
+    links.push({ source: '香港跨境门户 (HK)', target: '实体跨国企业 (Corporates)', value: Math.round(findLinkVal('HK', 'CN', 360) * 0.85) });
+    links.push({ source: '香港跨境门户 (HK)', target: '跨国银行同业 (Interbank)', value: Math.round(findLinkVal('HK', 'GB', 250) * 0.75) });
+    links.push({ source: '卢森堡基金中继 (LU)', target: '非银影子银行 (NBFIs)', value: Math.round(findLinkVal('LU', 'US', 420) * 0.6) });
+    links.push({ source: '卢森堡基金中继 (LU)', target: '新兴市场与主权 (EM Sovereigns)', value: Math.round(findLinkVal('LU', 'BR', 230) * 0.5) });
 
     return { nodes, links };
-  }, [currentQIdx, dataset.global_macro, currencyFilter]);
+  }, [currentQIdx, dataset.global_macro, currencyFilter, currentLinks]);
 
   // Build Heatmap Matrix Data: Creditor (Y) x Debtor (X)
   const heatmapData = useMemo(() => {

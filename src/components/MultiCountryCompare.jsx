@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as echarts from 'echarts';
 import { Scale, Plus, Trash2, Shield, DollarSign, Layers, Check, Info } from 'lucide-react';
+import DataClassificationBadge from './DataClassificationBadge';
 
 export default function MultiCountryCompare({
   dataset,
   selectedQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const countries = dataset.countries || [];
   const quarters = dataset.quarters || [];
@@ -149,21 +151,29 @@ export default function MultiCountryCompare({
   }, [comparedData]);
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-2xl space-y-5">
+    <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 sm:p-3.5 shadow-xl space-y-3">
       {/* Top Header & Country Selector Chips */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
-            <Scale className="w-5 h-5" />
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0">
+            <Scale className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              多国宏观风险与金融敞口横向对比 (Multi-Jurisdiction Benchmark)
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+                多国宏观风险与金融敞口横向对比 (Multi-Jurisdiction Benchmark)
+              </h2>
               <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                 {selectedQuarter}
               </span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+              <DataClassificationBadge
+                quarter={selectedQuarter}
+                sourceText="BIS LBS 与 CBS 综合数据"
+                methodText="多维指标标准化雷达对比"
+                onOpenAppendix={onOpenAppendix}
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
               横向对齐多国对外偿债能力、美元敏感度、非银影子银行敞口及官方外汇储备垫
             </p>
           </div>
@@ -171,14 +181,14 @@ export default function MultiCountryCompare({
 
         {/* Selected Country Chips */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs text-slate-400 mr-1">对比国家 (2-5国):</span>
+          <span className="text-xs text-slate-400 mr-0.5">对比国 (2-5):</span>
           {countries.map(c => {
             const isSel = selectedCodes.includes(c.code);
             return (
               <button
                 key={c.code}
                 onClick={() => toggleCountry(c.code)}
-                className={`px-2 py-1 rounded text-xs transition-all flex items-center gap-1 ${
+                className={`px-2 py-0.5 rounded text-xs transition-all flex items-center gap-1 cursor-pointer ${
                   isSel
                     ? 'bg-indigo-600 text-white font-semibold shadow-sm'
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -193,16 +203,16 @@ export default function MultiCountryCompare({
       </div>
 
       {/* Main Grid: Radar Chart + Comparison Scorecards */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         {/* Radar Chart (5 cols) */}
         <div className="lg:col-span-5 bg-slate-900/40 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between">
           <div className="text-xs font-bold text-slate-200 flex items-center justify-between border-b border-slate-800 pb-2">
             <span>五维宏观风险特征雷达</span>
             <span className="text-[10px] text-slate-500 font-mono">Normalized Indicators</span>
           </div>
-          <div ref={radarChartRef} className="w-full h-[360px]" />
+          <div ref={radarChartRef} className="w-full h-[calc(100vh-380px)] min-h-[300px] max-h-[500px]" />
           <div className="text-[11px] text-slate-400 bg-slate-950/80 p-2 rounded border border-slate-800/60 leading-normal">
-            💡 维度覆盖：美元敞口占比、外债/外汇储备覆盖倍数、综合脆弱性、非银私人部门杠杆、总跨境债权规模。
+            💡 维度覆盖：美元敞口占比、外债/外储倍数、综合脆弱性、非银杠杆、总跨境债权规模。
           </div>
         </div>
 

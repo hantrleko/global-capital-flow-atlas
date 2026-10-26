@@ -1,11 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import { DollarSign, PieChart, TrendingDown, Layers, HelpCircle, AlertCircle, Download } from 'lucide-react';
+import DataClassificationBadge from './DataClassificationBadge';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 
 export default function UsdFundingMonitor({
   dataset,
   selectedQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const lineChartRef = useRef(null);
   const barChartRef = useRef(null);
@@ -276,39 +279,46 @@ export default function UsdFundingMonitor({
   return (
     <div className="space-y-4">
       {/* Top Chart: Global Dollar Credit Timeline */}
-      <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-xl">
-        <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 mb-2 gap-2">
-          <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+      <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 sm:p-3.5 shadow-xl">
+        <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 mb-2 gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
               <DollarSign className="w-4 h-4 text-emerald-400" />
-              全球美元信贷演进与流动性压力周期 (Global Dollar Credit & Stress Horizon)
+              全球美元信贷演进与流动性压力周期
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              基于 BIS 季度官方统计 (Quarterly Frequency) · 跟踪 2018-2024 年美元跨境信贷与加息周期收缩规律
-            </p>
+            <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+              {selectedQuarter}
+            </span>
+            <DataClassificationBadge
+              quarter={selectedQuarter}
+              sourceText="BIS SDMX 官方公布序列"
+              methodText="美元计价与宏观流动性压力指数"
+              onOpenAppendix={onOpenAppendix}
+            />
           </div>
           <div className="flex items-center gap-2">
-            <div className="text-xs text-slate-400 font-mono bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
-              时序覆盖: 2018Q1 - 2024Q4 (28 季度完整官方序列)
+            <div className="text-xs text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800 hidden sm:block">
+              覆盖: 2018Q1 - {quarters[quarters.length - 1] || '2026Q4'}
             </div>
             <button
-              onClick={() => {
+              onClick={async () => {
                 const chart = echarts.getInstanceByDom(lineChartRef.current);
                 if (!chart) return;
-                const url = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#080c14' });
+                const rawUrl = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#080c14' });
+                const watermarkedUrl = await addWatermarkToDataUrl(rawUrl, selectedQuarter, '全球美元信贷演进与流动性压力周期');
                 const a = document.createElement('a');
-                a.href = url;
+                a.href = watermarkedUrl;
                 a.download = `bis_usd_credit_cycle_${selectedQuarter}.png`;
                 a.click();
               }}
-              className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 hover:text-white transition-colors"
-              title="导出高清时序图 PNG"
+              className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 hover:text-white transition-colors cursor-pointer"
+              title="导出高清时序图 PNG (含水印)"
             >
               <Download className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
-        <div ref={lineChartRef} className="w-full h-[320px]" />
+        <div ref={lineChartRef} className="w-full h-[calc(100vh-440px)] min-h-[280px] max-h-[460px]" />
       </div>
 
       {/* Bottom Row: Hub Breakdown & Sector Splits */}

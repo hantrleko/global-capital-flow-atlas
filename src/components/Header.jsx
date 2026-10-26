@@ -281,6 +281,22 @@ export default function Header({
               <span>{classification.label}</span>
               <span className="hidden sm:inline opacity-80">· {classification.provenance}</span>
             </span>
+
+            {/* Historical Milestones Toggle */}
+            {onToggleMilestones && (
+              <button
+                onClick={onToggleMilestones}
+                className={`hidden md:flex h-6 px-2 rounded-md border text-[11px] font-medium items-center gap-1 cursor-pointer transition-all ${
+                  isMilestonesOpen
+                    ? 'border-sky-500 bg-sky-950/60 text-sky-300'
+                    : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white'
+                }`}
+                title="展开宏观历史转折期与关键纪元事件"
+              >
+                <History className="w-3 h-3 text-sky-400" />
+                <span>纪元事件</span>
+              </button>
+            )}
           </div>
 
           {/* Level 1: 5 Domains (Segmented Tabs) */}

@@ -9,7 +9,8 @@ import DataClassificationBadge from './DataClassificationBadge';
 export default function MaturityRolloverMonitor({
   dataset,
   selectedQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const chartRef1 = useRef(null);
   const chartRef2 = useRef(null);
@@ -306,6 +307,7 @@ export default function MaturityRolloverMonitor({
                   quarter={selectedQuarter}
                   sourceText="BIS CBS Table B / IMF IFS 储备统计"
                   methodText="Greenspan-Guidotti 外债转期覆盖率"
+                  onOpenAppendix={onOpenAppendix}
                 />
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">

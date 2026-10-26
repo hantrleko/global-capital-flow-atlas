@@ -9,7 +9,8 @@ import DataClassificationBadge from './DataClassificationBadge';
 export default function ShadowBankingMonitor({
   dataset,
   selectedQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -154,6 +155,13 @@ export default function ShadowBankingMonitor({
   useEffect(() => {
     if (!pieChartInstance.current) return;
 
+    const kyData = (lbsData['KY'] || [])[currentQIdx] || {};
+    const kySector = kyData.sector_breakdown || {};
+    const nbfiVal = kySector.non_bank_fin || 54;
+    const bankVal = kySector.banks || 28;
+    const corpVal = kySector.non_bank_corp || 16;
+    const govtVal = kySector.official_govt || 2;
+
     const option = {
       backgroundColor: '#080c14',
       tooltip: {
@@ -178,17 +186,17 @@ export default function ShadowBankingMonitor({
           avoidLabelOverlap: false,
           itemStyle: { borderRadius: 6, borderColor: '#080c14', borderWidth: 2 },
           data: [
-            { value: 54, name: '非银金融对冲基金/SPV (NBFIs)', itemStyle: { color: '#f59e0b' } },
-            { value: 28, name: '跨国银行同业渠道 (Banks)', itemStyle: { color: '#38bdf8' } },
-            { value: 16, name: '非金融跨国企业财资 (Corporates)', itemStyle: { color: '#10b981' } },
-            { value: 2, name: '主权与官方机构 (Official)', itemStyle: { color: '#8b5cf6' } }
+            { value: nbfiVal, name: '非银金融对冲基金/SPV (NBFIs)', itemStyle: { color: '#f59e0b' } },
+            { value: bankVal, name: '跨国银行同业渠道 (Banks)', itemStyle: { color: '#38bdf8' } },
+            { value: corpVal, name: '非金融跨国企业财资 (Corporates)', itemStyle: { color: '#10b981' } },
+            { value: govtVal, name: '主权与官方机构 (Official)', itemStyle: { color: '#8b5cf6' } }
           ]
         }
       ]
     };
 
     pieChartInstance.current.setOption(option, true);
-  }, []);
+  }, [currentQIdx, lbsData]);
 
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-2xl space-y-3">
@@ -211,6 +219,7 @@ export default function ShadowBankingMonitor({
                 quarter={selectedQuarter}
                 sourceText="BIS Quarterly Review (Borio et al.)"
                 methodText="离岸外汇掉期表外美元负债估算"
+                onOpenAppendix={onOpenAppendix}
               />
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">

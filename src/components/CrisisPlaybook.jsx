@@ -5,6 +5,7 @@ import {
   Zap, Compass
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
+import DataClassificationBadge from './DataClassificationBadge';
 
 export const CRISIS_EPISODES = [
   {
@@ -150,19 +151,26 @@ export default function CrisisPlaybook({
   };
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-2xl space-y-5">
+    <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 sm:p-3.5 shadow-xl space-y-3">
       {/* Top Banner */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-400">
-            <PlayCircle className="w-6 h-6" />
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0">
+            <PlayCircle className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              全球金融风暴复盘与央行应对剧本 (Macro Crisis Playbook & Central Bank Actions)
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              深度复盘 2018-2024 年四大里程碑级宏观流动性风暴，穿透 BIS 官方数据足迹与多国央行救市干预机制
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+                全球金融风暴复盘与央行应对剧本 (Crisis Playbook)
+              </h2>
+              <DataClassificationBadge
+                quarter={activeEpisode.quarter}
+                sourceText="BIS 危机专刊与官方序列"
+                methodText="极端情景回溯与央行救助沙盒"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              复盘四大宏观流动性风暴，穿透 BIS 官方数据足迹与多国央行救市干预机制
             </p>
           </div>
         </div>
@@ -171,23 +179,23 @@ export default function CrisisPlaybook({
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => handleTimeTravel(activeEpisode.quarter)}
-            className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shadow-md ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ${
               isCurrentQuarter
-                ? 'bg-emerald-600 text-white shadow-emerald-600/30 font-bold'
-                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30'
+                ? 'bg-emerald-600 text-white font-bold'
+                : 'bg-blue-600 hover:bg-blue-500 text-white'
             }`}
           >
-            {isCurrentQuarter ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-            <span>{isCurrentQuarter ? `正在演播：${activeEpisode.quarter}` : `一键装载截面 (${activeEpisode.quarter})`}</span>
+            {isCurrentQuarter ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
+            <span>{isCurrentQuarter ? `已装载：${activeEpisode.quarter}` : `装载截面 (${activeEpisode.quarter})`}</span>
           </button>
 
           <button
             onClick={handleReplayInContagion}
-            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30 flex items-center gap-1.5 transition-all shadow-md group"
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-1.5 transition-all shadow-sm cursor-pointer group"
             title="将该风暴参数注入传染清算引擎重演级联扩散"
           >
-            <Zap className="w-4 h-4 text-yellow-300 group-hover:scale-110 transition-transform" />
-            <span>在模拟器中重演此危机</span>
+            <Zap className="w-3.5 h-3.5 text-yellow-300 group-hover:scale-110 transition-transform" />
+            <span>在模拟器中重演</span>
           </button>
         </div>
       </div>

@@ -2,13 +2,16 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import { 
   Repeat, DollarSign, ShieldCheck, Activity, Globe,
-  AlertCircle, ArrowRightLeft, Building2, Flame, Layers, Info
+  AlertCircle, ArrowRightLeft, Building2, Flame, Layers, Info, Download
 } from 'lucide-react';
+import DataClassificationBadge from './DataClassificationBadge';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 
 export default function CentralBankSwapLines({
   dataset,
   selectedQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const basisChartRef = useRef(null);
   const swapDrawChartRef = useRef(null);
@@ -209,23 +212,29 @@ export default function CentralBankSwapLines({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-white">
-                  全球央行流动性互换线网络与交叉货币基差监控 (Central Bank Swap Lines &amp; FX Basis)
+                  全球央行流动性互换网络与交叉货币基差监控
                 </h2>
                 <span className="text-[11px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-600/40 px-2 py-0.5 rounded">
                   {selectedQuarter}
                 </span>
+                <DataClassificationBadge
+                  quarter={selectedQuarter}
+                  sourceText="美联储、人行及 BIS 官方常备互换数据"
+                  methodText="外汇掉期基差与央行安全网监测"
+                  onOpenAppendix={onOpenAppendix}
+                />
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                追踪 BIS 官方重点关注的离岸美元基差溢价 (Cross-Currency Basis)、美联储常备互换 (C5) 及人民银行人民币本币互换网络
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                追踪离岸美元基差溢价 (Cross-Currency Basis)、美联储常备互换 (C5) 及人民银行人民币本币互换网络
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* KPI 1: EUR/USD Basis */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 min-w-[125px]">
-              <div className="text-[10px] text-slate-400 uppercase font-mono">EUR/USD 3M 基差</div>
-              <div className={`text-base font-bold font-mono ${
+            <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 min-w-[110px]">
+              <div className="text-[10px] text-slate-400 uppercase font-mono">EUR/USD 基差</div>
+              <div className={`text-sm font-bold font-mono ${
                 currentBasis.eur_usd_3m_bps < -50 ? 'text-rose-400' : 'text-blue-400'
               }`}>
                 {currentBasis.eur_usd_3m_bps} bps
@@ -233,9 +242,9 @@ export default function CentralBankSwapLines({
             </div>
 
             {/* KPI 2: JPY/USD Basis */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 min-w-[125px]">
-              <div className="text-[10px] text-slate-400 uppercase font-mono">JPY/USD 3M 基差</div>
-              <div className={`text-base font-bold font-mono ${
+            <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 min-w-[110px]">
+              <div className="text-[10px] text-slate-400 uppercase font-mono">JPY/USD 基差</div>
+              <div className={`text-sm font-bold font-mono ${
                 currentBasis.jpy_usd_3m_bps < -70 ? 'text-rose-400' : 'text-amber-400'
               }`}>
                 {currentBasis.jpy_usd_3m_bps} bps
@@ -243,17 +252,17 @@ export default function CentralBankSwapLines({
             </div>
 
             {/* KPI 3: Fed Swap Draws */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 min-w-[130px]">
-              <div className="text-[10px] text-slate-400 uppercase font-mono">美联储互换动用额</div>
-              <div className="text-base font-bold text-rose-400 font-mono">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 min-w-[110px]">
+              <div className="text-[10px] text-slate-400 uppercase font-mono">美联储互换动用</div>
+              <div className="text-sm font-bold text-rose-400 font-mono">
                 ${currentMacro.fed_swap_draws_usd_bn || 0}B
               </div>
             </div>
 
             {/* KPI 4: PBOC Active Lines */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 min-w-[130px]">
-              <div className="text-[10px] text-slate-400 uppercase font-mono">人行双边互换额</div>
-              <div className="text-base font-bold text-emerald-400 font-mono">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 min-w-[110px]">
+              <div className="text-[10px] text-slate-400 uppercase font-mono">人行双边互换</div>
+              <div className="text-sm font-bold text-emerald-400 font-mono">
                 ${currentMacro.pboc_swap_active_lines_bn || 0}B
               </div>
             </div>
@@ -261,41 +270,45 @@ export default function CentralBankSwapLines({
         </div>
 
         {/* Conceptual Context Banner */}
-        <div className="mt-4 p-3.5 bg-blue-950/30 border border-blue-900/40 rounded-lg flex items-start gap-3 text-xs text-slate-300">
-          <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-          <div className="leading-relaxed">
-            <span className="font-semibold text-blue-300">BIS 宏观经济学视角：</span>
-            当交叉货币基差 (Cross-Currency Basis) 显著为负时，说明由于外汇掉期市场 (FX Swaps) 资产负债表约束，非美银行需支付高额惩罚性溢价方能借入美元。美联储流动性互换网络 (Standing Swap Lines) 是全球离岸美元体系的最终贷款人 (Lender of Last Resort)，在 2020 年疫情危机与 2023 年硅谷/瑞信风暴中发挥了决定性兜底作用。
+        <div className="mt-2 p-2.5 bg-blue-950/30 border border-blue-900/40 rounded-lg flex items-start gap-2 text-xs text-slate-300">
+          <Info className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+          <div className="leading-relaxed text-[11px]">
+            <span className="font-semibold text-blue-300">BIS 宏观视角：</span>
+            当交叉货币基差显著为负时，说明外汇掉期市场资产负债表受约束，非美银行需支付惩罚性溢价借入美元。美联储流动性互换网络 (Standing Swap Lines) 是离岸美元体系的最终贷款人。
           </div>
         </div>
       </div>
 
       {/* Two Macro Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Basis Spreads */}
-        <div className="glass-panel rounded-2xl p-5 shadow-2xl flex flex-col">
-          <div className="pb-3 border-b border-slate-800">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Activity className="w-4 h-4 text-amber-400" /> 3个月期交叉货币基差历史走势 (2018 - 2024)
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              基差跌至深负区间往往与全球美元短缺、套息交易解包及避险潮高度同步
-            </p>
+        <div className="glass-panel rounded-xl p-3 shadow-xl flex flex-col">
+          <div className="pb-2 border-b border-slate-800 flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-amber-400" /> 3M 交叉货币基差走势
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                跌至深负区间表明全球美元短缺与离岸挤兑
+              </p>
+            </div>
           </div>
-          <div ref={basisChartRef} className="w-full h-[360px] mt-2" />
+          <div ref={basisChartRef} className="w-full h-[calc(100vh-460px)] min-h-[280px] max-h-[460px] mt-1" />
         </div>
 
         {/* Swap Line Drawings */}
-        <div className="glass-panel rounded-2xl p-5 shadow-2xl flex flex-col">
-          <div className="pb-3 border-b border-slate-800">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Repeat className="w-4 h-4 text-rose-400" /> 美联储紧急互换动用 vs 人民银行双边互换网络拓展
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              柱状: 美联储危机期美元拆借峰值 (2020Q1 突破 $4400 亿) · 曲线: 人民币双边互换常态化稳步增长
-            </p>
+        <div className="glass-panel rounded-xl p-3 shadow-xl flex flex-col">
+          <div className="pb-2 border-b border-slate-800 flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Repeat className="w-3.5 h-3.5 text-rose-400" /> 美联储紧急互换动用 vs 人行双边互换
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                美联储危机期峰值拆借与人民币双边互换常态化稳步增长
+              </p>
+            </div>
           </div>
-          <div ref={swapDrawChartRef} className="w-full h-[360px] mt-2" />
+          <div ref={swapDrawChartRef} className="w-full h-[calc(100vh-460px)] min-h-[280px] max-h-[460px] mt-1" />
         </div>
       </div>
 

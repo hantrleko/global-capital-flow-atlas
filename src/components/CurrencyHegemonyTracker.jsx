@@ -4,11 +4,14 @@ import {
   Coins, TrendingUp, ShieldAlert, Award, Globe, 
   ArrowUpRight, PieChart, Layers, Download, CheckCircle2 
 } from 'lucide-react';
+import DataClassificationBadge from './DataClassificationBadge';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 
 export default function CurrencyHegemonyTracker({
   dataset,
   selectedQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -312,41 +315,66 @@ export default function CurrencyHegemonyTracker({
   const latestStats = currencyHistory[currentQIdx] || currencyHistory[currencyHistory.length - 1];
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-2xl space-y-5">
+    <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 sm:p-3.5 shadow-2xl space-y-3">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-            <Coins className="w-5 h-5" />
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
+            <Coins className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              全球多极货币格局博弈与汇率错配指数 (Currency Hegemony & Mismatch Index)
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+                全球多极货币格局博弈与汇率错配指数 (CMI)
+              </h2>
               <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                 {selectedQuarter}
               </span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+              <DataClassificationBadge
+                quarter={selectedQuarter}
+                sourceText="BIS LBS 币种细分官方序列"
+                methodText="货币错配指数与离岸多元化追踪"
+                onOpenAppendix={onOpenAppendix}
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
               透视美元霸权惯性、离岸人民币 (CNY) 跨境网络渗透及各国外债货币错配 (Currency Mismatch) 脆弱点
             </p>
           </div>
         </div>
 
-        {/* Currency KPIs */}
-        <div className="flex items-center gap-3 bg-slate-900 p-2 rounded-lg border border-slate-800 text-xs font-mono">
-          <span className="text-slate-400">美元份额: <b className="text-sky-400">{latestStats.USD}%</b></span>
-          <span className="text-slate-400">欧元份额: <b className="text-indigo-400">{latestStats.EUR}%</b></span>
-          <span className="text-slate-400">人民币份额: <b className="text-rose-400 font-bold">{latestStats.CNY}% (${latestStats.cnyVal}B)</b></span>
+        {/* Currency KPIs & Export */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 bg-slate-900 p-1.5 rounded-lg border border-slate-800 text-[11px] font-mono">
+            <span className="text-slate-400">美元: <b className="text-sky-400">{latestStats.USD}%</b></span>
+            <span className="text-slate-400">欧元: <b className="text-indigo-400">{latestStats.EUR}%</b></span>
+            <span className="text-slate-400">人民币: <b className="text-rose-400 font-bold">{latestStats.CNY}%</b></span>
+          </div>
+          <button
+            onClick={async () => {
+              if (!chartInstance.current) return;
+              const rawUrl = chartInstance.current.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#080c14' });
+              const watermarkedUrl = await addWatermarkToDataUrl(rawUrl, selectedQuarter, '全球多极货币格局与计价币种演化趋势');
+              const a = document.createElement('a');
+              a.href = watermarkedUrl;
+              a.download = `bis_currency_hegemony_${selectedQuarter}.png`;
+              a.click();
+            }}
+            className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="导出高清币种演变图 PNG (含水印)"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
       {/* Main Historical Stacked Area Chart */}
       <div className="bg-slate-900/40 border border-slate-800/90 rounded-xl p-3">
         <div className="text-xs font-bold text-white flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
-          <span>全球跨境银行信贷计价币种 28 季度堆叠演化趋势 (2018Q1 - 2024Q4)</span>
+          <span>全球跨境银行信贷计价币种堆叠演化趋势 (2018Q1 - {quarters[quarters.length - 1] || '2026Q4'})</span>
           <span className="text-slate-400 text-[10px] font-mono">BIS LBS Currency Breakdown</span>
         </div>
-        <div ref={chartRef} className="w-full h-[320px]" />
+        <div ref={chartRef} className="w-full h-[calc(100vh-420px)] min-h-[280px] max-h-[460px]" />
       </div>
 
       {/* Bottom Grid: CMI Ranking + Structural Insight Cards */}

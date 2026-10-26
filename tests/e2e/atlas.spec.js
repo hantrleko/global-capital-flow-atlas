@@ -55,6 +55,21 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const officialBadge = page.getByText(/官方观测/i).first();
     await expect(officialBadge).toBeVisible();
 
+    // Verify Executive KPI Row Values are Valid Non-Empty Quantities (No $undefined, no naked $)
+    const kpiRow = page.locator('#main-viewport > div').first();
+    await expect(kpiRow).toBeVisible();
+    const kpiText = await kpiRow.innerText();
+    
+    // KPI 1 Total Claims must have valid amount (e.g. $47.62T or equivalent)
+    expect(kpiText).toMatch(/\$[0-9]+\.[0-9]{2}T|\€[0-9]+|\¥[0-9]+/);
+    expect(kpiText).not.toContain('$undefined');
+    expect(kpiText).not.toContain('NaN');
+    expect(kpiText).not.toMatch(/\$\s+[A-Z]/); // No lone $ with whitespace
+
+    // KPI 2 USD Share & Stress Index must have valid numeric percentages
+    expect(kpiText).toMatch(/[0-9]+\.[0-9]%/);
+    expect(kpiText).toMatch(/压力:\s*[0-9]+\.[0-9]/);
+
     // Verify First-Screen Fold: Map Canvas starts within the upper fold (y <= 380px) and height >= 300px
     const mapCanvas = page.locator('#main-viewport canvas').first();
     await expect(mapCanvas).toBeVisible({ timeout: 8000 });
@@ -227,6 +242,50 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     // Close drawer
     await closeBtn.click();
     await expect(drawer).not.toBeVisible();
+  });
+
+  test('6. Full 5-Domain Representative Modules First-Screen Canvas and Mounting Tour', async ({ page }) => {
+    // Check key modules across all 5 domains to guarantee responsive canvas mounting without void errors
+    const testTabs = [
+      { tab: 'contagion', label: '级联传染', canvasSelector: '#main-viewport canvas' },
+      { tab: 'usd', label: '美元融资', canvasSelector: '#main-viewport canvas' },
+      { tab: 'gravity', label: '引力计量', canvasSelector: '#main-viewport canvas' },
+      { tab: 'routing', label: '路由矩阵', canvasSelector: '#main-viewport canvas' }
+    ];
+
+    for (const item of testTabs) {
+      await page.goto(`/?tab=${item.tab}`);
+      const mainViewport = page.locator('#main-viewport');
+      await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+      const canvas = page.locator(item.canvasSelector).first();
+      await expect(canvas).toBeVisible({ timeout: 10000 });
+
+      const box = await canvas.boundingBox();
+      expect(box, `Canvas for ${item.tab} must have valid bounding box`).not.toBeNull();
+      expect(box.y, `Canvas for ${item.tab} must start in upper fold (y <= 420px)`).toBeLessThanOrEqual(420);
+      expect(box.height, `Canvas for ${item.tab} must be >= 280px`).toBeGreaterThanOrEqual(280);
+    }
+  });
+
+  test('7. Canonical 3-Tier Data Classification Integrity Across Quarters', async ({ page }) => {
+    await page.goto('/');
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    // 1. Initial 2026Q1: Must show '官方观测'
+    await expect(page.locator('#current-quarter-display')).toHaveText('2026Q1');
+    const officialCount = await page.getByText('官方观测').count();
+    expect(officialCount).toBeGreaterThanOrEqual(1);
+
+    // 2. Go to 2026Q4 via Scenario button: Must show '前瞻情景'
+    const scenarioBtn = page.getByRole('button', { name: /进入前瞻情景/ });
+    if (await scenarioBtn.isVisible()) {
+      await scenarioBtn.click();
+      await expect(page.locator('#current-quarter-display')).toHaveText('2026Q4');
+      const scenarioCount = await page.getByText('前瞻情景').count();
+      expect(scenarioCount).toBeGreaterThanOrEqual(1);
+    }
   });
 
 });

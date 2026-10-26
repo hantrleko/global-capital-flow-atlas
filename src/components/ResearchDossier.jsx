@@ -5,10 +5,12 @@ import {
   Table, Play, Wifi, RefreshCw, AlertCircle, Sparkles
 } from 'lucide-react';
 import { getDataClassification } from '../utils/dataClassification';
+import DataClassificationBadge from './DataClassificationBadge';
 
 export default function ResearchDossier({
   dataset,
-  selectedQuarter
+  selectedQuarter,
+  onOpenAppendix
 }) {
   const [copiedCode, setCopiedCode] = useState(false);
   const [isExportingXlsx, setIsExportingXlsx] = useState(false);
@@ -327,17 +329,25 @@ print("\\n=== Research Package Generation Completed Successfully ===")
       `}</style>
 
       {/* Top Banner: Research Memo */}
-      <div className="glass-panel rounded-2xl p-6 shadow-2xl">
-        <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-4 mb-4 gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
-              <FileText className="w-5 h-5" />
+      <div className="glass-panel rounded-xl p-3 sm:p-4 shadow-xl">
+        <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 mb-3 gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
+              <FileText className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">
-                宏观经济研究报告：全球跨国银行信贷与美元流动性格局 ({selectedQuarter})
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm font-bold text-white">
+                  全球跨国银行信贷与美元流动性格局宏观研报 ({selectedQuarter})
+                </h2>
+                <DataClassificationBadge
+                  quarter={selectedQuarter}
+                  sourceText="BIS SDMX 官方数据与全网微观走廊"
+                  methodText="机构级多表导出与计量脚本"
+                  onOpenAppendix={onOpenAppendix}
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
                 面向金融机构宏观研究团队、央行及国际金融政策分析员的高质量量化简报
               </p>
             </div>
@@ -347,35 +357,35 @@ print("\\n=== Research Package Generation Completed Successfully ===")
             <button
               onClick={handleExportXlsx}
               disabled={isExportingXlsx}
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/20 cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
               title="导出包含5张独立数据表的多工作簿 Excel 文件"
             >
               <Table className="w-3.5 h-3.5" />
-              <span>{isExportingXlsx ? '打包 Excel...' : '导出机构级 Excel (.xlsx)'}</span>
+              <span>{isExportingXlsx ? '打包 Excel...' : '导出机构级 Excel'}</span>
             </button>
             <button
               onClick={handleExportFullPythonScript}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
               title="导出包含完整 NetworkX 与 Pandas 的自执行 Python 脚本"
             >
-              <Code2 className="w-3.5 h-3.5" /> 导出 Python 研报包 (.py)
+              <Code2 className="w-3.5 h-3.5" /> 导出 Python 脚本
             </button>
             <button
               onClick={() => window.print()}
-              className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
               title="一键打印或导出 PDF 机构研报"
             >
-              <FileText className="w-3.5 h-3.5 text-blue-400" /> 打印 / 保存 PDF
+              <FileText className="w-3.5 h-3.5 text-blue-400" /> 打印 PDF
             </button>
             <button
               onClick={handleExportCsv}
-              className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-800 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-blue-400" /> 导出 CSV
             </button>
             <button
               onClick={handleExportJson}
-              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/30 cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" /> 导出 JSON
             </button>

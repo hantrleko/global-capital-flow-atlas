@@ -459,46 +459,74 @@ export default function NetworkContagionSimulator({
   };
 
   return (
-    <div className="glass-panel rounded-2xl p-5 shadow-2xl space-y-5 scroll-mt-24">
+    <div className="glass-panel rounded-2xl p-3 sm:p-4 shadow-2xl space-y-2.5 scroll-mt-24">
       {/* Top Header & Simulation Controls */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400">
-            <AlertOctagon className="w-5 h-5" />
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-1 gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+            <AlertOctagon className="w-3.5 h-3.5" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                全球跨国银行网络系统性风险与传染扩散模拟器 (Eisenberg-Noe Contagion Cascade)
+              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+                跨国银行网络传染模拟器 (Eisenberg-Noe)
               </h2>
-              <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+              <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
                 {selectedQuarter}
               </span>
               <DataClassificationBadge
                 classification="STRESS_SIMULATION"
+                quarter={selectedQuarter}
                 sourceText="模型重构双边资产负债基准"
                 methodText="Eisenberg & Noe (2001) 级联违约清算"
                 onOpenAppendix={onOpenAppendix}
               />
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              基于模型重构之双边有向信贷网络，反事实推演某经济体违约或资本减记时，跨国银行一级资本的直接损失、去杠杆外溢与连锁流动性挤兑
-            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Model Contract Switch */}
+          <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-xs">
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                setSimMode('en_clearing');
+              }}
+              className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                simMode === 'en_clearing'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>Eisenberg–Noe 基准</span>
+            </button>
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                setSimMode('behavioral');
+              }}
+              className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                simMode === 'behavioral'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>行为级联</span>
+            </button>
+          </div>
+
           <button
             onClick={handleExportScenarioCsv}
-            className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-mono"
+            className="px-2 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs font-mono"
             title="导出当前清算情景数据 CSV (包含版本元数据、基线与增量)"
           >
             <FileText className="w-3.5 h-3.5 text-sky-400" />
-            <span>导出情景 CSV</span>
+            <span className="hidden sm:inline">导出 CSV</span>
           </button>
           <button
             onClick={handleDownloadSnapshot}
-            className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="p-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
             title="导出高清仿真图 PNG"
           >
             <Download className="w-4 h-4" />
@@ -506,109 +534,95 @@ export default function NetworkContagionSimulator({
         </div>
       </div>
 
-      {/* Model Mode Toggle Bar: Eisenberg-Noe (2001) vs Multi-Round Behavioral */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-900/90 border border-slate-800 rounded-xl">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-400 font-mono flex items-center gap-1.5 font-bold">
-            <Layers className="w-4 h-4 text-purple-400" /> 清算模型契约 (Clearing Model Contract):
-          </span>
-          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800 text-xs">
-            <button
-              onClick={() => {
-                soundFx.playTick();
-                setSimMode('en_clearing');
-              }}
-              className={`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                simMode === 'en_clearing'
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <span>Eisenberg–Noe (2001) 经典清算不动点</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-900/80 text-purple-200 border border-purple-400/40 font-mono">基准</span>
-            </button>
-            <button
-              onClick={() => {
-                soundFx.playTick();
-                setSimMode('behavioral');
-              }}
-              className={`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                simMode === 'behavioral'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <span>行为级联外溢模型 (Behavioral Contagion)</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/80 text-blue-200 border border-blue-400/40 font-mono">情景</span>
-            </button>
-          </div>
+      {/* Sub-bar: View Selector + Single-Scenario Presets or Workbench Indicators */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 bg-slate-900/80 border border-slate-800 rounded-xl text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+          {simMode === 'en_clearing' && (
+            <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-xs shrink-0 mr-1">
+              <button
+                onClick={() => {
+                  soundFx.playTick();
+                  setActiveViewTab('single_scenario');
+                }}
+                className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                  activeViewTab === 'single_scenario'
+                    ? 'bg-rose-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Activity className="w-3 h-3" />
+                <span>⚡ 单一情景</span>
+              </button>
+              <button
+                onClick={() => {
+                  soundFx.playTick();
+                  setActiveViewTab('workbench');
+                }}
+                className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                  activeViewTab === 'workbench'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <GitCompare className="w-3 h-3" />
+                <span>🔬 实验台</span>
+              </button>
+            </div>
+          )}
+
+          {activeViewTab === 'single_scenario' ? (
+            <>
+              <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1 shrink-0">
+                <Zap className="w-3 h-3 text-amber-400" /> 预设:
+              </span>
+              {CONTAGION_PRESETS.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => handleSelectPreset(p)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all shrink-0 cursor-pointer border ${
+                    activePreset === p.id
+                      ? 'bg-rose-600/30 text-rose-300 border-rose-500/60 font-bold shadow-sm'
+                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                  title={p.desc}
+                >
+                  {p.name}
+                </button>
+              ))}
+              <button
+                onClick={() => setActivePreset('custom')}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all shrink-0 cursor-pointer border ${
+                  activePreset === 'custom'
+                    ? 'bg-sky-600/30 text-sky-300 border-sky-500/60 font-bold shadow-sm'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                ⚙️ 自由调参
+              </button>
+            </>
+          ) : (
+            <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2">
+              <span className="text-slate-500">对照机制:</span>
+              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">1.0x 严格外储</span>
+              <span>vs</span>
+              <span className="px-1.5 py-0.2 rounded bg-purple-900/50 text-purple-200 border border-purple-500/30">1.5x 学术基准</span>
+              <span>vs</span>
+              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">2.0x 广义缓冲</span>
+            </div>
+          )}
         </div>
 
-        <div className="text-[11px] font-mono text-slate-400 flex flex-wrap items-center gap-2">
+        <div className="text-[10px] font-mono text-slate-400 flex flex-wrap items-center gap-2 shrink-0">
           {isRecomputing && (
-            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-bold">
-              ⚡ 正在重算清算向量...
+            <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-bold">
+              ⚡ 重算中...
             </span>
           )}
           <span>产品: <strong className="text-slate-200">{simResults?.versionMeta?.productVersion || CLEARING_VERSION_REGISTRY.PRODUCT}</strong></span>
           <span>·</span>
-          <span>模型: <strong className="text-purple-300">{simResults?.versionMeta?.modelVersion || CLEARING_VERSION_REGISTRY.MODEL}</strong></span>
-          <span>·</span>
-          <span>数据: <strong className="text-sky-300">{simResults?.versionMeta?.dataVersion || CLEARING_VERSION_REGISTRY.DATA(selectedQuarter)}</strong></span>
-          <span>·</span>
-          <span>全网外储覆盖: <strong className="text-emerald-400">{simResults?.coverageMeta?.reservesCoverageRatio || '23/23'}</strong></span>
-          <span>·</span>
-          <span>波及负债覆盖: <strong className="text-emerald-400">{simResults?.coverageMeta?.spilloverLiabCoverageRatio || '22/22'}</strong></span>
+          <span>外储覆盖: <strong className="text-emerald-400">{simResults?.coverageMeta?.reservesCoverageRatio || '23/23'}</strong></span>
         </div>
       </div>
-
-      {/* Navigation Tabs: Single Scenario Deep-Dive vs Stress-Testing Workbench */}
-      {simMode === 'en_clearing' && (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-slate-900/60 border border-slate-800 rounded-xl">
-          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800 text-xs">
-            <button
-              onClick={() => {
-                soundFx.playTick();
-                setActiveViewTab('single_scenario');
-              }}
-              className={`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeViewTab === 'single_scenario'
-                  ? 'bg-rose-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5" />
-              <span>⚡ 单一情景深入 (Single Scenario)</span>
-            </button>
-            <button
-              onClick={() => {
-                soundFx.playTick();
-                setActiveViewTab('workbench');
-              }}
-              className={`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeViewTab === 'workbench'
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <GitCompare className="w-3.5 h-3.5" />
-              <span>🔬 资本网络压力测试实验台 (Stress-Testing Workbench)</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-900/80 text-purple-200 border border-purple-400/40 font-mono">
-                多机制对照
-              </span>
-            </button>
-          </div>
-
-          <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2">
-            <span className="text-slate-500">流动性机制:</span>
-            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">1.0x 严格外储</span>
-            <span>vs</span>
-            <span className="px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-200 border border-purple-500/30">1.5x 学术基准</span>
-            <span>vs</span>
-            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">2.0x 广义缓冲</span>
-          </div>
-        </div>
-      )}
 
       {/* RENDER CONTENT BASED ON VIEW TAB */}
       {simMode === 'en_clearing' && activeViewTab === 'workbench' ? (
@@ -859,184 +873,329 @@ export default function NetworkContagionSimulator({
         </div>
       ) : (
         /* Single Scenario View */
-        <div className="space-y-5">
-          {/* Scenario Presets Pill Bar */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            <span className="text-xs font-mono text-slate-400 flex items-center gap-1 shrink-0">
-              <Zap className="w-3.5 h-3.5 text-amber-400" /> 经典压力预设:
-            </span>
-        {CONTAGION_PRESETS.map(p => (
-          <button
-            key={p.id}
-            onClick={() => handleSelectPreset(p)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer border ${
-              activePreset === p.id
-                ? 'bg-rose-600/30 text-rose-300 border-rose-500/60 font-bold shadow-sm'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-            title={p.desc}
-          >
-            {p.name}
-          </button>
-        ))}
-        <button
-          onClick={() => setActivePreset('custom')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer border ${
-            activePreset === 'custom'
-              ? 'bg-sky-600/30 text-sky-300 border-sky-500/60 font-bold shadow-sm'
-              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
-        >
-          ⚙️ 自由参数工坊
-        </button>
-      </div>
+        <div className="space-y-3">
+          {/* Main Grid: Cascade Chart (7 cols) + Controls & Impact Table (5 cols) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+            {/* Cascade Chart (7 cols) */}
+            <div className="lg:col-span-7 bg-slate-900/40 border border-slate-800/90 rounded-xl p-3 flex flex-col gap-2">
+              <div className="text-xs font-bold text-white flex flex-wrap items-center justify-between border-b border-slate-800 pb-2 gap-2">
+                <span>{simMode === 'en_clearing' ? 'Eisenberg-Noe (2001) 清算短缺受害国级联分解 (前 10 大)' : '受冲击最深的前 10 大受害经济体级联损益'}</span>
+                {simMode === 'en_clearing' ? (
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {enSortMetric === 'incremental' ? '按冲击净增量 Δ 排序 (堆叠显示基线与增量)' : enSortMetric === 'baseline' ? '按零冲击基线排序' : '按冲击后总额排序'}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-400 font-mono">Round 1 + Round 2 + Round 3</span>
+                )}
+              </div>
+              <div ref={chartRef} className="w-full h-[calc(100vh-340px)] min-h-[350px] max-h-[580px]" />
+            </div>
 
-      {/* Simulator Control Sliders */}
-      <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-        <div>
-          <label className="block text-slate-400 mb-1 font-semibold">1. 设定震中经济体 (Trigger Epicenter):</label>
-          <select
-            value={epicenter}
-            onChange={(e) => {
-              setEpicenter(e.target.value);
-              setActivePreset('custom');
-            }}
-            className="w-full bg-slate-800 border border-slate-700 text-white font-bold px-2 py-1.5 rounded focus:outline-none focus:border-rose-500 cursor-pointer"
-          >
-            {countries.map(c => (
-              <option key={c.code} value={c.code}>
-                {c.name_zh} ({c.code}) - {c.region}
-              </option>
-            ))}
-          </select>
+            {/* Controls & Impact Table (5 cols) */}
+            <div className="lg:col-span-5 flex flex-col gap-3">
+              {/* Simulator Control Sliders (Compact Grid) */}
+              <div className="p-2.5 bg-slate-900/90 border border-slate-800 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                <div>
+                  <label className="block text-slate-400 mb-0.5 font-semibold text-[11px]">1. 震中经济体:</label>
+                  <select
+                    value={epicenter}
+                    onChange={(e) => {
+                      setEpicenter(e.target.value);
+                      setActivePreset('custom');
+                    }}
+                    className="w-full bg-slate-800 border border-slate-700 text-white font-bold px-2 py-1 rounded text-xs focus:outline-none focus:border-rose-500 cursor-pointer"
+                  >
+                    {countries.map(c => (
+                      <option key={c.code} value={c.code}>
+                        {c.name_zh} ({c.code}) - {c.region}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-400 mb-0.5 text-[11px]">
+                    <span className="font-semibold">2. 债务减记率 (Haircut):</span>
+                    <span className="font-mono text-rose-400 font-bold">{haircutPct}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={5}
+                    max={60}
+                    step={5}
+                    value={haircutPct}
+                    onChange={(e) => {
+                      setHaircutPct(parseInt(e.target.value, 10));
+                      setActivePreset('custom');
+                    }}
+                    className="w-full accent-rose-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
+                  />
+                </div>
+
+                {simMode === 'en_clearing' ? (
+                  <div>
+                    <div className="flex justify-between text-slate-400 mb-1 text-[11px]">
+                      <span className="font-semibold" title="外部现金流注入参数化倍数 e_i = k * FX Reserves">
+                        3. 流动性缓冲倍数:
+                      </span>
+                      <span className="font-mono text-purple-400 font-bold">{bufferMultiplier.toFixed(1)}x 外储</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 mt-1">
+                      {[
+                        { val: 1.0, label: '1.0x 严格' },
+                        { val: 1.5, label: '1.5x 基准' },
+                        { val: 2.0, label: '2.0x 缓冲' }
+                      ].map(opt => (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={() => {
+                            soundFx.playTick();
+                            setBufferMultiplier(opt.val);
+                            setActivePreset('custom');
+                          }}
+                          className={`py-1 px-1 text-[10px] rounded font-mono transition-all cursor-pointer border ${
+                            bufferMultiplier === opt.val
+                              ? 'bg-purple-600 text-white font-bold border-purple-400 shadow-sm'
+                              : 'bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex justify-between text-slate-400 mb-1 text-[11px]">
+                      <span className="font-semibold">3. 去杠杆乘数:</span>
+                      <span className="font-mono text-amber-400 font-bold">{deleveragingMultiplier}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1.0}
+                      max={3.0}
+                      step={0.1}
+                      value={deleveragingMultiplier}
+                      onChange={(e) => {
+                        setDeleveragingMultiplier(parseFloat(e.target.value));
+                        setActivePreset('custom');
+                      }}
+                      className="w-full accent-amber-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
+                    />
+                  </div>
+                )}
+
+                {simMode === 'en_clearing' ? (
+                  <div>
+                    <div className="flex justify-between text-slate-400 mb-1 text-[11px]">
+                      <span className="font-semibold">4. 排序口径:</span>
+                      <span className="font-mono text-sky-400 font-bold">
+                        {enSortMetric === 'incremental' ? '冲击增量 Δ' : (enSortMetric === 'baseline' ? '基线 S0' : '总额 S*')}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 mt-1">
+                      {[
+                        { val: 'incremental', label: '增量 ΔS' },
+                        { val: 'post_shock', label: '总额 S*' },
+                        { val: 'baseline', label: '基线 S0' }
+                      ].map(opt => (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={() => {
+                            soundFx.playTick();
+                            setEnSortMetric(opt.val);
+                          }}
+                          className={`py-1 px-1 text-[10px] rounded font-mono transition-all cursor-pointer border ${
+                            enSortMetric === opt.val
+                              ? 'bg-rose-600 text-white font-bold border-rose-400 shadow-sm'
+                              : 'bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex justify-between text-slate-400 mb-1 text-[11px]">
+                      <span className="font-semibold">4. 美元抽水:</span>
+                      <span className="font-mono text-sky-400 font-bold">{dollarSqueezePct}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={30}
+                      step={2}
+                      value={dollarSqueezePct}
+                      onChange={(e) => {
+                        setDollarSqueezePct(parseInt(e.target.value, 10));
+                        setActivePreset('custom');
+                      }}
+                      className="w-full accent-sky-400 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Impact Table (5 cols) */}
+              <div className="bg-slate-900/40 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between flex-1">
+          <div>
+            <div className="text-xs font-bold text-white border-b border-slate-800 pb-2 mb-2 flex flex-wrap items-center justify-between gap-1.5">
+              <span>{simMode === 'en_clearing' ? '清算受创排序榜单' : '系统性行为受创排序榜单'}</span>
+              {simMode === 'en_clearing' ? (
+                <div className="inline-flex rounded bg-slate-950 p-0.5 border border-slate-800 text-[10px]">
+                  <button
+                    onClick={() => {
+                      soundFx.playTick();
+                      setEnSortMetric('incremental');
+                    }}
+                    className={`px-2 py-0.5 rounded font-mono transition-colors cursor-pointer ${
+                      enSortMetric === 'incremental'
+                        ? 'bg-rose-600 text-white font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    冲击增量 Δ
+                  </button>
+                  <button
+                    onClick={() => {
+                      soundFx.playTick();
+                      setEnSortMetric('post_shock');
+                    }}
+                    className={`px-2 py-0.5 rounded font-mono transition-colors cursor-pointer ${
+                      enSortMetric === 'post_shock'
+                        ? 'bg-purple-600 text-white font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    总短缺 S*
+                  </button>
+                  <button
+                    onClick={() => {
+                      soundFx.playTick();
+                      setEnSortMetric('baseline');
+                    }}
+                    className={`px-2 py-0.5 rounded font-mono transition-colors cursor-pointer ${
+                      enSortMetric === 'baseline'
+                        ? 'bg-slate-700 text-white font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    基线 S0
+                  </button>
+                </div>
+              ) : (
+                <span className="text-slate-400 text-[10px]">按综合受损总额降序</span>
+              )}
+            </div>
+
+            <div className="space-y-1.5 max-h-[340px] overflow-y-auto">
+              {simResults?.impactList.map((item, idx) => {
+                if (simMode === 'en_clearing') {
+                  const isEligible = item.rankingEligible !== false;
+                  return (
+                    <div
+                      key={item.code}
+                      onClick={() => onSelectCountry(item.code)}
+                      className={`p-2 rounded-lg cursor-pointer transition-all flex items-center justify-between text-xs border ${
+                        !isEligible
+                          ? 'bg-slate-950/40 border-slate-800/40 opacity-70'
+                          : 'bg-slate-950/80 hover:bg-slate-800/80 border-slate-800/80'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-slate-500 text-[11px] w-4">
+                          {!isEligible ? '—' : `${idx + 1}.`}
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-white">{item.name_zh}</span>
+                            <span className="font-mono text-[10px] text-slate-400">({item.code})</span>
+                            {!isEligible && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-500/30">
+                                缺失不排
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-mono">
+                            {item.isMissingInput ? (
+                              <span className="text-amber-400/80">输入缺失 (外储: {item.reservesStatus})</span>
+                            ) : (
+                              `基线 $${item.enBaselineShortfall}B → 冲击后 $${item.enPostShockShortfall}B`
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="font-mono font-bold text-rose-400">
+                          {!isEligible ? (
+                            <span className="text-slate-400 font-mono">NA</span>
+                          ) : item.enIncrementalShortfall > 0 ? (
+                            `+${item.enIncrementalShortfall}B`
+                          ) : (
+                            '$0.0B'
+                          )}
+                          {isEligible && (
+                            <span className="text-[10px] font-normal text-slate-400 ml-1">
+                              (+{Math.round(item.enIncrementalShortfall * 10).toLocaleString()} 亿)
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-amber-400/90 font-mono">
+                          {item.enIncrementalToReservesPct !== 'NA' ? `增量/外储: +${item.enIncrementalToReservesPct}%` : '增量/外储: NA'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Behavioral mode
+                const displayVal = item.totalImpact;
+                const displayPct = item.impactToReservesPct;
+                return (
+                  <div
+                    key={item.code}
+                    onClick={() => onSelectCountry(item.code)}
+                    className="p-2 bg-slate-950/80 hover:bg-slate-800/80 border border-slate-800/80 rounded-lg cursor-pointer transition-all flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-slate-500 text-[11px] w-4">{idx + 1}.</span>
+                      <span className="font-bold text-white">{item.name_zh}</span>
+                      <span className="font-mono text-[10px] text-slate-400">({item.code})</span>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="font-mono font-bold text-rose-400">
+                        -${displayVal}B ({Math.round(displayVal * 10).toLocaleString()} 亿美元)
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono">
+                        损耗储备: {displayPct}%
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="text-[11px] text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 mt-2 space-y-1">
+            {simMode === 'en_clearing' ? (
+              <div>
+                💡 <strong>Eisenberg-Noe (2001) 双基线清算模型契约说明：</strong> 本模拟器同时计算零冲击初始基线 $p^{(0)}$ 与施加冲击后的清算不动点 $p^*$。压力测试聚焦于<strong>边际增量 $\Delta s_j = s_j^* - s_j^{(0)}$</strong>，将特定震中违约的外生破坏力与静态闭合网络的内生结构缺口彻底解耦，保障压力评估的客观性与科学性。
+              </div>
+            ) : (
+              <div>
+                💡 <strong>行为级联去杠杆模型说明：</strong> 本模式为启发式多轮情景压力测试（Round 1 直接减记 + Round 2 资产负债表收缩外溢 + Round 3 美元再融资挤压），用于演示恐慌传染扩散路径，不同于 Eisenberg-Noe 的静态不动点清算。
+              </div>
+            )}
+          </div>
         </div>
-
-        <div>
-          <div className="flex justify-between text-slate-400 mb-1">
-            <span className="font-semibold">2. 债务违约/资产减记率 (Haircut):</span>
-            <span className="font-mono text-rose-400 font-bold">{haircutPct}%</span>
-          </div>
-          <input
-            type="range"
-            min={5}
-            max={60}
-            step={5}
-            value={haircutPct}
-            onChange={(e) => {
-              setHaircutPct(parseInt(e.target.value, 10));
-              setActivePreset('custom');
-            }}
-            className="w-full accent-rose-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
-          />
-        </div>
-
-        {simMode === 'en_clearing' ? (
-          <div>
-            <div className="flex justify-between text-slate-400 mb-1">
-              <span className="font-semibold" title="外部现金流注入参数化倍数 e_i = k * FX Reserves">
-                3. 外部流动性缓冲倍数 (Buffer):
-              </span>
-              <span className="font-mono text-purple-400 font-bold">{bufferMultiplier.toFixed(1)}x 外储</span>
-            </div>
-            <div className="grid grid-cols-3 gap-1 mt-1">
-              {[
-                { val: 1.0, label: '1.0x 严格外储' },
-                { val: 1.5, label: '1.5x 学术基准' },
-                { val: 2.0, label: '2.0x 广义缓冲' }
-              ].map(opt => (
-                <button
-                  key={opt.val}
-                  type="button"
-                  onClick={() => {
-                    soundFx.playTick();
-                    setBufferMultiplier(opt.val);
-                    setActivePreset('custom');
-                  }}
-                  className={`py-1 px-1 text-[11px] rounded font-mono transition-all cursor-pointer border ${
-                    bufferMultiplier === opt.val
-                      ? 'bg-purple-600 text-white font-bold border-purple-400 shadow-sm'
-                      : 'bg-slate-800 text-slate-300 hover:text-white border-slate-700'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div>
-            <div className="flex justify-between text-slate-400 mb-1">
-              <span className="font-semibold">3. 跨国银行去杠杆乘数:</span>
-              <span className="font-mono text-amber-400 font-bold">{deleveragingMultiplier}x</span>
-            </div>
-            <input
-              type="range"
-              min={1.0}
-              max={3.0}
-              step={0.1}
-              value={deleveragingMultiplier}
-              onChange={(e) => {
-                setDeleveragingMultiplier(parseFloat(e.target.value));
-                setActivePreset('custom');
-              }}
-              className="w-full accent-amber-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
-            />
-          </div>
-        )}
-
-        {simMode === 'en_clearing' ? (
-          <div>
-            <div className="flex justify-between text-slate-400 mb-1">
-              <span className="font-semibold">4. 榜单排序口径 (Metric):</span>
-              <span className="font-mono text-sky-400 font-bold">
-                {enSortMetric === 'incremental' ? '冲击增量 Δ' : (enSortMetric === 'baseline' ? '零冲击基线' : '冲击后总额')}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-1 mt-1">
-              {[
-                { val: 'incremental', label: '增量 ΔS' },
-                { val: 'post_shock', label: '总额 S*' },
-                { val: 'baseline', label: '基线 S0' }
-              ].map(opt => (
-                <button
-                  key={opt.val}
-                  type="button"
-                  onClick={() => {
-                    soundFx.playTick();
-                    setEnSortMetric(opt.val);
-                  }}
-                  className={`py-1 px-1 text-[11px] rounded font-mono transition-all cursor-pointer border ${
-                    enSortMetric === opt.val
-                      ? 'bg-rose-600 text-white font-bold border-rose-400 shadow-sm'
-                      : 'bg-slate-800 text-slate-300 hover:text-white border-slate-700'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div>
-            <div className="flex justify-between text-slate-400 mb-1">
-              <span className="font-semibold">4. 离岸美元流动性抽水:</span>
-              <span className="font-mono text-sky-400 font-bold">{dollarSqueezePct}%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={30}
-              step={2}
-              value={dollarSqueezePct}
-              onChange={(e) => {
-                setDollarSqueezePct(parseInt(e.target.value, 10));
-                setActivePreset('custom');
-              }}
-              className="w-full accent-sky-400 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
-            />
-          </div>
-        )}
       </div>
+    </div>
 
       {/* Summary KPI Badges */}
       {simResults && (
@@ -1274,179 +1433,6 @@ export default function NetworkContagionSimulator({
           </div>
         )
       )}
-
-      {/* Main Grid: Cascade Chart + Impact Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Cascade Chart (7 cols) */}
-        <div className="lg:col-span-7 bg-slate-900/40 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between">
-          <div className="text-xs font-bold text-white flex flex-wrap items-center justify-between border-b border-slate-800 pb-2 gap-2">
-            <span>{simMode === 'en_clearing' ? 'Eisenberg-Noe (2001) 清算短缺受害国级联分解 (前 10 大)' : '受冲击最深的前 10 大受害经济体级联损益'}</span>
-            {simMode === 'en_clearing' ? (
-              <span className="text-[10px] text-slate-400 font-mono">
-                {enSortMetric === 'incremental' ? '按冲击净增量 Δ 排序 (堆叠显示基线与增量)' : enSortMetric === 'baseline' ? '按零冲击基线排序' : '按冲击后总额排序'}
-              </span>
-            ) : (
-              <span className="text-[10px] text-slate-400 font-mono">Round 1 + Round 2 + Round 3</span>
-            )}
-          </div>
-          <div ref={chartRef} className="w-full h-[360px]" />
-        </div>
-
-        {/* Impact Table (5 cols) */}
-        <div className="lg:col-span-5 bg-slate-900/40 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between">
-          <div>
-            <div className="text-xs font-bold text-white border-b border-slate-800 pb-2 mb-2 flex flex-wrap items-center justify-between gap-1.5">
-              <span>{simMode === 'en_clearing' ? '清算受创排序榜单' : '系统性行为受创排序榜单'}</span>
-              {simMode === 'en_clearing' ? (
-                <div className="inline-flex rounded bg-slate-950 p-0.5 border border-slate-800 text-[10px]">
-                  <button
-                    onClick={() => {
-                      soundFx.playTick();
-                      setEnSortMetric('incremental');
-                    }}
-                    className={`px-2 py-0.5 rounded font-mono transition-colors cursor-pointer ${
-                      enSortMetric === 'incremental'
-                        ? 'bg-rose-600 text-white font-bold shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    冲击增量 Δ
-                  </button>
-                  <button
-                    onClick={() => {
-                      soundFx.playTick();
-                      setEnSortMetric('post_shock');
-                    }}
-                    className={`px-2 py-0.5 rounded font-mono transition-colors cursor-pointer ${
-                      enSortMetric === 'post_shock'
-                        ? 'bg-purple-600 text-white font-bold shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    总短缺 S*
-                  </button>
-                  <button
-                    onClick={() => {
-                      soundFx.playTick();
-                      setEnSortMetric('baseline');
-                    }}
-                    className={`px-2 py-0.5 rounded font-mono transition-colors cursor-pointer ${
-                      enSortMetric === 'baseline'
-                        ? 'bg-slate-700 text-white font-bold shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    基线 S0
-                  </button>
-                </div>
-              ) : (
-                <span className="text-slate-400 text-[10px]">按综合受损总额降序</span>
-              )}
-            </div>
-
-            <div className="space-y-1.5 max-h-[340px] overflow-y-auto">
-              {simResults?.impactList.map((item, idx) => {
-                if (simMode === 'en_clearing') {
-                  const isEligible = item.rankingEligible !== false;
-                  return (
-                    <div
-                      key={item.code}
-                      onClick={() => onSelectCountry(item.code)}
-                      className={`p-2 rounded-lg cursor-pointer transition-all flex items-center justify-between text-xs border ${
-                        !isEligible
-                          ? 'bg-slate-950/40 border-slate-800/40 opacity-70'
-                          : 'bg-slate-950/80 hover:bg-slate-800/80 border-slate-800/80'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-slate-500 text-[11px] w-4">
-                          {!isEligible ? '—' : `${idx + 1}.`}
-                        </span>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-white">{item.name_zh}</span>
-                            <span className="font-mono text-[10px] text-slate-400">({item.code})</span>
-                            {!isEligible && (
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-500/30">
-                                缺失不排
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-mono">
-                            {item.isMissingInput ? (
-                              <span className="text-amber-400/80">输入缺失 (外储: {item.reservesStatus})</span>
-                            ) : (
-                              `基线 $${item.enBaselineShortfall}B → 冲击后 $${item.enPostShockShortfall}B`
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <div className="font-mono font-bold text-rose-400">
-                          {!isEligible ? (
-                            <span className="text-slate-400 font-mono">NA</span>
-                          ) : item.enIncrementalShortfall > 0 ? (
-                            `+${item.enIncrementalShortfall}B`
-                          ) : (
-                            '$0.0B'
-                          )}
-                          {isEligible && (
-                            <span className="text-[10px] font-normal text-slate-400 ml-1">
-                              (+{Math.round(item.enIncrementalShortfall * 10).toLocaleString()} 亿)
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-amber-400/90 font-mono">
-                          {item.enIncrementalToReservesPct !== 'NA' ? `增量/外储: +${item.enIncrementalToReservesPct}%` : '增量/外储: NA'}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Behavioral mode
-                const displayVal = item.totalImpact;
-                const displayPct = item.impactToReservesPct;
-                return (
-                  <div
-                    key={item.code}
-                    onClick={() => onSelectCountry(item.code)}
-                    className="p-2 bg-slate-950/80 hover:bg-slate-800/80 border border-slate-800/80 rounded-lg cursor-pointer transition-all flex items-center justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-slate-500 text-[11px] w-4">{idx + 1}.</span>
-                      <span className="font-bold text-white">{item.name_zh}</span>
-                      <span className="font-mono text-[10px] text-slate-400">({item.code})</span>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="font-mono font-bold text-rose-400">
-                        -${displayVal}B ({Math.round(displayVal * 10).toLocaleString()} 亿美元)
-                      </div>
-                      <div className="text-[10px] text-slate-500 font-mono">
-                        损耗储备: {displayPct}%
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="text-[11px] text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 mt-2 space-y-1">
-            {simMode === 'en_clearing' ? (
-              <div>
-                💡 <strong>Eisenberg-Noe (2001) 双基线清算模型契约说明：</strong> 本模拟器同时计算零冲击初始基线 $p^{(0)}$ 与施加冲击后的清算不动点 $p^*$。压力测试聚焦于<strong>边际增量 $\Delta s_j = s_j^* - s_j^{(0)}$</strong>，将特定震中违约的外生破坏力与静态闭合网络的内生结构缺口彻底解耦，保障压力评估的客观性与科学性。
-              </div>
-            ) : (
-              <div>
-                💡 <strong>行为级联去杠杆模型说明：</strong> 本模式为启发式多轮情景压力测试（Round 1 直接减记 + Round 2 资产负债表收缩外溢 + Round 3 美元再融资挤压），用于演示恐慌传染扩散路径，不同于 Eisenberg-Noe 的静态不动点清算。
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
       </div>
       )}
 

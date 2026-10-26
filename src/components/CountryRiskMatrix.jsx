@@ -2,15 +2,18 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import { 
   ShieldAlert, AlertTriangle, ShieldCheck, Flame, 
-  ArrowUpDown, Sliders, Info, Zap, ChevronRight 
+  ArrowUpDown, Sliders, Info, Zap, ChevronRight, Download
 } from 'lucide-react';
 import { STRESS_SCENARIOS } from '../utils/macroScenarios';
+import DataClassificationBadge from './DataClassificationBadge';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 
 export default function CountryRiskMatrix({
   dataset,
   selectedQuarter,
   selectedCountry,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const scatterRef = useRef(null);
   const [selectedScenarioId, setSelectedScenarioId] = useState('baseline');
@@ -272,59 +275,65 @@ export default function CountryRiskMatrix({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Top Banner: Stress Testing Controls */}
-      <div className="glass-panel rounded-2xl p-5 shadow-2xl">
-        <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 mb-3 gap-3">
-          <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+      <div className="glass-panel rounded-xl p-3 sm:p-3.5 shadow-xl">
+        <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 mb-2 gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
               <ShieldAlert className="w-4 h-4 text-rose-400" />
               BIS 综合银行统计 (CBS) 国家风险敞口与外债脆弱性压力测试
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              测算在不同宏观流动性冲击下，各国对跨国银行的美元再融资敞口、外汇储备保障倍数及潜在展期缺口
-            </p>
+            <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+              {selectedQuarter}
+            </span>
+            <DataClassificationBadge
+              quarter={selectedQuarter}
+              sourceText="BIS CBS 综合统计与国别外储"
+              methodText="穿透归属 (Ultimate Risk) 与压力测算"
+              onOpenAppendix={onOpenAppendix}
+            />
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Risk Accounting Basis Toggle */}
-            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-xl p-1 text-xs shadow-sm">
-              <span className="text-[11px] font-mono text-slate-400 px-1.5">统计口径:</span>
+            <div className="flex items-center gap-1 bg-slate-900 border border-slate-700/80 rounded-lg p-0.5 text-xs shadow-sm">
+              <span className="text-[10px] font-mono text-slate-400 px-1">统计口径:</span>
               <button
                 onClick={() => setRiskBasis('immediate')}
-                className={`px-2.5 py-1 rounded-lg transition-all text-xs font-medium cursor-pointer ${
+                className={`px-2 py-0.5 rounded text-xs font-medium cursor-pointer ${
                   riskBasis === 'immediate'
                     ? 'bg-blue-600 text-white font-semibold shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="按法定借款人所在地统计 (离岸避税港名义借款虚高)"
+                title="按法定借款人所在地统计"
               >
-                即期借款人原则 (Immediate)
+                即期借款人
               </button>
               <button
                 onClick={() => setRiskBasis('ultimate')}
-                className={`px-2.5 py-1 rounded-lg transition-all text-xs font-medium cursor-pointer flex items-center gap-1 ${
+                className={`px-2 py-0.5 rounded text-xs font-medium cursor-pointer flex items-center gap-1 ${
                   riskBasis === 'ultimate'
-                    ? 'bg-emerald-600 text-white font-bold shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                    ? 'bg-emerald-600 text-white font-bold shadow-sm'
                     : 'text-slate-400 hover:text-emerald-400'
                 }`}
-                title="穿透剥离避税港外壳，将资产回溯归属至真实最终母国担保人"
+                title="穿透剥离避税港外壳，回溯归属至真实最终母国担保人"
               >
-                <span>⚡ 最终风险穿透原则 (Ultimate Risk)</span>
+                <span>最终风险穿透</span>
               </button>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 text-amber-400" /> 选择压力情景:
+                <Flame className="w-3.5 h-3.5 text-amber-400" /> 情景:
               </span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1">
                 {Object.values(STRESS_SCENARIOS).map(sc => (
                   <button
                     key={sc.id}
                     onClick={() => setSelectedScenarioId(sc.id)}
-                    className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${
+                    className={`px-2 py-0.5 rounded text-xs transition-all cursor-pointer ${
                       selectedScenarioId === sc.id
-                        ? 'bg-rose-600 text-white font-semibold shadow-md shadow-rose-600/30'
+                        ? 'bg-rose-600 text-white font-semibold shadow-sm'
                         : 'bg-slate-900 text-slate-300 border border-slate-800 hover:bg-slate-800'
                     }`}
                   >
@@ -466,7 +475,7 @@ export default function CountryRiskMatrix({
             </h3>
             <span className="text-xs text-slate-500 font-mono">{selectedQuarter}</span>
           </div>
-          <div ref={scatterRef} className="w-full h-[320px]" />
+          <div ref={scatterRef} className="w-full h-[calc(100vh-420px)] min-h-[300px] max-h-[540px]" />
         </div>
 
         {/* Priority Vulnerability Watchlist (5 cols) */}

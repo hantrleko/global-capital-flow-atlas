@@ -4,11 +4,14 @@ import {
   Orbit, BarChart2, TrendingUp, Compass, 
   HelpCircle, Download, ArrowUpRight, ArrowDownRight 
 } from 'lucide-react';
+import DataClassificationBadge from './DataClassificationBadge';
+import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 
 export default function GravityEconometrics({
   dataset,
   selectedQuarter,
-  onSelectCountry
+  onSelectCountry,
+  onOpenAppendix
 }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -226,42 +229,67 @@ export default function GravityEconometrics({
   }, [gravityAnalysis]);
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-2xl space-y-5">
+    <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 sm:p-3.5 shadow-xl space-y-3">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-pink-500/20 border border-pink-500/40 flex items-center justify-center text-pink-400">
-            <Orbit className="w-5 h-5" />
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-pink-500/20 border border-pink-500/40 flex items-center justify-center text-pink-400 shrink-0">
+            <Orbit className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              国际银行双边信贷引力模型与反常转口溢价 (Gravity Equation of Banking)
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+                国际银行双边信贷引力模型与反常转口溢价 (Gravity Equation)
+              </h2>
               <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                 {selectedQuarter}
               </span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+              <DataClassificationBadge
+                quarter={selectedQuarter}
+                sourceText="BIS 双边信贷与 CEPII 地理距离"
+                methodText="双对数 OLS 计量回归与残差分解"
+                onOpenAppendix={onOpenAppendix}
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
               实证检验地理距离对跨国信贷的物理阻尼效应，并识别突破重力的离岸转口中枢溢价
             </p>
           </div>
         </div>
 
-        {/* Regression Diagnostic Badges */}
-        <div className="flex items-center gap-3 bg-slate-900 p-2 rounded-lg border border-slate-800 text-xs font-mono">
-          <span className="text-slate-400">距离弹性阻尼 (β): <b className="text-pink-400">{gravityAnalysis.slope}</b></span>
-          <span className="text-slate-400">拟合优度 (R²): <b className="text-emerald-400">{gravityAnalysis.r2}</b></span>
+        {/* Regression Diagnostic Badges & Export */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-3 bg-slate-900 p-1.5 rounded-lg border border-slate-800 text-[11px] font-mono">
+            <span className="text-slate-400">距离弹性阻尼 (β): <b className="text-pink-400">{gravityAnalysis.slope}</b></span>
+            <span className="text-slate-400">拟合优度 (R²): <b className="text-emerald-400">{gravityAnalysis.r2}</b></span>
+          </div>
+          <button
+            onClick={async () => {
+              if (!chartInstance.current) return;
+              const rawUrl = chartInstance.current.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#080c14' });
+              const watermarkedUrl = await addWatermarkToDataUrl(rawUrl, selectedQuarter, '国际银行双边信贷引力模型');
+              const a = document.createElement('a');
+              a.href = watermarkedUrl;
+              a.download = `bis_gravity_model_${selectedQuarter}.png`;
+              a.click();
+            }}
+            className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="导出高清引力模型图 PNG (含水印)"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
       {/* Main Grid: Scatter + Econometric Residuals */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         {/* Scatter & OLS Curve (7 cols) */}
         <div className="lg:col-span-7 bg-slate-900/40 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between">
           <div className="text-xs font-bold text-white flex items-center justify-between border-b border-slate-800 pb-2">
             <span>双边地理距离与信贷规模对数散点图 (Log Distance vs Log Claims)</span>
             <span className="text-[10px] text-slate-400 font-mono">双对数空间 OLS 回归</span>
           </div>
-          <div ref={chartRef} className="w-full h-[380px]" />
+          <div ref={chartRef} className="w-full h-[calc(100vh-420px)] min-h-[300px] max-h-[520px]" />
           <div className="text-[11px] text-slate-400 bg-slate-950 p-2.5 rounded border border-slate-800/80 leading-normal">
             💡 <strong>引力模型洞察：</strong> 在常规经贸关系中，信贷规模随地理与制度距离递减；但开曼群岛、英国、新加坡等离岸走廊（橙色高亮散点）呈现巨大的**正引力残差**，证明其具备极其强大的非生产性资金过桥属性。
           </div>

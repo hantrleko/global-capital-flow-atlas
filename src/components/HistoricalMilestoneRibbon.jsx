@@ -31,50 +31,58 @@ export default function HistoricalMilestoneRibbon({
     return true;
   });
 
+  if (!isOpen) return null;
+
   return (
-    <div className="border-b border-slate-800/80 bg-slate-950/90 text-xs backdrop-blur-md transition-all">
+    <div className="border-b border-slate-800/80 bg-slate-950/95 text-xs backdrop-blur-md shadow-2xl transition-all animate-fade-in relative z-30">
       {/* Ribbon Bar Header Toggle */}
       <div className="max-w-[1780px] mx-auto px-4 py-1.5 flex items-center justify-between gap-3 text-slate-300">
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => {
-              soundFx.playTick();
-              onToggle();
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-950/60 hover:bg-blue-900/60 border border-blue-500/40 text-sky-300 font-semibold cursor-pointer transition-all shadow-sm group"
-          >
-            <History className="w-3.5 h-3.5 text-sky-400 group-hover:rotate-12 transition-transform" />
-            <span>宏观历史转折期 (2018-2026Q1 官方观测 · 2026Q2 待公布 · 2026Q3-Q4 前瞻情景)</span>
-            {isOpen ? <ChevronDown className="w-3.5 h-3.5 ml-1" /> : <ChevronRight className="w-3.5 h-3.5 ml-1" />}
-          </button>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-950/60 border border-blue-500/40 text-sky-300 font-semibold shadow-sm">
+            <History className="w-3.5 h-3.5 text-sky-400" />
+            <span>宏观历史转折期与纪元事件</span>
+          </span>
 
           <span className="text-[11px] text-slate-400 hidden md:inline">
             已收录 <span className="text-white font-mono font-bold">{MACRO_TIMELINE_EVENTS.length}</span> 个关键期 · 点击卡片穿梭
           </span>
         </div>
 
-        {/* Current Active Milestone Highlight */}
-        {(() => {
-          const matched = MACRO_TIMELINE_EVENTS.find(e => e.quarter === selectedQuarter);
-          const isNowcast = selectedQuarter > '2026Q2';
-          if (matched) {
-            return (
-              <div className="flex items-center gap-2 overflow-hidden text-right">
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isNowcast ? 'bg-purple-400 animate-pulse' : 'bg-sky-400 animate-ping'}`} />
-                <span className="text-slate-400 text-[11px] truncate hidden sm:inline">
-                  {isNowcast ? '前瞻预测推演:' : '当前观测周期:'}
-                </span>
-                <span className={`font-bold font-mono shrink-0 ${isNowcast ? 'text-purple-300' : 'text-sky-300'}`}>
-                  {matched.quarter} {isNowcast && '[NOWCAST]'}
-                </span>
-                <span className="text-white truncate max-w-xs text-[11px] font-medium hidden lg:inline">
-                  {matched.name.split('(')[0]}
-                </span>
-              </div>
-            );
-          }
-          return null;
-        })()}
+        <div className="flex items-center gap-3">
+          {/* Current Active Milestone Highlight */}
+          {(() => {
+            const matched = MACRO_TIMELINE_EVENTS.find(e => e.quarter === selectedQuarter);
+            const isNowcast = selectedQuarter > '2026Q2';
+            if (matched) {
+              return (
+                <div className="flex items-center gap-2 overflow-hidden text-right">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isNowcast ? 'bg-purple-400 animate-pulse' : 'bg-sky-400 animate-ping'}`} />
+                  <span className="text-slate-400 text-[11px] truncate hidden sm:inline">
+                    {isNowcast ? '前瞻情景:' : '观测周期:'}
+                  </span>
+                  <span className={`font-bold font-mono shrink-0 ${isNowcast ? 'text-purple-300' : 'text-sky-300'}`}>
+                    {matched.quarter}
+                  </span>
+                  <span className="text-white truncate max-w-xs text-[11px] font-medium hidden lg:inline">
+                    {matched.name.split('(')[0]}
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
+          <button
+            onClick={() => {
+              soundFx.playTick();
+              onToggle();
+            }}
+            className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+            title="关闭历史纪元面板"
+          >
+            <ChevronDown className="w-4 h-4 rotate-180" />
+          </button>
+        </div>
       </div>
 
       {/* Expandable Horizontal Carousel View */}

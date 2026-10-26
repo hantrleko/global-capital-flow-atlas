@@ -21,6 +21,7 @@ import MacroIntelligenceBriefing from './components/MacroIntelligenceBriefing';
 import ExecutiveKpiRow from './components/ExecutiveKpiRow';
 import soundFx from './utils/soundEffects';
 import ErrorBoundary from './components/ErrorBoundary';
+import { getDataClassification } from './utils/dataClassification';
 import { Keyboard, X, Bot, Sparkles } from 'lucide-react';
 
 // Lazy-loaded secondary quant components for bundle code-splitting
@@ -248,35 +249,16 @@ export default function App() {
     : '47.62';
 
   const quarterStatusLabel = useMemo(() => {
-    if (selectedQuarter <= '2026Q1') {
-      return {
-        badge: 'BIS SDMX 官方核定',
-        badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-        dotColor: 'bg-emerald-400',
-        text: `官方总额 $${currentClaimsVal}T`
-      };
-    }
-    if (selectedQuarter === '2026Q2') {
-      return {
-        badge: '待核实估算基准',
-        badgeColor: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-        dotColor: 'bg-amber-400',
-        text: `估算基准 $${currentClaimsVal}T (待10月30日官方公布)`
-      };
-    }
-    if (selectedQuarter === '2026Q3') {
-      return {
-        badge: '前瞻情景推演',
-        badgeColor: 'text-purple-400 bg-purple-500/10 border-purple-400/30',
-        dotColor: 'bg-purple-400',
-        text: `情景中值 $${currentClaimsVal}T`
-      };
-    }
+    const meta = getDataClassification(selectedQuarter);
     return {
-      badge: 'NOWCAST 临近预测',
-      badgeColor: 'text-purple-400 bg-purple-500/10 border-purple-400/30',
-      dotColor: 'bg-purple-400',
-      text: `临近预测 ~$${currentClaimsVal}T (情景范围 $47.90T–$49.30T)`
+      badge: meta.label,
+      badgeColor: meta.badgeClass,
+      dotColor: meta.dotClass,
+      text: meta.type === 'OFFICIAL_OBSERVED'
+        ? `官方总额 $${currentClaimsVal}T`
+        : meta.type === 'CACHED_PENDING_RELEASE'
+          ? `估算总额 $${currentClaimsVal}T (待10月30日官方公布)`
+          : `情景中值 $${currentClaimsVal}T (范围 $47.90T–$49.30T)`
     };
   }, [selectedQuarter, currentClaimsVal]);
 
@@ -495,6 +477,7 @@ export default function App() {
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -512,6 +495,7 @@ export default function App() {
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -530,6 +514,7 @@ export default function App() {
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -538,6 +523,7 @@ export default function App() {
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -546,6 +532,7 @@ export default function App() {
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -554,6 +541,7 @@ export default function App() {
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -563,6 +551,7 @@ export default function App() {
               selectedQuarter={selectedQuarter}
               selectedCountry={selectedCountry}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -571,6 +560,7 @@ export default function App() {
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -579,6 +569,7 @@ export default function App() {
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -586,6 +577,7 @@ export default function App() {
             <RegimeComparison
               dataset={activeDataset}
               onSelectCountry={(code) => setSelectedCountry(code)}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
 
@@ -604,6 +596,7 @@ export default function App() {
             <ResearchDossier
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
+              onOpenAppendix={() => setIsAppendixOpen(true)}
             />
           )}
         </Suspense>

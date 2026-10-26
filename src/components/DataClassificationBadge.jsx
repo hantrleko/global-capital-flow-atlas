@@ -1,23 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   ShieldCheck, Cpu, Sparkles, AlertOctagon, HelpCircle, 
   ExternalLink, Clock, FileText, CheckCircle2, AlertTriangle, X 
 } from 'lucide-react';
+import { getDataClassification } from '../utils/dataClassification';
 
 /**
  * DataClassificationBadge
  * Standardized data credibility, provenance and evidence badge across all analytical modules.
- * 
- * Classifications:
- * - OFFICIAL_OBSERVED: Anchored to verified official BIS SDMX API releases (<= 2026Q1)
- * - CACHED_PENDING_RELEASE: Quarters where official release is scheduled but not yet in API (2026Q2, release date: Oct 30)
- * - MODEL_RECONSTRUCTED: Micro bilateral links calibrated via biproportional RAS entropy balancing
- * - SCENARIO_PROJECTION / NOWCAST_PREDICTION: Forward heuristic scenario paths (2026Q3 - 2026Q4)
- * - STRESS_SIMULATION: Hypothetical counterfactual / stress testing (Eisenberg-Noe, shocks)
+ * Anchored to the canonical 3-tier classification:
+ * 1. 官方观测 (<= 2026Q1)
+ * 2. 待公布估算 (2026Q2)
+ * 3. 前瞻情景 (>= 2026Q3)
  */
 export default function DataClassificationBadge({
   classification = 'MODEL_RECONSTRUCTED',
-  quarter = '2026Q4',
+  quarter = '2026Q1',
   sourceText,
   methodText,
   vintage,
@@ -27,9 +25,12 @@ export default function DataClassificationBadge({
 }) {
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
 
+  // Canonical 3-tier data classification derived directly from quarter
+  const canonical = useMemo(() => getDataClassification(quarter), [quarter]);
+
   const configs = {
     OFFICIAL_OBSERVED: {
-      label: '官方观测基准',
+      label: '官方观测',
       code: 'OFFICIAL OBSERVED',
       badgeBg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300',
       dotColor: 'bg-emerald-400',
@@ -39,27 +40,27 @@ export default function DataClassificationBadge({
       statusDesc: '该季度已于 BIS stats.bis.org 正式发布并由 API 校验核对入库。'
     },
     CACHED_PENDING_RELEASE: {
-      label: '待核实估算',
+      label: '待公布估算',
       code: 'CACHED ESTIMATE',
       badgeBg: 'bg-amber-500/10 border-amber-500/30 text-amber-300',
       dotColor: 'bg-amber-400',
       icon: Clock,
       defaultSource: 'BIS 官方发布日预定为 2026-10-30 (尚未入库)',
       defaultMethod: '前序季度样本推算 · 待官方数据正式入库',
-      statusDesc: '根据 BIS 统计发布日历 (data.bis.org/release-calendar)，2026Q2 数据于 10 月 30 日公布。在官方序列上线前，本项目标注为待核实估算，杜绝提前伪称已发生事实。'
+      statusDesc: '根据 BIS 统计发布日历 (data.bis.org/release-calendar)，2026Q2 数据于 10 月 30 日公布。在官方序列上线前，本项目标注为待公布估算，杜绝提前伪称已发生事实。'
     },
     MODEL_RECONSTRUCTED: {
-      label: '模型分配与重构',
-      code: 'MODEL RECONSTRUCTED',
-      badgeBg: 'bg-sky-500/10 border-sky-500/30 text-sky-300',
-      dotColor: 'bg-sky-400',
-      icon: Cpu,
+      label: canonical.label,
+      code: canonical.type,
+      badgeBg: canonical.badgeClass,
+      dotColor: canonical.type === 'OFFICIAL_OBSERVED' ? 'bg-emerald-400' : 'bg-purple-400',
+      icon: canonical.type === 'OFFICIAL_OBSERVED' ? ShieldCheck : Sparkles,
       defaultSource: '总量锚定 BIS 官方公布值 (Table A6.2)',
       defaultMethod: '双比例 RAS 重构 (导出残差 0.0B 守恒)',
       statusDesc: '官方公开数据不提供完整银行间双边微观网络。本双边走廊由申报国总债权和总债务为硬边际约束，经 RAS 双比例迭代收敛与 0.1B 整点守恒调校生成，全量 506 条走廊导出后行差与列差均为 0.0 Bn USD。'
     },
     SCENARIO_PROJECTION: {
-      label: '前瞻情景推演',
+      label: '前瞻情景',
       code: 'SCENARIO PROJECTION',
       badgeBg: 'bg-purple-500/10 border-purple-500/30 text-purple-300',
       dotColor: 'bg-purple-400',
@@ -69,7 +70,7 @@ export default function DataClassificationBadge({
       statusDesc: '未发生季度不作为已校准计量确定性预测，而是作为宏观压力情景探索。范围为情景假定边界，非正式 95% 置信区间。'
     },
     NOWCAST_PREDICTION: {
-      label: '前瞻情景推演',
+      label: '前瞻情景',
       code: 'SCENARIO PROJECTION',
       badgeBg: 'bg-purple-500/10 border-purple-500/30 text-purple-300',
       dotColor: 'bg-purple-400',
@@ -79,10 +80,10 @@ export default function DataClassificationBadge({
       statusDesc: '未发生季度不作为已校准计量确定性预测，而是作为宏观压力情景探索。'
     },
     STRESS_SIMULATION: {
-      label: '反事实压力模拟',
+      label: '反事实情景',
       code: 'STRESS SIMULATION',
-      badgeBg: 'bg-amber-500/10 border-amber-500/30 text-amber-300',
-      dotColor: 'bg-amber-400',
+      badgeBg: 'bg-rose-500/10 border-rose-500/30 text-rose-300',
+      dotColor: 'bg-rose-400',
       icon: AlertOctagon,
       defaultSource: '模型基准网络 + 外部冲击参数',
       defaultMethod: 'Eisenberg-Noe (2001) 级联违约清算算法',
@@ -96,11 +97,11 @@ export default function DataClassificationBadge({
   return (
     <>
       <div className={`inline-flex flex-wrap items-center gap-2 bg-slate-900/90 border border-slate-800 rounded-xl px-2.5 py-1 text-xs backdrop-blur-md ${className}`}>
-        {/* Category Pill */}
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-mono font-medium text-[11px] ${cfg.badgeBg}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dotColor} animate-pulse`} />
+        {/* Canonical Category Pill */}
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-mono font-medium text-[11px] ${canonical.badgeClass}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${canonical.type === 'OFFICIAL_OBSERVED' ? 'bg-emerald-400' : canonical.type === 'CACHED_PENDING_RELEASE' ? 'bg-amber-400' : 'bg-purple-400'} animate-pulse`} />
           <Icon className="w-3 h-3" />
-          <span>{cfg.label}</span>
+          <span>{canonical.label}</span>
         </span>
 
         {/* Attribution Snippet */}

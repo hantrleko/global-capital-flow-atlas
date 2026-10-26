@@ -30,6 +30,13 @@ export default function ExecutiveKpiRow({
 
   const totalFormatted = formatValueInCurrency(totalClaimsVal, selectedCurrency, selectedQuarter);
 
+  // Dynamic USD share & stress metrics
+  const usdShare = currentMacro.global_usd_share_pct ?? currentMacro.usd_denominated_share_pct ?? 52.8;
+  const prevUsdShare = prevMacro ? (prevMacro.global_usd_share_pct ?? prevMacro.usd_denominated_share_pct ?? usdShare) : usdShare;
+  const deltaUsdShare = Math.round((usdShare - prevUsdShare) * 10) / 10;
+
+  const stressIndex = currentMacro.bis_usd_funding_stress_index ?? currentMacro.funding_stress_index ?? 48.2;
+
   // Corridor density stats
   const currentLinks = (dataset.bilateral_matrix || {})[selectedQuarter] || [];
   const top5Claims = useMemo(() => {
@@ -40,19 +47,19 @@ export default function ExecutiveKpiRow({
   }, [currentLinks]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 w-full">
+    <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-2 md:gap-2.5 w-full pb-0.5 md:pb-0 scrollbar-none">
       {/* KPI Card 1: Total Claims */}
-      <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl px-3.5 py-2 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors">
+      <div className="min-w-[270px] md:min-w-0 flex-1 bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors shrink-0">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-400">全球跨境银行信贷总额</span>
+            <span className="text-xs font-semibold text-slate-400">全球跨境信贷总额</span>
             <span className={`text-[11px] font-mono font-medium px-2 py-0.5 rounded-full border ${classification.badgeClass}`}>
               {classification.label}
             </span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-base md:text-lg font-bold font-mono text-white tracking-tight">
-              ${totalFormatted.value} {totalFormatted.unit}
+              {totalFormatted}
             </span>
             <span className={`text-xs font-mono font-semibold ${deltaBn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {deltaBn >= 0 ? `+${deltaBn}B` : `${deltaBn}B`} ({deltaBn >= 0 ? `+${deltaPct}%` : `${deltaPct}%`})
@@ -65,20 +72,23 @@ export default function ExecutiveKpiRow({
       </div>
 
       {/* KPI Card 2: USD Share & Stress */}
-      <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl px-3.5 py-2 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors">
+      <div className="min-w-[270px] md:min-w-0 flex-1 bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors shrink-0">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-400">美元计价份额与离岸紧缩</span>
+            <span className="text-xs font-semibold text-slate-400">美元份额与紧缩指数</span>
             <span className="text-[11px] font-mono text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700/60">
-              CBS 口径
+              CBS 统计
             </span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-base md:text-lg font-bold font-mono text-white tracking-tight">
-              {currentMacro.usd_denominated_share_pct ? `${currentMacro.usd_denominated_share_pct.toFixed(1)}%` : '52.8%'}
+              {Number(usdShare).toFixed(1)}%
             </span>
-            <span className="text-xs font-mono text-slate-300">
-              压力指数: {currentMacro.funding_stress_index ? currentMacro.funding_stress_index.toFixed(1) : '48.2'}
+            <span className={`text-xs font-mono font-semibold ${deltaUsdShare >= 0 ? 'text-indigo-300' : 'text-slate-400'}`}>
+              {deltaUsdShare >= 0 ? `+${deltaUsdShare}%` : `${deltaUsdShare}%`}
+            </span>
+            <span className="text-xs font-mono text-slate-300 ml-1">
+              压力: <span className={stressIndex > 50 ? 'text-amber-400 font-semibold' : 'text-emerald-400 font-semibold'}>{Number(stressIndex).toFixed(1)}</span>
             </span>
           </div>
         </div>
@@ -88,12 +98,12 @@ export default function ExecutiveKpiRow({
       </div>
 
       {/* KPI Card 3: Network Corridors & Hubs */}
-      <div className="bg-slate-900/80 border border-slate-800/80 rounded-xl px-3.5 py-2 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors">
+      <div className="min-w-[270px] md:min-w-0 flex-1 bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors shrink-0">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-400">网络走廊与枢纽集中度</span>
+            <span className="text-xs font-semibold text-slate-400">走廊集中度与核心枢纽</span>
             <span className="text-[11px] font-mono text-sky-300 bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-800/60">
-              506 条双向走廊
+              506 走廊
             </span>
           </div>
           <div className="flex items-baseline gap-2">
@@ -101,7 +111,7 @@ export default function ExecutiveKpiRow({
               Top 5 占 {top5Claims}%
             </span>
             <span className="text-xs font-sans text-slate-400">
-              核心枢纽: 美英日德中
+              枢纽: 美英日德中
             </span>
           </div>
         </div>
