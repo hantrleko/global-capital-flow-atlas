@@ -53,8 +53,8 @@ export default function ExecutiveKpiRow({
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-400">全球跨境信贷总额</span>
-            <span className={`text-[11px] font-mono font-medium px-2 py-0.5 rounded-full border ${classification.badgeClass}`}>
-              {classification.label}
+            <span className="text-[11px] font-mono text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700/60">
+              BIS LBS
             </span>
           </div>
           <div className="flex items-baseline gap-2">

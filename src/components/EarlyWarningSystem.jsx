@@ -523,14 +523,14 @@ export default function EarlyWarningSystem({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-300">
                 <thead className="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 font-mono border-b border-slate-800">
-                  <tr>
+                  <tr className="whitespace-nowrap">
                     <th className="py-3 px-4">经济体 (Jurisdiction)</th>
                     <th className="py-3 px-3">预警信号</th>
                     <th className="py-3 px-3 text-right">Credit-to-GDP 缺口</th>
                     <th className="py-3 px-3 text-right">Basel III CCyB 推荐</th>
                     <th className="py-3 px-3 text-right">偿债比率 (DSR) 偏差</th>
                     <th className="py-3 px-3 text-right">跨境借款/GDP</th>
-                    <th className="py-3 px-4">主要风险特征与政策诊断</th>
+                    <th className="py-3 px-4 min-w-[240px]">主要风险特征与政策诊断</th>
                     <th className="py-3 px-3 text-center">操作</th>
                   </tr>
                 </thead>
@@ -555,8 +555,8 @@ export default function EarlyWarningSystem({
                           </div>
                         </td>
 
-                        <td className="py-3 px-3">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border ${
                             light === 'RED'
                               ? 'bg-rose-500/15 text-rose-300 border-rose-500/35 shadow-[0_0_8px_rgba(244,63,94,0.3)]'
                               : light === 'AMBER'

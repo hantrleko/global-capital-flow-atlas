@@ -169,6 +169,17 @@ export default function Header({
 
             {/* Quick Action Buttons */}
             <div className="flex items-center gap-1">
+              {onOpenMacroAi && (
+                <button
+                  onClick={onOpenMacroAi}
+                  className="hidden sm:flex h-7 px-2.5 rounded-lg border border-purple-500/40 bg-purple-950/40 text-purple-300 hover:text-white hover:bg-purple-900/50 items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-sm transition-all"
+                  title="唤起宏观 AI 智能审慎决策推演 (Macro Copilot)"
+                >
+                  <Bot className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="text-xs">宏观 AI</span>
+                </button>
+              )}
+
               {onOpenAppendix && (
                 <button
                   onClick={onOpenAppendix}
@@ -279,7 +290,7 @@ export default function Header({
             <span className={`inline-flex items-center gap-1.5 text-xs font-mono font-medium px-2 py-0.5 rounded-full border ${classification.badgeClass}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${classification.dotClass} animate-pulse`} />
               <span>{classification.label}</span>
-              <span className="hidden sm:inline opacity-80">· {classification.provenance}</span>
+              <span className="hidden 2xl:inline opacity-80">· {classification.provenance}</span>
             </span>
 
             {/* Historical Milestones Toggle */}
@@ -329,37 +340,8 @@ export default function Header({
             })}
           </div>
 
-          {/* Right Actions: Quick Presets & Scenario Switcher */}
+          {/* Right Action: Scenario Mode Switcher */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Quick Presets (看全局 / 比差异 / 测压力) */}
-            <div className="hidden lg:flex items-center gap-1 border-r border-slate-800 pr-2">
-              <span className="text-[11px] font-mono text-slate-400 mr-0.5">快捷:</span>
-              {[
-                { id: 'map', label: '看全局', desc: '双边流向图谱' },
-                { id: 'compare', label: '比差异', desc: '多国结构对比' },
-                { id: 'contagion', label: '测压力', desc: '级联违约压力' }
-              ].map(p => {
-                const isActive = activeTab === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      soundFx.playTick();
-                      onSelectTab(p.id);
-                    }}
-                    className={`px-2 py-0.5 rounded text-xs font-medium transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-semibold'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                    title={p.desc}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-
             {/* Prominent Scenario vs Official Mode Toggle */}
             {selectedQuarter <= '2026Q1' ? (
               <button

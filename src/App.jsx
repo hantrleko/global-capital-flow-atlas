@@ -60,6 +60,7 @@ export default function App() {
   useEffect(() => {
     return subscribeDataset((updated) => {
       setDatasetState(updated);
+      setDatasetRevision(r => r + 1);
     });
   }, []);
 
@@ -175,7 +176,10 @@ export default function App() {
     if (!isQuarterLoaded(selectedQuarter)) {
       setIsLoadingPartition(true);
       loadHistoricalBilateral()
-        .then(() => setPartitionError(null))
+        .then(() => {
+          setPartitionError(null);
+          setDatasetRevision(r => r + 1);
+        })
         .catch(() => {
           setPartitionError('历史季度信贷数据加载失败，请检查网络');
         })
@@ -192,7 +196,10 @@ export default function App() {
     if (needsCbs && !isCbsRiskLoaded()) {
       setIsLoadingPartition(true);
       loadCbsRisk()
-        .then(() => setPartitionError(null))
+        .then(() => {
+          setPartitionError(null);
+          setDatasetRevision(r => r + 1);
+        })
         .catch(() => {
           setPartitionError('宏观审慎指标数据加载失败，请检查网络');
         })
@@ -627,22 +634,6 @@ export default function App() {
           }}
         />
       )}
-
-      {/* BIS Macro AI Copilot Floating Quick Trigger (Desktop Only to Avoid Mobile Screen Clutter) */}
-      <div className="fixed bottom-6 right-6 z-30 hidden md:flex">
-        <button
-          onClick={() => {
-            soundFx.playChime();
-            setIsMacroAiOpen(true);
-          }}
-          className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white text-xs font-bold shadow-[0_0_25px_rgba(59,130,246,0.6)] flex items-center gap-2 transition-all hover:scale-105 group border border-blue-400/40 cursor-pointer"
-          title="打开 BIS 宏观 AI 决策推演智能体 (Macro Copilot 2.0)"
-        >
-          <Bot className="w-4 h-4 group-hover:rotate-12 transition-transform animate-pulse-subtle" />
-          <span className="hidden sm:inline">宏观 AI 大脑</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-ping" />
-        </button>
-      </div>
 
       {/* BIS Atlas Project Brief & Institutional Onboarding Modal */}
       <ProjectIntroModal

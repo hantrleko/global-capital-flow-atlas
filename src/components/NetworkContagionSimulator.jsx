@@ -85,10 +85,14 @@ export default function NetworkContagionSimulator({
     return (dataset.bilateral_matrix || {})[selectedQuarter] || [];
   }, [dataset, selectedQuarter]);
 
-  // Deterministic Fingerprint Key: binds revision, quarter, active matrix links, and all scenario parameters
+  const cbsRiskKeysCount = useMemo(() => {
+    return Object.keys(dataset.cbs_risk || {}).length;
+  }, [dataset.cbs_risk]);
+
+  // Deterministic Fingerprint Key: binds revision, cbsCount, quarter, active matrix links, and all scenario parameters
   const dataFingerprint = useMemo(() => {
     return buildDataFingerprint({
-      revision: dataset?.datasetRevision ?? 1,
+      revision: `${dataset?.datasetRevision ?? 1}_cbs:${cbsRiskKeysCount}`,
       quarter: selectedQuarter,
       links: currentLinks,
       epicenter,
@@ -100,7 +104,7 @@ export default function NetworkContagionSimulator({
       enSortMetric,
       allowModelProxy
     });
-  }, [dataset?.datasetRevision, selectedQuarter, currentLinks, epicenter, haircutPct, bufferMultiplier, deleveragingMultiplier, dollarSqueezePct, simMode, enSortMetric, allowModelProxy]);
+  }, [dataset?.datasetRevision, cbsRiskKeysCount, selectedQuarter, currentLinks, epicenter, haircutPct, bufferMultiplier, deleveragingMultiplier, dollarSqueezePct, simMode, enSortMetric, allowModelProxy]);
 
   // Pure Simulation Executor with Async Race Protection & Recomputing Indicator
   const executeSimulation = () => {

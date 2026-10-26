@@ -12,7 +12,7 @@ import {
   Layers, Eye, Filter, ArrowUpRight, ArrowDownLeft, 
   Info, Download, Target, Compass, Maximize2, Sparkles,
   Radio, Zap, Shield, Globe2, Sliders, Check, Calendar, TrendingUp,
-  X, ArrowRight, DollarSign, Globe
+  X, ArrowRight, DollarSign, Globe, RotateCcw
 } from 'lucide-react';
 
 export default function CapitalFlowMap({
@@ -362,6 +362,21 @@ export default function CapitalFlowMap({
         }
       });
 
+      // In global overview, prioritize key global hubs to prevent European clutter
+      const isKeyGlobalHub = ['US', 'GB', 'CN', 'JP', 'DE', 'KY', 'SG', 'HK', 'CH', 'FR'].includes(c.code);
+      const shouldShowLabel = showLabels && (
+        isSelected ||
+        focusCountry === c.code ||
+        (focusCountry === 'ALL' && isKeyGlobalHub)
+      );
+
+      // Position labels away from dense corridor convergences
+      let labelPos = 'right';
+      if (c.code === 'US') labelPos = 'left';
+      else if (c.code === 'GB') labelPos = 'top';
+      else if (c.code === 'DE') labelPos = 'bottom';
+      else if (c.code === 'JP') labelPos = 'right';
+
       // 2. Inner bright pearl center dot
       coreNodes.push({
         id: `core-${c.code}`,
@@ -375,44 +390,50 @@ export default function CapitalFlowMap({
           shadowColor: isSelected ? '#ffffff' : themeColor
         },
         label: {
-          show: showLabels && (c.tier === 1 || isSelected || focusCountry === c.code || haloSize > 18),
-          position: 'right',
+          show: shouldShowLabel,
+          position: labelPos,
           distance: 6,
           formatter: `{b}`,
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: isSelected ? 'bold' : 'normal',
-          color: isSelected ? '#ffffff' : '#cbd5e1',
+          color: isSelected ? '#ffffff' : '#e2e8f0',
+          textBorderColor: '#060a12',
+          textBorderWidth: 3,
           fontFamily: 'system-ui, -apple-system, sans-serif'
+        },
+        labelLayout: {
+          hideOverlap: true,
+          moveOverlap: 'shiftY'
         }
       });
 
-      // 3. Eased calm ripple: ONLY for selected country or top global core (US/GB)
+      // 3. Eased calm ripple: delicate outline stroke (never solid opaque block)
       if (isSelected || (focusCountry === 'ALL' && (c.code === 'US' || c.code === 'GB'))) {
         rippleNodes.push({
           id: `ripple-${c.code}`,
           name: c.name_zh,
           countryCode: c.code,
           value: [c.lng, c.lat, valForSize],
-          symbolSize: haloSize * 0.8,
+          symbolSize: 8,
           itemStyle: {
-            color: themeColor
+            color: isSelected ? '#38bdf8' : themeColor
           }
         });
       }
     });
 
-    // Viewport presets
-    let geoCenter = [15, 22];
-    let geoZoom = 1.15;
+    // Viewport presets: centered and scaled to eliminate empty voids
+    let geoCenter = [15, 20];
+    let geoZoom = 1.30;
     if (geoPreset === 'asia') {
       geoCenter = [105, 22];
-      geoZoom = 2.2;
+      geoZoom = 2.4;
     } else if (geoPreset === 'europe') {
       geoCenter = [15, 50];
-      geoZoom = 2.6;
+      geoZoom = 2.8;
     } else if (geoPreset === 'americas') {
       geoCenter = [-80, 20];
-      geoZoom = 1.8;
+      geoZoom = 2.0;
     }
 
     const option = {
@@ -554,13 +575,15 @@ export default function CapitalFlowMap({
         map: 'world',
         roam: true,
         scaleLimit: { min: 0.8, max: 6.0 },
+        layoutCenter: ['50%', '52%'],
+        layoutSize: '126%',
         zoom: geoZoom,
         center: geoCenter,
-        aspectScale: 0.85,
+        aspectScale: 0.84,
         itemStyle: {
-          // Velvet luxury dark landmass
-          areaColor: '#0a101d',
-          borderColor: '#19243a',
+          // Velvet luxury dark landmass with subtle border definition
+          areaColor: '#0c1322',
+          borderColor: '#1e293b',
           borderWidth: 0.8
         },
         emphasis: {
@@ -643,8 +666,8 @@ export default function CapitalFlowMap({
           silent: true,
           rippleEffect: {
             brushType: 'stroke',
-            scale: 2.2,
-            period: 5.0
+            scale: 2.8,
+            period: 4.5
           },
           data: rippleNodes
         }
@@ -994,40 +1017,23 @@ export default function CapitalFlowMap({
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-semibold text-white tracking-wide">
-                全球双边跨国信贷流向图谱 · 全球流向
+              <h2 className="text-sm font-bold text-white tracking-wide">
+                全球双边跨国信贷流向图谱
               </h2>
-              <span className="text-[11px] font-mono bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2 py-0.2 rounded-full">
-                {selectedQuarter}
-              </span>
-              <DataClassificationBadge
-                classification={
-                  selectedQuarter > '2026Q2' 
-                    ? 'SCENARIO_PROJECTION' 
-                    : selectedQuarter === '2026Q2' 
-                      ? 'CACHED_PENDING_RELEASE' 
-                      : 'MODEL_RECONSTRUCTED'
-                }
-                quarter={selectedQuarter}
-                sourceText={
-                  selectedQuarter > '2026Q2' 
-                    ? '前瞻探索情景 (非官方统计)' 
-                    : selectedQuarter === '2026Q2' 
-                      ? '待核实估算 (BIS 预定10月30日发布)' 
-                      : '总量锚定 BIS 官方核准发布'
-                }
-                methodText={
-                  selectedQuarter > '2026Q2' 
-                    ? '情景探索范围: $47.90T–$49.30T' 
-                    : '双比例 RAS 重构 (导出残差 0.0B 守恒)'
-                }
-                onOpenAppendix={onOpenAppendix}
-              />
+              {onOpenAppendix && (
+                <button
+                  onClick={onOpenAppendix}
+                  className="text-[11px] text-sky-400 hover:text-sky-300 font-mono flex items-center gap-0.5 cursor-pointer ml-1"
+                >
+                  <span>方法论</span>
+                  <ArrowUpRight className="w-3 h-3" />
+                </button>
+              )}
             </div>
-            <p className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap font-sans">
+            <p className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap font-sans mt-0.5">
               <span>
                 {flowMode === 'positions' 
-                  ? '期末未偿存量 (Amounts Outstanding) · 呈现总资产与敞口深度' 
+                  ? '期末未偿存量 (Amounts Outstanding) · 呈现 506 条双边金融走廊与敞口深度' 
                   : '未调整存量变化 (Stock Changes) · 绿为扩张/红为回流'}
               </span>
             </p>
@@ -1221,6 +1227,21 @@ export default function CapitalFlowMap({
                 className="w-full h-[calc(100vh-340px)] min-h-[350px] max-h-[640px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
               />
 
+              {/* Floating Return to Global Overview Pill when country is selected */}
+              {(focusCountry !== 'ALL' || selectedCountry) && (
+                <button
+                  onClick={() => {
+                    soundFx.playTick();
+                    setFocusCountry('ALL');
+                    if (onSelectCountry) onSelectCountry(null);
+                  }}
+                  className="absolute top-4 left-4 z-20 px-3 py-1.5 rounded-lg bg-sky-600/90 hover:bg-sky-500 text-white text-xs font-semibold shadow-xl backdrop-blur-md border border-sky-400/40 flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>返回全球全景 (Esc)</span>
+                </button>
+              )}
+
               {/* Floating Viewport Preset Pills (Bottom-Left for 2D mode) */}
               <div className="absolute bottom-5 left-5 z-20 hidden sm:flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-1.5 text-xs shadow-xl">
                 <span className="text-[11px] text-slate-400 px-2 flex items-center gap-1">
@@ -1386,9 +1407,6 @@ export default function CapitalFlowMap({
                   {flowMode === 'flows' ? '当季存量变动走廊 Top 5 (一阶差分)' : '当季核心信贷动脉 Top 5 (存量)'}
                 </h4>
               </div>
-              <span className="text-[10px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/30">
-                {selectedQuarter}
-              </span>
             </div>
 
             <div className="space-y-2">
