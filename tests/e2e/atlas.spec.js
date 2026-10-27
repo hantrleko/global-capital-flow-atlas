@@ -288,4 +288,35 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     }
   });
 
+  test('8. EUGENE FINANCE Brand Identity, Deep-Link Sharing & Cross-Module Entity Pinning', async ({ page }) => {
+    // Navigate with deep-linked parameters
+    await page.goto('/?country=GB&tab=map&q=2026Q1');
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    // 1. EUGENE FINANCE Brand Logo & Identity
+    await expect(page.getByText('EUGENE FINANCE').first()).toBeVisible();
+    const brandLogo = page.locator('img[alt="EUGENE FINANCE"]').first();
+    await expect(brandLogo).toBeVisible();
+
+    // 2. Deep-Link Share Button
+    const shareBtn = page.getByTitle(/一键复制当前推演视图深度链接/);
+    await expect(shareBtn).toBeVisible();
+
+    // 3. Macro Insights Banner
+    await expect(page.getByText(/本季 30 秒宏观洞察/)).toBeVisible();
+
+    // 4. Global Pinned Entity Bar for GB
+    const pinnedBar = page.locator('#pinned-entity-bar');
+    await expect(pinnedBar).toBeVisible();
+    await expect(pinnedBar).toContainText('GB');
+    const contagionDrillBtn = pinnedBar.getByRole('button', { name: /传染压力推演/ });
+    await expect(contagionDrillBtn).toBeVisible();
+
+    // Drill down to Contagion Simulator with GB pinned
+    await contagionDrillBtn.click();
+    await page.waitForTimeout(600);
+    expect(page.url()).toContain('tab=contagion');
+  });
+
 });

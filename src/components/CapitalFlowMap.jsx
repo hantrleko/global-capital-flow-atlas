@@ -1003,7 +1003,7 @@ export default function CapitalFlowMap({
     const watermarkedUrl = await addWatermarkToDataUrl(rawUrl, selectedQuarter, '全球双边跨国信贷流向图谱');
     const a = document.createElement('a');
     a.href = watermarkedUrl;
-    a.download = `BIS_Global_Capital_Flow_Map_${selectedQuarter}.png`;
+    a.download = `EUGENE_FINANCE_Capital_Flow_${selectedQuarter}.png`;
     a.click();
   };
 
@@ -1057,7 +1057,7 @@ export default function CapitalFlowMap({
               title="BIS LBS 期末未偿信贷存量 (Amounts Outstanding)"
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>期末存量</span>
+              <span>期末存量规模</span>
             </button>
             <button
               onClick={() => {
@@ -1069,10 +1069,10 @@ export default function CapitalFlowMap({
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
-              title="相邻季度未偿存量差分 ΔClaims"
+              title="相邻季度双边存量净增量 (绿色为走廊信贷扩张，红色为资金撤出回流)"
             >
               <Zap className="w-3.5 h-3.5 text-amber-300" />
-              <span>存量变动</span>
+              <span>边际变化 Δ</span>
             </button>
           </div>
 
@@ -1195,10 +1195,11 @@ export default function CapitalFlowMap({
           {/* Export PNG */}
           <button
             onClick={handleExportPng}
-            className="h-7 w-7 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
-            title="导出当前高清无损地图 PNG (自动嵌入官方/情景数据身份水印)"
+            className="h-7 px-2.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+            title="导出当前高清无损地图 PNG (自动嵌入 EUGENE FINANCE 品牌与官方/情景数据身份水印)"
           >
             <Download className="w-3.5 h-3.5 text-sky-400" />
+            <span className="text-xs hidden sm:inline font-medium">投研快照</span>
           </button>
         </div>
       </div>

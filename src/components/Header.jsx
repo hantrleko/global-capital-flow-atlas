@@ -5,8 +5,9 @@ import {
   Search, Coins, X, Sun, Moon, ArrowRightLeft, Clock, Sparkles,
   Zap, Radio, Command, HelpCircle, Split, Volume2, VolumeX, Bot,
   BookOpen, FileText, Sliders, Code, History, UploadCloud, Building2,
-  Compass, ChevronRight, ChevronLeft, ArrowRight, Check
+  Compass, ChevronRight, ChevronLeft, ArrowRight, Check, Share2
 } from 'lucide-react';
+import EugeneLogo from './EugeneLogo';
 import soundFx from '../utils/soundEffects';
 import { CURRENCY_LIST } from '../utils/currencyConversion';
 import { NAVIGATION_DOMAINS, getTabTaskMeta } from '../utils/navigationConfig';
@@ -44,7 +45,8 @@ export default function Header({
   customFileName = null,
   isSoundMuted = false,
   onToggleSound,
-  onOpenAppendix
+  onOpenAppendix,
+  onCopyDeepLink
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const currentQuarterIdx = quarters.indexOf(selectedQuarter);
@@ -92,20 +94,10 @@ export default function Header({
         <div className="h-11 flex items-center justify-between gap-3 border-b border-slate-800/60">
           {/* Logo & Title */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600/40 to-indigo-600/40 border border-blue-400/40 flex items-center justify-center text-blue-400 shadow-sm">
-              <Globe className="w-4 h-4 text-sky-400" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
-                Global Capital Flow Atlas
-                <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">
-                  V1.0
-                </span>
-              </span>
-              <span className="hidden lg:inline text-xs text-slate-400 border-l border-slate-800 pl-2">
-                全球资本流动图谱 · BIS IBS 宏观审慎分析平台
-              </span>
-            </div>
+            <EugeneLogo 
+              size="md" 
+              subtitle="Global Capital Flow Atlas · BIS 宏观审慎分析平台" 
+            />
           </div>
 
           {/* Quick Actions & Tools */}
@@ -169,6 +161,17 @@ export default function Header({
 
             {/* Quick Action Buttons */}
             <div className="flex items-center gap-1">
+              {onCopyDeepLink && (
+                <button
+                  onClick={onCopyDeepLink}
+                  className="h-7 px-2.5 rounded-lg border border-sky-500/40 bg-sky-950/40 text-sky-300 hover:text-white hover:bg-sky-900/50 flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-sm transition-all"
+                  title="一键复制当前推演视图深度链接 (包含当前季度、所选经济体与分析模块)"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="hidden sm:inline text-xs">分享推演</span>
+                </button>
+              )}
+
               {onOpenMacroAi && (
                 <button
                   onClick={onOpenMacroAi}

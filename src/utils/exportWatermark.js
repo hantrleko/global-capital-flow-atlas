@@ -40,7 +40,7 @@ export function addWatermarkToDataUrl(dataUrl, quarter, chartTitle = 'BIS IBS Ca
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`Global Capital Flow Atlas · ${chartTitle} · ${quarter}`, 14, bannerHeight / 2);
+      ctx.fillText(`EUGENE FINANCE · Global Capital Flow Atlas · ${chartTitle} · ${quarter}`, 14, bannerHeight / 2);
 
       // Top-right: Data Classification Pill
       const statusText = `[ ${classification.label} ] ${classification.provenance}`;
@@ -68,7 +68,7 @@ export function addWatermarkToDataUrl(dataUrl, quarter, chartTitle = 'BIS IBS Ca
       ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textBaseline = 'middle';
       ctx.fillText(
-        `BIS LBS / CBS Matrix Calibrated · Exported: ${new Date().toISOString().split('T')[0]} · https://hantrleko.github.io/global-capital-flow-atlas/`,
+        `EUGENE FINANCE Macro Research · BIS LBS / CBS Matrix Calibrated · Exported: ${new Date().toISOString().split('T')[0]} · https://hantrleko.github.io/global-capital-flow-atlas/`,
         14,
         canvas.height - footerHeight / 2
       );

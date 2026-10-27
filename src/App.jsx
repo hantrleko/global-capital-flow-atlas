@@ -19,6 +19,8 @@ import MacroShockSandbox from './components/MacroShockSandbox';
 import InstitutionalReportModal from './components/InstitutionalReportModal';
 import MacroIntelligenceBriefing from './components/MacroIntelligenceBriefing';
 import ExecutiveKpiRow from './components/ExecutiveKpiRow';
+import GlobalPinnedEntityBar from './components/GlobalPinnedEntityBar';
+import MacroInsightsBanner from './components/MacroInsightsBanner';
 import soundFx from './utils/soundEffects';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getDataClassification } from './utils/dataClassification';
@@ -100,6 +102,7 @@ export default function App() {
     if (paramCountry) return paramCountry;
     return null;
   });
+  const [isCountryDrawerOpen, setIsCountryDrawerOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isMacroAiOpen, setIsMacroAiOpen] = useState(false);
@@ -122,7 +125,13 @@ export default function App() {
     return localStorage.getItem('bis_atlas_currency') || 'USD';
   });
   const [isSoundMuted, setIsSoundMuted] = useState(() => soundFx.isMuted());
-  const [contagionConfig, setContagionConfig] = useState(null);
+  const [contagionConfig, setContagionConfig] = useState(() => {
+    const paramEpicenter = initialParams.get('epicenter');
+    if (paramEpicenter) {
+      return { epicenter: paramEpicenter, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 };
+    }
+    return null;
+  });
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('bis_atlas_theme') || 'dark';
   });
@@ -135,6 +144,7 @@ export default function App() {
       if (activeTab && activeTab !== 'map') params.set('tab', activeTab);
       if (selectedCountry) params.set('country', selectedCountry);
       if (selectedCurrency && selectedCurrency !== 'USD') params.set('currency', selectedCurrency);
+      if (contagionConfig?.epicenter) params.set('epicenter', contagionConfig.epicenter);
 
       const qs = params.toString();
       const newPath = window.location.pathname + (qs ? `?${qs}` : '');
@@ -339,7 +349,11 @@ export default function App() {
         setIsShockSandboxOpen(false);
         setIsInstitutionalReportOpen(false);
         setIsCustomDataOpen(false);
-        setSelectedCountry(null);
+        if (isCountryDrawerOpen) {
+          setIsCountryDrawerOpen(false);
+        } else {
+          setSelectedCountry(null);
+        }
       }
     };
 
@@ -384,6 +398,7 @@ export default function App() {
         isSoundMuted={isSoundMuted}
         onToggleSound={toggleSound}
         onOpenAppendix={() => setIsAppendixOpen(true)}
+        onCopyDeepLink={handleCopyDeepLink}
       />
 
       {/* Historical Macro Milestones Ribbon (2018-2026 Epochs) */}
@@ -432,6 +447,25 @@ export default function App() {
           selectedQuarter={selectedQuarter}
           selectedCurrency={selectedCurrency}
         />
+
+        {/* Pinned Entity Context Ribbon: Cross-Module Sovereign Stress Testing */}
+        {selectedCountry && (
+          <GlobalPinnedEntityBar
+            selectedCountry={selectedCountry}
+            dataset={activeDataset}
+            selectedQuarter={selectedQuarter}
+            activeTab={activeTab}
+            onSelectTab={handleSelectTab}
+            onSetContagionEpicenter={(code) => {
+              setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
+            }}
+            onClearCountry={() => {
+              setSelectedCountry(null);
+              setIsCountryDrawerOpen(false);
+            }}
+            onOpenDrawer={() => setIsCountryDrawerOpen(true)}
+          />
+        )}
 
         <ErrorBoundary fallbackTitle="当前主视图分析模块">
           <Suspense fallback={<LoadingFallback />}>
@@ -609,6 +643,17 @@ export default function App() {
         </Suspense>
         </ErrorBoundary>
 
+        {/* 30-Second Institutional Macro Insights Tour (位于主图下方，首屏不遮挡主图) */}
+        <MacroInsightsBanner
+          dataset={activeDataset}
+          selectedQuarter={selectedQuarter}
+          onSelectTab={handleSelectTab}
+          onSelectCountry={(code) => setSelectedCountry(code)}
+          onSetContagionEpicenter={(code) => {
+            setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
+          }}
+        />
+
         {/* Collapsible Deep Intelligence Briefing: 宏观态势速览与研判依据 (位于主图下方，不抢占首屏) */}
         <MacroIntelligenceBriefing
           dataset={activeDataset}
@@ -620,12 +665,12 @@ export default function App() {
       </main>
 
       {/* Sovereign 360° Detailed Profile Drawer (Overlay) */}
-      {selectedCountry && (
+      {selectedCountry && isCountryDrawerOpen && (
         <CountryDrawer
           dataset={activeDataset}
           countryCode={selectedCountry}
           selectedQuarter={selectedQuarter}
-          onClose={() => setSelectedCountry(null)}
+          onClose={() => setIsCountryDrawerOpen(false)}
           onSelectTab={setActiveTab}
           onSelectQuarter={setSelectedQuarter}
           onSelectCountry={setSelectedCountry}
