@@ -296,7 +296,7 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
 
     // 1. EUGENE FINANCE Brand Logo & Identity
     await expect(page.getByText('EUGENE FINANCE').first()).toBeVisible();
-    const brandLogo = page.locator('img[alt="EUGENE FINANCE"]').first();
+    const brandLogo = page.locator('img[alt="EUGENE FINANCE"], [data-testid="eugene-logo"]').first();
     await expect(brandLogo).toBeVisible();
 
     // 2. Deep-Link Share Button

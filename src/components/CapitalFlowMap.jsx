@@ -363,10 +363,12 @@ export default function CapitalFlowMap({
       });
 
       // In global overview, prioritize key global hubs to prevent European clutter
-      const isKeyGlobalHub = ['US', 'GB', 'CN', 'JP', 'DE', 'KY', 'SG', 'HK', 'CH', 'FR'].includes(c.code);
+      const isKeyGlobalHub = ['US', 'GB', 'CN', 'JP', 'DE', 'KY', 'SG', 'HK'].includes(c.code);
       const shouldShowLabel = showLabels && (
         isSelected ||
         focusCountry === c.code ||
+        (geoPreset === 'europe' && c.region === 'Europe') ||
+        (geoPreset === 'asia' && c.region === 'Asia') ||
         (focusCountry === 'ALL' && isKeyGlobalHub)
       );
 
@@ -376,6 +378,10 @@ export default function CapitalFlowMap({
       else if (c.code === 'GB') labelPos = 'top';
       else if (c.code === 'DE') labelPos = 'bottom';
       else if (c.code === 'JP') labelPos = 'right';
+      else if (c.code === 'CN') labelPos = 'top';
+      else if (c.code === 'HK') labelPos = 'bottom';
+      else if (c.code === 'KY') labelPos = 'bottom';
+      else if (c.code === 'SG') labelPos = 'bottom';
 
       // 2. Inner bright pearl center dot
       coreNodes.push({
@@ -422,18 +428,19 @@ export default function CapitalFlowMap({
       }
     });
 
-    // Viewport presets: centered and scaled to eliminate empty voids
-    let geoCenter = [15, 20];
-    let geoZoom = 1.30;
+    // Viewport presets: centered and scaled to eliminate empty voids with mobile responsiveness
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    let geoCenter = isMobile ? [15, 25] : [15, 20];
+    let geoZoom = isMobile ? 1.05 : 1.30;
     if (geoPreset === 'asia') {
       geoCenter = [105, 22];
-      geoZoom = 2.4;
+      geoZoom = isMobile ? 1.8 : 2.4;
     } else if (geoPreset === 'europe') {
       geoCenter = [15, 50];
-      geoZoom = 2.8;
+      geoZoom = isMobile ? 2.2 : 2.8;
     } else if (geoPreset === 'americas') {
       geoCenter = [-80, 20];
-      geoZoom = 2.0;
+      geoZoom = isMobile ? 1.6 : 2.0;
     }
 
     const option = {
@@ -576,10 +583,10 @@ export default function CapitalFlowMap({
         roam: true,
         scaleLimit: { min: 0.8, max: 6.0 },
         layoutCenter: ['50%', '52%'],
-        layoutSize: '126%',
+        layoutSize: isMobile ? '98%' : '126%',
         zoom: geoZoom,
         center: geoCenter,
-        aspectScale: 0.84,
+        aspectScale: isMobile ? 0.78 : 0.84,
         itemStyle: {
           // Velvet luxury dark landmass with subtle border definition
           areaColor: '#0c1322',
@@ -1222,10 +1229,10 @@ export default function CapitalFlowMap({
             />
           ) : (
             <>
-              {/* Ocean Background Canvas with adaptive height */}
+              {/* Ocean Background Canvas with adaptive flex-grow height */}
               <div 
                 ref={chartRef} 
-                className="w-full h-[calc(100vh-340px)] min-h-[350px] max-h-[640px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
+                className="w-full flex-1 min-h-[580px] xl:min-h-[720px] 2xl:min-h-[760px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
               />
 
               {/* Floating Return to Global Overview Pill when country is selected */}

@@ -628,15 +628,15 @@ export default function EarlyWarningSystem({
                           </div>
                         </td>
 
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               onSelectCountry?.(c.code);
                             }}
-                            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white transition-colors text-[11px] font-mono"
+                            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white transition-colors text-xs font-medium whitespace-nowrap cursor-pointer shadow-sm"
                           >
-                            抽屉详情 &rarr;
+                            详情 ➔
                           </button>
                         </td>
                       </tr>

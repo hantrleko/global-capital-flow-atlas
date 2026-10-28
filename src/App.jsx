@@ -271,10 +271,10 @@ export default function App() {
       badge: meta.label,
       badgeColor: meta.badgeClass,
       dotColor: meta.dotClass,
-      text: meta.type === 'OFFICIAL_OBSERVED'
-        ? `官方总额 $${currentClaimsVal}T`
-        : meta.type === 'CACHED_PENDING_RELEASE'
-          ? `估算总额 $${currentClaimsVal}T (待10月30日官方公布)`
+      text: meta.isOfficial
+        ? `官方总额 $${currentClaimsVal}T (BIS 审计发布)`
+        : meta.type === 'PENDING_ESTIMATE'
+          ? `待公布估算 $${currentClaimsVal}T (待10月30日公布)`
           : `情景中值 $${currentClaimsVal}T (范围 $47.90T–$49.30T)`
     };
   }, [selectedQuarter, currentClaimsVal]);
@@ -467,6 +467,19 @@ export default function App() {
           />
         )}
 
+        {/* 30-Second Institutional Macro Insights Single-Line Ticker (34px height, only on map tab to protect secondary tab folds) */}
+        {activeTab === 'map' && (
+          <MacroInsightsBanner
+            dataset={activeDataset}
+            selectedQuarter={selectedQuarter}
+            onSelectTab={handleSelectTab}
+            onSelectCountry={(code) => setSelectedCountry(code)}
+            onSetContagionEpicenter={(code) => {
+              setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
+            }}
+          />
+        )}
+
         <ErrorBoundary fallbackTitle="当前主视图分析模块">
           <Suspense fallback={<LoadingFallback />}>
           {activeTab === 'map' && (
@@ -642,17 +655,6 @@ export default function App() {
           )}
         </Suspense>
         </ErrorBoundary>
-
-        {/* 30-Second Institutional Macro Insights Tour (位于主图下方，首屏不遮挡主图) */}
-        <MacroInsightsBanner
-          dataset={activeDataset}
-          selectedQuarter={selectedQuarter}
-          onSelectTab={handleSelectTab}
-          onSelectCountry={(code) => setSelectedCountry(code)}
-          onSetContagionEpicenter={(code) => {
-            setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
-          }}
-        />
 
         {/* Collapsible Deep Intelligence Briefing: 宏观态势速览与研判依据 (位于主图下方，不抢占首屏) */}
         <MacroIntelligenceBriefing
@@ -871,9 +873,9 @@ export default function App() {
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 px-6 text-xs text-slate-500 text-center">
         <div className="max-w-[1780px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-slate-400">
-            <span className="font-medium text-slate-300">BIS Global Capital Flow Atlas</span>
+            <span className="font-medium text-slate-300">EUGENE FINANCE Global Capital Flow Atlas</span>
             <span className="text-slate-600">·</span>
-            <span>EF Lab Quantitative Macro Research</span>
+            <span>EUGENE FINANCE Quantitative Macro Research</span>
           </div>
 
           {/* User Requested Data Statement with Methodology Link & Dynamic Provenance */}

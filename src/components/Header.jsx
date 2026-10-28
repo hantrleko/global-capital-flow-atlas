@@ -208,10 +208,10 @@ export default function Header({
               {onOpenShockSandbox && (
                 <button
                   onClick={onOpenShockSandbox}
-                  className="hidden md:flex h-7 px-2 rounded-lg border border-rose-500/30 bg-rose-950/30 text-rose-300 hover:text-white hover:bg-rose-900/40 items-center gap-1 text-xs font-medium cursor-pointer"
+                  className="hidden md:flex h-7 px-2 rounded-lg border border-slate-700/80 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500 items-center gap-1 text-xs font-medium cursor-pointer"
                   title="冲击调制沙盒"
                 >
-                  <Sliders className="w-3.5 h-3.5 text-rose-400" />
+                  <Sliders className="w-3.5 h-3.5 text-slate-400" />
                   <span className="hidden xl:inline text-xs">冲击沙盒</span>
                 </button>
               )}
