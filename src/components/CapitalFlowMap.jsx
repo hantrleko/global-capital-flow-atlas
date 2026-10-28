@@ -9,10 +9,17 @@ import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 import soundFx from '../utils/soundEffects';
 import { normalizeCorridorExposures } from '../utils/eisenbergNoeClearing';
 import { 
+  transformToUltimateRiskLinks, 
+  isOffshoreConduit, 
+  getOfcLookThroughSummary,
+  SECTOR_SLICING_PROFILES,
+  INSTRUMENT_SLICING_PROFILES
+} from '../utils/lookThroughEngine';
+import { 
   Layers, Eye, Filter, ArrowUpRight, ArrowDownLeft, 
   Info, Download, Target, Compass, Maximize2, Sparkles,
   Radio, Zap, Shield, Globe2, Sliders, Check, Calendar, TrendingUp,
-  X, ArrowRight, DollarSign, Globe, RotateCcw
+  X, ArrowRight, DollarSign, Globe, RotateCcw, Building2, Coins
 } from 'lucide-react';
 
 export default function CapitalFlowMap({
@@ -44,13 +51,32 @@ export default function CapitalFlowMap({
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [inspectedEntity, setInspectedEntity] = useState(null);
 
+  // Phase 2: Accounting Basis (Residence vs Look-Through Ultimate Risk) & Sector/Instrument Slicing
+  const [accountingBasis, setAccountingBasis] = useState('residence'); // 'residence' | 'ultimate_risk'
+  const [selectedSector, setSelectedSector] = useState('all'); // 'all' | 'banks' | 'nbfi' | 'sovereign' | 'non_financial'
+  const [selectedInstrument, setSelectedInstrument] = useState('all'); // 'all' | 'loans' | 'securities' | 'derivatives'
+
   const countries = dataset.countries || [];
   const countryMap = useMemo(() => Object.fromEntries(countries.map(c => [c.code, c])), [countries]);
   const lbsQuarter = dataset.lbs_data || {};
   const rawCurrentLinks = (dataset.bilateral_matrix || {})[selectedQuarter] || [];
+
+  const lookThroughResult = useMemo(() => {
+    if (accountingBasis === 'ultimate_risk' || selectedSector !== 'all' || selectedInstrument !== 'all') {
+      return transformToUltimateRiskLinks(rawCurrentLinks, {
+        sector: selectedSector,
+        instrument: selectedInstrument
+      });
+    }
+    return null;
+  }, [rawCurrentLinks, accountingBasis, selectedSector, selectedInstrument]);
+
   const currentLinks = useMemo(() => {
+    if (lookThroughResult) {
+      return normalizeCorridorExposures(lookThroughResult.lookThroughLinks).normalizedLinks;
+    }
     return normalizeCorridorExposures(rawCurrentLinks).normalizedLinks;
-  }, [rawCurrentLinks]);
+  }, [rawCurrentLinks, lookThroughResult]);
 
   // Compute QoQ Flows / Changes relative to prior quarter
   const quarterIdx = dataset.quarters ? dataset.quarters.indexOf(selectedQuarter) : -1;
@@ -237,15 +263,19 @@ export default function CapitalFlowMap({
       } else {
         // Positions Mode: Color distinguishes currency / focus
         const isMajor = l.claims_usd_bn >= 400;
-        if (isFocused) {
+        if (l.isLookThrough) {
+          strokeColor = '#f59e0b'; // Amber gold for ultimate risk look-through flow
+          strokeWidth = 2.4;
+          strokeOpacity = 0.85;
+        } else if (isFocused) {
           strokeColor = l.source === focusCountry ? '#34d399' : '#f43f5e';
         } else if (l.usd_denominated_bn / l.claims_usd_bn > 0.75) {
           strokeColor = '#60a5fa';
         } else {
           strokeColor = '#a78bfa';
         }
-        strokeWidth = isMajor ? 2.0 : Math.max(0.9, Math.sqrt(l.claims_usd_bn) / 16);
-        strokeOpacity = isFocused ? 0.85 : isMajor ? 0.45 : 0.22;
+        strokeWidth = l.isLookThrough ? 2.4 : isMajor ? 2.0 : Math.max(0.9, Math.sqrt(l.claims_usd_bn) / 16);
+        strokeOpacity = l.isLookThrough ? 0.85 : isFocused ? 0.85 : isMajor ? 0.45 : 0.22;
       }
 
       return {
@@ -265,11 +295,13 @@ export default function CapitalFlowMap({
         netChangePct: l.netChangePct,
         isExpansion: l.isExpansion,
         prevClaims: l.prevClaims,
+        isLookThrough: Boolean(l.isLookThrough),
         lineStyle: {
           color: strokeColor,
           width: strokeWidth,
           opacity: strokeOpacity,
-          curveness: curveness
+          curveness: curveness,
+          type: l.isLookThrough ? 'dashed' : 'solid'
         }
       };
     }).filter(Boolean);
@@ -354,11 +386,12 @@ export default function CapitalFlowMap({
         symbolSize: haloSize,
         itemStyle: {
           color: isSelected ? 'rgba(255, 255, 255, 0.25)' : 'rgba(15, 23, 42, 0.6)',
-          borderColor: themeColor,
+          borderColor: (accountingBasis === 'ultimate_risk' && isOffshoreConduit(c.code)) ? '#f59e0b' : themeColor,
           borderWidth: isSelected ? 2.5 : 1.2,
+          borderType: (accountingBasis === 'ultimate_risk' && isOffshoreConduit(c.code)) ? 'dashed' : 'solid',
           shadowBlur: isSelected ? 16 : 6,
           shadowColor: themeColor,
-          opacity: isSelected ? 0.98 : 0.72
+          opacity: (accountingBasis === 'ultimate_risk' && isOffshoreConduit(c.code)) ? 0.35 : (isSelected ? 0.98 : 0.72)
         }
       });
 
@@ -399,7 +432,7 @@ export default function CapitalFlowMap({
           show: shouldShowLabel,
           position: labelPos,
           distance: 6,
-          formatter: `{b}`,
+          formatter: (accountingBasis === 'ultimate_risk' && isOffshoreConduit(c.code)) ? '{b} (已穿透)' : '{b}',
           fontSize: 11,
           fontWeight: isSelected ? 'bold' : 'normal',
           color: isSelected ? '#ffffff' : '#e2e8f0',
@@ -1015,12 +1048,12 @@ export default function CapitalFlowMap({
   };
 
   return (
-    <div className="space-y-2.5 scroll-mt-24">
+    <div className="space-y-2 scroll-mt-24">
       {/* Top Refined Glass Control Header */}
-      <div className="glass-panel rounded-xl px-3.5 py-2 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-400/25 flex items-center justify-center text-sky-400 shrink-0">
-            <Radio className="w-4 h-4 animate-pulse text-sky-400" />
+      <div className="glass-panel rounded-xl px-3 py-1.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-400/25 flex items-center justify-center text-sky-400 shrink-0">
+            <Radio className="w-3.5 h-3.5 animate-pulse text-sky-400" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -1037,7 +1070,7 @@ export default function CapitalFlowMap({
                 </button>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap font-sans mt-0.5">
+            <p className="hidden 2xl:block text-[11px] text-slate-400 font-sans mt-0.5">
               <span>
                 {flowMode === 'positions' 
                   ? '期末未偿存量 (Amounts Outstanding) · 呈现 506 条双边金融走廊与敞口深度' 
@@ -1048,68 +1081,141 @@ export default function CapitalFlowMap({
         </div>
 
         {/* Refined Functional Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Phase 2: Accounting Basis (Residence vs Look-Through Ultimate Risk) */}
+          <div className="flex items-center bg-slate-900/90 border border-purple-500/50 rounded-lg p-0.5 text-[11px] shadow-sm">
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                setAccountingBasis('residence');
+              }}
+              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
+                accountingBasis === 'residence'
+                  ? 'bg-slate-700 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="BIS LBS 居住地即期债务人口径 (Immediate Counterparty Basis · 资金流向注册地如开曼/香港/卢森堡)"
+            >
+              <span>居住地 (LBS)</span>
+            </button>
+            <button
+              onClick={() => {
+                soundFx.playChime();
+                setAccountingBasis('ultimate_risk');
+              }}
+              data-testid="toggle-look-through-ofcs"
+              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
+                accountingBasis === 'ultimate_risk'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_0_12px_rgba(168,85,247,0.4)]'
+                  : 'text-purple-300 hover:text-white hover:bg-purple-950/40'
+              }`}
+              title="BIS CBS 最终风险穿透口径 (Look-Through OFCs · 穿透开曼/卢森堡/香港等壳架构，还原至母国真实风险承担者)"
+            >
+              <Sparkles className="w-3 h-3 text-amber-300" />
+              <span>穿透离岸中心</span>
+            </button>
+          </div>
+
+          {/* Sector Slicing Selector */}
+          <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/60 rounded-lg px-1.5 py-0.5 text-[11px]">
+            <Building2 className="w-3 h-3 text-sky-400" />
+            <select
+              value={selectedSector}
+              onChange={(e) => {
+                soundFx.playTick();
+                setSelectedSector(e.target.value);
+              }}
+              className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-[11px]"
+              title="按跨国交易对手部门切片 (BIS CBS Table B 部门拆解)"
+            >
+              <option value="all">🏢 全部门</option>
+              <option value="banks">🏦 银行同业</option>
+              <option value="nbfi">🔮 非银机构</option>
+              <option value="sovereign">🏛️ 主权部门</option>
+              <option value="non_financial">🏭 实体企业</option>
+            </select>
+          </div>
+
+          {/* Instrument Slicing Selector */}
+          <div className="hidden sm:flex items-center gap-1 bg-slate-900/90 border border-slate-700/60 rounded-lg px-1.5 py-0.5 text-[11px]">
+            <Coins className="w-3 h-3 text-amber-400" />
+            <select
+              value={selectedInstrument}
+              onChange={(e) => {
+                soundFx.playTick();
+                setSelectedInstrument(e.target.value);
+              }}
+              className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-[11px]"
+              title="按金融工具类别切片 (贷款存款/国际债务证券/衍生品)"
+            >
+              <option value="all">📜 全部工具</option>
+              <option value="loans">💳 贷款存款</option>
+              <option value="securities">📈 债务证券</option>
+              <option value="derivatives">⚡ 外汇衍生品</option>
+            </select>
+          </div>
+
           {/* Mode Switcher */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-xs shadow-sm">
+          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-[11px] shadow-sm">
             <button
               onClick={() => {
                 soundFx.playTick();
                 setFlowMode('positions');
               }}
-              className={`h-7 px-2.5 rounded-md transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
+              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
                 flowMode === 'positions'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
               title="BIS LBS 期末未偿信贷存量 (Amounts Outstanding)"
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span>期末存量规模</span>
+              <Layers className="w-3 h-3" />
+              <span>存量规模</span>
             </button>
             <button
               onClick={() => {
                 soundFx.playChime();
                 setFlowMode('flows');
               }}
-              className={`h-7 px-2.5 rounded-md transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
+              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
                 flowMode === 'flows'
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
               title="相邻季度双边存量净增量 (绿色为走廊信贷扩张，红色为资金撤出回流)"
             >
-              <Zap className="w-3.5 h-3.5 text-amber-300" />
-              <span>边际变化 Δ</span>
+              <Zap className="w-3 h-3 text-amber-300" />
+              <span>变动 Δ</span>
             </button>
           </div>
 
           {/* 2D / 3D Switcher */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-xs shadow-sm">
+          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-[11px] shadow-sm">
             <button
               onClick={() => {
                 soundFx.playTick();
                 setMapProjection('2d');
               }}
-              className={`h-7 px-2.5 rounded-md transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
+              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
                 mapProjection === '2d'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <span>2D 平面</span>
+              <span>2D</span>
             </button>
             <button
               onClick={() => {
                 soundFx.playChime();
                 setMapProjection('3d');
               }}
-              className={`h-7 px-2.5 rounded-md transition-all text-xs font-semibold cursor-pointer flex items-center gap-1 ${
+              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
                 mapProjection === '3d'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <span>3D 拟真</span>
+              <span>3D</span>
             </button>
           </div>
 
@@ -1210,6 +1316,27 @@ export default function CapitalFlowMap({
           </button>
         </div>
       </div>
+
+      {/* Look-Through OFC Active Banner */}
+      {accountingBasis === 'ultimate_risk' && (
+        <div 
+          data-testid="look-through-active-banner"
+          className="flex items-center justify-between gap-3 p-2.5 px-3.5 bg-gradient-to-r from-purple-950/90 via-slate-900/90 to-indigo-950/90 border border-purple-500/50 rounded-xl text-xs text-purple-200 shadow-[0_0_20px_rgba(168,85,247,0.2)] animate-fade-in"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
+            <span>
+              <strong>已开启离岸中心穿透还原 (Look-Through OFCs · CBS Table B)</strong>：已将开曼群岛 (KY)、卢森堡 (LU)、中国香港 (HK) 等 <strong>${lookThroughResult?.totalBypassedBn ?? '6840'}B</strong> 离岸通道资金按母国国籍穿透并入母公司最终风险敞口（以美中德英日为主），虚化离岸中转重影。
+            </span>
+          </div>
+          <button
+            onClick={() => setAccountingBasis('residence')}
+            className="text-[11px] underline text-purple-300 hover:text-white shrink-0 cursor-pointer"
+          >
+            还原至居住地 (LBS)
+          </button>
+        </div>
+      )}
 
       {/* Pro-Analytics Desk (Map + Real-Time Intelligence Dossier) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">

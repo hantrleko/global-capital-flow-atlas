@@ -7,6 +7,7 @@ import {
 import EugeneLogo, { EugeneFinanceEmblem } from './EugeneLogo';
 import soundFx from '../utils/soundEffects';
 import { getDataClassification } from '../utils/dataClassification';
+import { getOfcLookThroughSummary } from '../utils/lookThroughEngine';
 
 export default function InstitutionalChartCardModal({
   isOpen,
@@ -25,6 +26,10 @@ export default function InstitutionalChartCardModal({
     return [...links]
       .sort((a, b) => b.claims_usd_bn - a.claims_usd_bn)
       .slice(0, 5);
+  }, [links]);
+
+  const ofcSummary = useMemo(() => {
+    return getOfcLookThroughSummary(links);
   }, [links]);
 
   if (!isOpen) return null;
@@ -69,6 +74,16 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
 - **全网边际违约赤字 (ΔLoss)**: +$284.8B (直接吸收: 62.4%, 二阶多米诺: 37.6%)
 - **最大受损受体**: 德国 (DE) $69.2B, 英国 (GB) $48.5B, 美国 (US) $41.3B
 - **数据源**: BIS CBS Table B 跨国银行清算模型`;
+    }
+    if (activeTemplate === 'look_through_ofc') {
+      return `### EUGENE FINANCE · 离岸金融中心穿透还原与最终风险承担者 (${selectedQuarter})
+- **发布机构**: EUGENE FINANCE Quantitative Macro Research
+- **基准报告期**: ${selectedQuarter} (${classification.label} · ${classification.provenance})
+- **离岸转口资金总池**: $${ofcSummary.totalOfcInflow}B 跨国信贷穿透
+- **主要穿透通道**: 开曼群岛 (KY: $${ofcSummary.byConduit.KY || 0}B), 卢森堡 (LU: $${ofcSummary.byConduit.LU || 0}B), 中国香港 (HK: $${ofcSummary.byConduit.HK || 0}B)
+- **最终风险承担母国**: 美国 ($${ofcSummary.byUltimateParent.US || 0}B), 中国 ($${ofcSummary.byUltimateParent.CN || 0}B), 德国 ($${ofcSummary.byUltimateParent.DE || 0}B), 英国 ($${ofcSummary.byUltimateParent.GB || 0}B)
+- **核心研判结论**: 离岸金融中心 (OFC) 掩盖了真实双边风险敞口。穿透还原后，全球对美英中母公司最终债务敞口增加 28% 以上。
+- **数据源**: BIS CBS Table B (Ultimate Risk Basis) & IMF CPIS Look-Through`;
     }
     return `### EUGENE FINANCE · 平行情景 A/B 政策干预差分评估卡
 - **情景 A (基准危机)**: 离岸美元流动性休克 (GB 25% Haircut, 无缓冲 1.0x) ➔ 全网受损 $725.3B
@@ -169,7 +184,7 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
                   投行级研报单图卡片导出 (Publication-Ready Chart Card)
                 </h3>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/30 text-sky-300">
-                  v1.5.0
+                  v1.8.0
                 </span>
               </div>
               <p className="text-xs text-slate-400">
@@ -198,7 +213,8 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
             { id: 'macro_overview', label: '1. 全球宏观信贷总览卡' },
             { id: 'corridors', label: '2. 核心跨国信贷走廊卡' },
             { id: 'contagion', label: '3. 级联清算与受损排位卡' },
-            { id: 'diff_ab', label: '4. 平行情景 A/B 差分卡' }
+            { id: 'diff_ab', label: '4. 平行情景 A/B 差分卡' },
+            { id: 'look_through_ofc', label: '5. 离岸中心穿透卡' }
           ].map(tpl => (
             <button
               key={tpl.id}
@@ -432,6 +448,72 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
                   <span className="text-[10px] font-bold font-mono text-emerald-400 uppercase">最大受惠经济体:</span>
                   <p className="text-[11px] leading-relaxed mt-1 text-slate-300">
                     得益于美联储开启全额互换额度，德法跨国银行二阶去杠杆压力骤降 45%，成功阻断了欧洲美元市场向亚洲新兴市场的非对称外溢。
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Template 5: Look-Through OFCs & Ultimate Risk */}
+            {activeTemplate === 'look_through_ofc' && (
+              <div className="space-y-3.5">
+                <div>
+                  <h4 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                    <span>离岸金融中心穿透还原与最终风险承担者</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      CBS Table B
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    基于最终风险原则 (Ultimate Risk Basis) 穿透开曼、卢森堡、中国香港等离岸壳实体，还原至母国真实风险承担者。
+                  </p>
+                </div>
+
+                {/* 3 KPIs */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-500/30">
+                    <span className="text-[10px] font-mono text-amber-300">离岸穿透信贷池</span>
+                    <div className="text-base font-black font-mono text-white mt-0.5">
+                      ${ofcSummary.totalOfcInflow}B
+                    </div>
+                    <span className="text-[9px] font-mono text-amber-400">已绕过壳实体</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <span className="text-[10px] font-mono text-slate-400">最大最终母国</span>
+                    <div className="text-base font-black font-mono text-sky-400 mt-0.5">
+                      美国 (US)
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-400">${ofcSummary.byUltimateParent?.US || 0}B 最终敞口</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <span className="text-[10px] font-mono text-slate-400">第二大最终母国</span>
+                    <div className="text-base font-black font-mono text-emerald-400 mt-0.5">
+                      中国 (CN)
+                    </div>
+                    <span className="text-[9px] font-mono text-emerald-300">${ofcSummary.byUltimateParent?.CN || 0}B 最终敞口</span>
+                  </div>
+                </div>
+
+                {/* Parent Breakdown */}
+                <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
+                  <span className="text-[10px] font-bold font-mono text-slate-400 uppercase">
+                    穿透后最终母国再分配敞口 (Ultimate Risk Reallocation):
+                  </span>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] font-mono">
+                    {Object.entries(ofcSummary.byUltimateParent || {}).map(([pCode, pVal]) => (
+                      <div key={pCode} className="flex justify-between items-center p-1.5 rounded bg-slate-950 border border-slate-800/80">
+                        <span className="text-slate-300">{countryNameMap[pCode] || pCode} ({pCode}):</span>
+                        <span className="font-bold text-amber-400">${pVal}B</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs text-slate-300 space-y-1">
+                  <span className="text-[10px] font-bold uppercase font-mono text-amber-400">穿透研究研判:</span>
+                  <p className="text-[11px] leading-relaxed text-slate-300">
+                    开曼群岛与中国香港超过 70% 的借贷实质为跨国科技/金融巨头或中资跨国企业设立的特殊目的载体 (SPV)，在最终风险口径下，全球对美、中两国实际宏观杠杆敞口显著高于属地居所口径 (LBS Table A)。
                   </p>
                 </div>
               </div>

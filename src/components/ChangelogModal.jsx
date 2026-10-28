@@ -9,12 +9,37 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v1.5.0',
+    version: 'v1.8.0',
     date: '2026-10-28',
     status: 'LATEST',
-    title: 'Phase 1 交付：平行情景 A/B 差分对比、投行级单图导出与版本日志系统',
+    title: 'Phase 2 交付：离岸金融中心穿透还原 (Look-Through OFCs) 与部门×工具多维切片',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '核心穿透',
+        title: '离岸金融中心一键穿透还原 (Look-Through OFCs & Ultimate Risk)',
+        desc: '基于 BIS CBS Table B 最终风险口径与 IMF CPIS 穿透模型，一键穿透开曼群岛 (KY)、卢森堡 (LU)、中国香港 (HK) 等 $6.85T 离岸转口资金，还原至美、中、德、英等母国真实风险承担者。'
+      },
+      {
+        tag: '多维切片',
+        title: '交易对手部门 × 金融工具交叉切片 (Sector & Instrument Slicing)',
+        desc: '全球双边信贷走廊与地图全面支持银行同业 (Interbank)、非银金融机构 (NBFI/对冲基金)、主权公共部门及实体企业 4 大部门，以及跨境贷款、国际债务证券、外汇衍生品 3 大工具多维筛选与动态聚类。'
+      },
+      {
+        tag: '研报交付',
+        title: '新增离岸穿透与最终风险卡片模板 (Card Template 5)',
+        desc: '在投行级研报卡片导出中新增「离岸中心穿透还原卡」，直观展示穿透离岸壳实体后各母国最终风险敞口及核心研判结论。'
+      }
+    ]
+  },
+  {
+    version: 'v1.5.0',
+    date: '2026-10-28',
+    status: 'STABLE',
+    title: 'Phase 1 交付：平行情景 A/B 差分对比、投行级单图导出与版本日志系统',
+    badge: '主要里程碑',
+    badgeColor: 'border-blue-500/50 bg-blue-950/60 text-blue-300',
     highlights: [
       {
         tag: '核心升级',
@@ -154,7 +179,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
   const handleCopyChangelog = () => {
     soundFx.playChime();
     const md = `# EUGENE FINANCE Global Capital Flow Atlas - Version Changelog
-Current Version: v1.5.0 (Updated 2026-10-28)
+Current Version: v1.8.0 (Updated 2026-10-28)
 
 ${SYSTEM_CHANGELOG.map(rel => `## ${rel.version} (${rel.date}) - ${rel.title}
 ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
@@ -184,7 +209,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v1.5.0 Current
+                  v1.8.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -249,7 +274,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
           </div>
 
           <div className="text-[11px] font-mono text-slate-500">
-            发布周期: 2026-10-16 至 2026-10-28 (累计 6 次关键发版)
+            发布周期: 2026-10-16 至 2026-10-28 (累计 7 次关键发版)
           </div>
         </div>
 
@@ -368,7 +393,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                     <div>
                       <span className="text-[10px] font-mono text-emerald-400 font-bold">L5 · 研报交付层</span>
                       <h5 className="font-bold text-white mt-1">投行级研报卡片</h5>
-                      <p className="text-[11px] text-slate-400 mt-1">4 款即时生成卡片，高清 2x 导出与水印</p>
+                      <p className="text-[11px] text-slate-400 mt-1">5 款即时生成卡片（含离岸穿透），高清 2x 导出与水印</p>
                     </div>
                     <span className="text-[9px] font-mono text-emerald-400 mt-2">Publication-Ready</span>
                   </div>

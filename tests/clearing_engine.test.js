@@ -22,6 +22,12 @@ import {
   CLEARING_VERSION_REGISTRY
 } from '../src/utils/eisenbergNoeClearing.js';
 import { NAVIGATION_DOMAINS, getTabTaskMeta } from '../src/utils/navigationConfig.js';
+import {
+  isOffshoreConduit,
+  OFC_JURISDICTIONS,
+  transformToUltimateRiskLinks,
+  getOfcLookThroughSummary
+} from '../src/utils/lookThroughEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -943,6 +949,68 @@ function runTestSuite() {
     assert(testIndex !== -1, 'Workflow must contain candidate test step');
     assert(commitIndex !== -1, 'Workflow must contain commit step');
     assert(testIndex < commitIndex, 'Test step MUST precede commit & push to prevent main branch pollution');
+  }
+
+  // =========================================================================
+  // Test 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing (v1.8.0)
+  // =========================================================================
+  console.log('\nTest 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing (v1.8.0)');
+  {
+    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v1.8.0', 'Clearing version registry PRODUCT must be v1.8.0');
+    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v1.8-UltimateRisk-LookThrough'), 'Model registry must declare v1.8-UltimateRisk-LookThrough');
+
+    // Conduit detection
+    assert(isOffshoreConduit('KY'), 'KY (Cayman Islands) must be identified as offshore conduit');
+    assert(isOffshoreConduit('LU'), 'LU (Luxembourg) must be identified as offshore conduit');
+    assert(isOffshoreConduit('HK'), 'HK (Hong Kong) must be identified as offshore conduit');
+    assert(!isOffshoreConduit('US'), 'US must not be marked as conduit');
+    assert(!isOffshoreConduit('CN'), 'CN must not be marked as conduit');
+    assert('KY' in OFC_JURISDICTIONS, 'OFC_JURISDICTIONS must contain KY');
+
+    const sampleLinks = (dataset?.bilateral_matrix || {})['2026Q1'] || [];
+    assert(sampleLinks.length > 0, '2026Q1 bilateral links must exist');
+
+    // OFC Summary
+    const ofcSummary = getOfcLookThroughSummary(sampleLinks);
+    assert(ofcSummary.totalOfcInflow > 0, `Total OFC inflow must be positive (got ${ofcSummary.totalOfcInflow}B)`);
+    assert((ofcSummary.byUltimateParent?.US || 0) > 0, 'Reallocated US parent claims must be positive');
+    assert((ofcSummary.byUltimateParent?.CN || 0) > 0, 'Reallocated CN parent claims must be positive');
+
+    // Residence basis links transformation
+    const residenceResult = transformToUltimateRiskLinks(sampleLinks, {
+      accountingBasis: 'residence',
+      selectedSector: 'all',
+      selectedInstrument: 'all'
+    });
+    assert(residenceResult.links.length === sampleLinks.length, 'Residence basis must preserve all baseline links');
+    assert(residenceResult.reallocatedCount === 0, 'Residence basis must have 0 reallocated links');
+
+    // Ultimate Risk Look-Through transformation
+    const ultimateResult = transformToUltimateRiskLinks(sampleLinks, {
+      accountingBasis: 'ultimate_risk',
+      selectedSector: 'all',
+      selectedInstrument: 'all'
+    });
+    assert(ultimateResult.links.length > 0, 'Ultimate risk basis links must be generated');
+    assert(ultimateResult.bypassedOfcCount > 0, `Should bypass OFC conduit links (bypassed ${ultimateResult.bypassedOfcCount})`);
+    assert(ultimateResult.reallocatedCount > 0, `Should reallocate to parent destinations (reallocated ${ultimateResult.reallocatedCount})`);
+
+    // Sector Slicing: Banks only
+    const banksResult = transformToUltimateRiskLinks(sampleLinks, {
+      accountingBasis: 'residence',
+      selectedSector: 'banks',
+      selectedInstrument: 'all'
+    });
+    assert(banksResult.links.length === sampleLinks.length, 'Banks sector slice should filter or weight links');
+    assert(banksResult.links[0].claims_usd_bn < sampleLinks[0].claims_usd_bn, 'Banks-only claims must be weighted subset of total claims');
+
+    // Instrument Slicing: Loans only
+    const loansResult = transformToUltimateRiskLinks(sampleLinks, {
+      accountingBasis: 'residence',
+      selectedSector: 'all',
+      selectedInstrument: 'loans'
+    });
+    assert(loansResult.links[0].claims_usd_bn < sampleLinks[0].claims_usd_bn, 'Loans-only claims must be weighted subset of total claims');
   }
 
   console.log('\n===============================================================');

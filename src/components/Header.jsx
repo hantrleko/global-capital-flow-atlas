@@ -200,10 +200,10 @@ export default function Header({
                 <button
                   onClick={onOpenChangelog}
                   className="h-7 px-2 rounded-lg border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:text-white hover:bg-emerald-900/50 flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-sm transition-all"
-                  title="查看 v1.5.0 版本更迭记录与演进历程"
+                  title="查看 v1.8.0 版本更迭记录与演进历程"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-mono text-[11px] font-bold">v1.5.0</span>
+                  <span className="font-mono text-[11px] font-bold">v1.8.0</span>
                   <span className="hidden xl:inline text-xs">日志</span>
                 </button>
               )}

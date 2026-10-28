@@ -445,7 +445,7 @@ export default function App() {
       <main
         id="main-viewport"
         tabIndex={-1}
-        className="flex-1 max-w-[1780px] w-full mx-auto px-3 sm:px-5 py-2.5 space-y-2.5 scroll-mt-28 outline-none"
+        className="flex-1 max-w-[1780px] w-full mx-auto px-3 sm:px-5 py-1.5 space-y-2 scroll-mt-28 outline-none"
       >
         {/* 3 Compact Executive KPIs: 全球信贷总额 · 美元计价份额与紧缩 · 核心走廊与枢纽 */}
         <ExecutiveKpiRow
@@ -932,7 +932,7 @@ export default function App() {
               title="查看平台版本迭代记录与演进架构"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>v1.5.0 日志</span>
+              <span>v1.8.0 日志</span>
             </button>
             <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>

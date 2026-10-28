@@ -49,7 +49,7 @@ export default function ExecutiveKpiRow({
   return (
     <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-2 md:gap-2.5 w-full pb-0.5 md:pb-0 scrollbar-none">
       {/* KPI Card 1: Total Claims */}
-      <div className="min-w-[270px] md:min-w-0 flex-1 bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors shrink-0">
+      <div className="min-w-[270px] md:min-w-0 flex-1 bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-1.5 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors shrink-0">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-400">全球跨境信贷总额</span>
@@ -72,7 +72,7 @@ export default function ExecutiveKpiRow({
       </div>
 
       {/* KPI Card 2: USD Share & Stress */}
-      <div className="min-w-[270px] md:min-w-0 flex-1 bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors shrink-0">
+      <div className="min-w-[270px] md:min-w-0 flex-1 bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-1.5 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors shrink-0">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-400">美元份额与紧缩指数</span>
@@ -98,7 +98,7 @@ export default function ExecutiveKpiRow({
       </div>
 
       {/* KPI Card 3: Network Corridors & Hubs */}
-      <div className="min-w-[270px] md:min-w-0 flex-1 bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors shrink-0">
+      <div className="min-w-[270px] md:min-w-0 flex-1 bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-1.5 flex items-center justify-between shadow-sm hover:border-slate-700 transition-colors shrink-0">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-slate-400">走廊集中度与核心枢纽</span>
