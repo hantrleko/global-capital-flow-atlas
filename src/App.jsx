@@ -46,6 +46,8 @@ const CrisisPlaybook = React.lazy(() => import('./components/CrisisPlaybook'));
 const ResearchDossier = React.lazy(() => import('./components/ResearchDossier'));
 const CustomDataImporter = React.lazy(() => import('./components/CustomDataImporter'));
 const MethodologyAppendixModal = React.lazy(() => import('./components/MethodologyAppendixModal'));
+const ChangelogModal = React.lazy(() => import('./components/ChangelogModal'));
+const InstitutionalChartCardModal = React.lazy(() => import('./components/InstitutionalChartCardModal'));
 
 const LoadingFallback = () => (
   <div className="w-full h-80 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -116,6 +118,8 @@ export default function App() {
   const [isInstitutionalReportOpen, setIsInstitutionalReportOpen] = useState(false);
   const [isCustomDataOpen, setIsCustomDataOpen] = useState(false);
   const [isAppendixOpen, setIsAppendixOpen] = useState(false);
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const [isChartCardOpen, setIsChartCardOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [customMatrix, setCustomMatrix] = useState(null);
   const [customFileName, setCustomFileName] = useState(null);
@@ -399,6 +403,8 @@ export default function App() {
         onToggleSound={toggleSound}
         onOpenAppendix={() => setIsAppendixOpen(true)}
         onCopyDeepLink={handleCopyDeepLink}
+        onOpenChangelog={() => setIsChangelogOpen(true)}
+        onOpenChartCard={() => setIsChartCardOpen(true)}
       />
 
       {/* Historical Macro Milestones Ribbon (2018-2026 Epochs) */}
@@ -560,6 +566,7 @@ export default function App() {
               onSelectCountry={(code) => setSelectedCountry(code)}
               contagionConfig={contagionConfig}
               onOpenAppendix={() => setIsAppendixOpen(true)}
+              onOpenChartCard={() => setIsChartCardOpen(true)}
             />
           )}
 
@@ -810,6 +817,29 @@ export default function App() {
         />
       </Suspense>
 
+      {/* Release Evolution Changelog Modal */}
+      {isChangelogOpen && (
+        <Suspense fallback={null}>
+          <ChangelogModal
+            isOpen={isChangelogOpen}
+            onClose={() => setIsChangelogOpen(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Publication-Ready Institutional Chart Card Modal */}
+      {isChartCardOpen && (
+        <Suspense fallback={null}>
+          <InstitutionalChartCardModal
+            isOpen={isChartCardOpen}
+            onClose={() => setIsChartCardOpen(false)}
+            dataset={activeDataset}
+            selectedQuarter={selectedQuarter}
+            selectedCurrency={selectedCurrency}
+          />
+        </Suspense>
+      )}
+
       {/* Floating Deep Link Toast */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-slate-900/95 border border-emerald-500/50 text-emerald-300 text-xs font-mono shadow-[0_0_20px_rgba(16,185,129,0.35)] backdrop-blur-md flex items-center gap-2 animate-bounce-subtle">
@@ -895,7 +925,16 @@ export default function App() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 text-[11px] font-mono text-slate-500">
+          <div className="flex items-center gap-2.5 text-[11px] font-mono text-slate-500">
+            <button
+              onClick={() => setIsChangelogOpen(true)}
+              className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer transition-colors bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30"
+              title="查看平台版本迭代记录与演进架构"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>v1.5.0 日志</span>
+            </button>
+            <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>
             <span>·</span>
             <span>36 季度跨国网络</span>

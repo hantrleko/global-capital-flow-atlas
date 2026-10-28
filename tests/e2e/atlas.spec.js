@@ -319,4 +319,42 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     expect(page.url()).toContain('tab=contagion');
   });
 
+  test('9. Phase 1 v1.5.0: Scenario A/B Diff Workbench, Chart Card & Changelog Modal', async ({ page }) => {
+    await page.goto('/');
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    // 1. Verify v1.5.0 Changelog Modal opens and renders evolution timeline
+    const changelogBtn = page.getByRole('button', { name: /v1\.5\.0/i }).first();
+    await expect(changelogBtn).toBeVisible();
+    await changelogBtn.click();
+
+    await expect(page.getByText('版本更迭记录与架构演进日志')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Phase 1 交付：平行情景 A/B 差分对比、投行级单图导出与版本日志系统')).toBeVisible();
+    const closeChangelogBtn = page.getByRole('button', { name: /关闭/i }).last();
+    await closeChangelogBtn.click();
+
+    // 2. Verify Publication-Ready Institutional Chart Card Modal
+    const chartCardBtn = page.getByRole('button', { name: /研报卡片/i }).first();
+    await expect(chartCardBtn).toBeVisible();
+    await chartCardBtn.click();
+
+    await expect(page.getByText('投行级研报单图卡片导出 (Publication-Ready Chart Card)')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('全球跨国银行信贷总量与美元流动性态势')).toBeVisible();
+    const closeCardBtn = page.locator('[data-testid="close-chart-card-modal"]').first();
+    await closeCardBtn.click();
+
+    // 3. Verify Scenario A/B Parallel Delta Diff in Contagion Simulator
+    await page.goto('/?tab=contagion&q=2026Q1');
+    await expect(page.locator('#main-viewport')).toBeVisible({ timeout: 10000 });
+
+    const diffTabBtn = page.getByRole('button', { name: /A\/B 差分对比/i });
+    await expect(diffTabBtn).toBeVisible();
+    await diffTabBtn.click();
+
+    await expect(page.getByText('平行情景 A/B 差分对比实验台 (Scenario A vs. B Delta Diff)')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('全网违约赤字差值 (Delta S_total)')).toBeVisible();
+    await expect(page.getByText('跨国经济体受损差分明细表')).toBeVisible();
+  });
+
 });

@@ -3,7 +3,7 @@ import * as echarts from 'echarts';
 import { 
   AlertOctagon, Play, RotateCcw, ShieldAlert, ArrowRight, 
   TrendingDown, Layers, Zap, Download, Info, ChevronDown, ChevronUp, HelpCircle, FileText,
-  Activity, GitCompare, Sliders, CheckCircle2, BarChart2
+  Activity, GitCompare, Sliders, CheckCircle2, BarChart2, Sparkles
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import MethodologyFootnote from './MethodologyFootnote';
@@ -25,7 +25,8 @@ export default function NetworkContagionSimulator({
   selectedQuarter,
   onSelectCountry,
   contagionConfig,
-  onOpenAppendix
+  onOpenAppendix,
+  onOpenChartCard
 }) {
   const countries = dataset.countries || [];
 
@@ -36,9 +37,31 @@ export default function NetworkContagionSimulator({
     { id: 'euro_contagion', name: '泛欧跨国银行去杠杆', epicenter: 'IT', haircut: 30, deleveraging: 2.0, dollarSqueeze: 12, buffer: 1.5, desc: '核心主权息差走阔导致多米诺骨牌级联收缩' }
   ];
 
+  // Standard Scenario A vs B Comparison Presets
+  const DIFF_PRESET_PAIRS = [
+    {
+      id: 'dollar_rescue',
+      name: '离岸美元危机: 无干预 (GB 30% 1.0x) vs. 央行互换救助 (GB 15% 2.0x)',
+      a: { name: '情景 A (离岸美元流动性休克·无干预)', epicenter: 'GB', haircutPct: 30, bufferMultiplier: 1.0 },
+      b: { name: '情景 B (央行货币互换流动性注入·救助)', epicenter: 'GB', haircutPct: 15, bufferMultiplier: 2.0 }
+    },
+    {
+      id: 'em_sovereign',
+      name: '新兴市场外债违约: 深度违约 (TR 45% 1.0x) vs. 多边展期托底 (TR 20% 1.8x)',
+      a: { name: '情景 A (新兴市场外债恶性违约)', epicenter: 'TR', haircutPct: 45, bufferMultiplier: 1.0 },
+      b: { name: '情景 B (IMF 与多边外债展期托底)', epicenter: 'TR', haircutPct: 20, bufferMultiplier: 1.8 }
+    },
+    {
+      id: 'europe_ccyb',
+      name: '欧系跨国银行外溢: 顺周期踩踏 (IT 35% 1.0x) vs. 逆周期缓冲释放 (IT 15% 2.0x)',
+      a: { name: '情景 A (泛欧跨国银行顺周期踩踏)', epicenter: 'IT', haircutPct: 35, bufferMultiplier: 1.0 },
+      b: { name: '情景 B (逆周期资本缓冲 CCyB 释出)', epicenter: 'IT', haircutPct: 15, bufferMultiplier: 2.0 }
+    }
+  ];
+
   // Simulation parameters
   const [simMode, setSimMode] = useState('en_clearing'); // 'en_clearing' | 'behavioral'
-  const [activeViewTab, setActiveViewTab] = useState('single_scenario'); // 'single_scenario' | 'workbench'
+  const [activeViewTab, setActiveViewTab] = useState('single_scenario'); // 'single_scenario' | 'workbench' | 'diff_ab'
   const [enSortMetric, setEnSortMetric] = useState('incremental'); // 'incremental' | 'post_shock' | 'baseline'
   const [showBaselineDiagnostic, setShowBaselineDiagnostic] = useState(false);
   const [activePreset, setActivePreset] = useState('custom');
@@ -50,6 +73,21 @@ export default function NetworkContagionSimulator({
   const [allowModelProxy, setAllowModelProxy] = useState(false); // Explicit authorization for model proxy liabilities
   const [isRecomputing, setIsRecomputing] = useState(false); // Immediate visual feedback during recomputation
   const [simResults, setSimResults] = useState(null);
+
+  // Scenario A & B state for Diff Workbench
+  const [diffScenarioA, setDiffScenarioA] = useState({
+    name: '情景 A (离岸美元流动性休克·无干预)',
+    epicenter: 'GB',
+    haircutPct: 30,
+    bufferMultiplier: 1.0
+  });
+
+  const [diffScenarioB, setDiffScenarioB] = useState({
+    name: '情景 B (央行货币互换流动性注入·救助)',
+    epicenter: 'GB',
+    haircutPct: 15,
+    bufferMultiplier: 2.0
+  });
 
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -309,6 +347,83 @@ export default function NetworkContagionSimulator({
     }
   }, [dataset, selectedQuarter, currentLinks, epicenter, haircutPct, allowModelProxy, simMode]);
 
+  // Scenario A vs. B Parallel Delta Diff Analysis Engine
+  const diffResults = useMemo(() => {
+    if (simMode !== 'en_clearing' || activeViewTab !== 'diff_ab') return null;
+
+    try {
+      const resA = computeClearingScenario({
+        dataset,
+        quarter: selectedQuarter,
+        currentLinks,
+        epicenter: diffScenarioA.epicenter,
+        haircutPct: diffScenarioA.haircutPct,
+        bufferMultiplier: diffScenarioA.bufferMultiplier,
+        deleveragingMultiplier: 1.5,
+        dollarSqueezePct: 12,
+        simMode: 'en_clearing',
+        enSortMetric: 'incremental',
+        allowModelProxy
+      });
+
+      const resB = computeClearingScenario({
+        dataset,
+        quarter: selectedQuarter,
+        currentLinks,
+        epicenter: diffScenarioB.epicenter,
+        haircutPct: diffScenarioB.haircutPct,
+        bufferMultiplier: diffScenarioB.bufferMultiplier,
+        deleveragingMultiplier: 1.5,
+        dollarSqueezePct: 12,
+        simMode: 'en_clearing',
+        enSortMetric: 'incremental',
+        allowModelProxy
+      });
+
+      const totalA = resA?.currentRun?.incrementalTotal ?? 0;
+      const totalB = resB?.currentRun?.incrementalTotal ?? 0;
+      const deltaTotal = totalB - totalA;
+      const deltaPct = totalA > 0 ? ((deltaTotal / totalA) * 100).toFixed(1) : '0.0';
+
+      const mapA = Object.fromEntries((resA?.impactList || []).map(item => [item.code, item]));
+      const mapB = Object.fromEntries((resB?.impactList || []).map(item => [item.code, item]));
+
+      const jurisdictionDiffs = (dataset.countries || []).map(c => {
+        const itemA = mapA[c.code];
+        const itemB = mapB[c.code];
+        const lossA = itemA?.incrementalShortfall ?? 0;
+        const lossB = itemB?.incrementalShortfall ?? 0;
+        const delta = lossB - lossA;
+        return {
+          code: c.code,
+          name_zh: c.name_zh || c.name,
+          region: c.region,
+          lossA,
+          lossB,
+          delta,
+          isSaved: delta < -0.01,
+          isWorse: delta > 0.01
+        };
+      }).sort((a, b) => a.delta - b.delta);
+
+      const topSaved = jurisdictionDiffs.filter(j => j.isSaved).slice(0, 5);
+
+      return {
+        resA,
+        resB,
+        totalA,
+        totalB,
+        deltaTotal,
+        deltaPct,
+        jurisdictionDiffs,
+        topSaved
+      };
+    } catch (err) {
+      console.error('Failed to compute diff results:', err);
+      return null;
+    }
+  }, [dataset, selectedQuarter, currentLinks, diffScenarioA, diffScenarioB, simMode, activeViewTab, allowModelProxy]);
+
   const handleDownloadSnapshot = async () => {
     if (!chartInstance.current) return;
     const rawUrl = chartInstance.current.getDataURL({
@@ -462,6 +577,53 @@ export default function NetworkContagionSimulator({
     document.body.removeChild(link);
   };
 
+  const handleExportDiffCsv = () => {
+    if (!diffResults) return;
+    soundFx.playTick();
+    const rows = [
+      ['=== BIS Atlas Network Stress Clearing Scenario A vs. B Diff Report ==='],
+      ['Report Generation Timestamp', new Date().toISOString()],
+      ['Product Version', CLEARING_VERSION_REGISTRY.PRODUCT],
+      ['Quarter', selectedQuarter],
+      ['Scenario A Name', diffScenarioA.name],
+      ['Scenario A Epicenter', diffScenarioA.epicenter],
+      ['Scenario A Haircut Pct', `${diffScenarioA.haircutPct}%`],
+      ['Scenario A Buffer', `${diffScenarioA.bufferMultiplier}x`],
+      ['Scenario A Incremental Loss (USD Bn)', `$${diffResults.totalA.toFixed(1)}B`],
+      ['Scenario B Name', diffScenarioB.name],
+      ['Scenario B Epicenter', diffScenarioB.epicenter],
+      ['Scenario B Haircut Pct', `${diffScenarioB.haircutPct}%`],
+      ['Scenario B Buffer', `${diffScenarioB.bufferMultiplier}x`],
+      ['Scenario B Incremental Loss (USD Bn)', `$${diffResults.totalB.toFixed(1)}B`],
+      ['Delta Total Loss (USD Bn)', `${diffResults.deltaTotal > 0 ? '+' : ''}${diffResults.deltaTotal.toFixed(1)}B`],
+      ['Delta Percent (%)', `${diffResults.deltaPct}%`],
+      [''],
+      ['Jurisdiction Code', 'Jurisdiction Name', 'Region', 'Loss Scenario A (USD Bn)', 'Loss Scenario B (USD Bn)', 'Delta Shortfall (USD Bn)', 'Evaluation Status']
+    ];
+
+    diffResults.jurisdictionDiffs.forEach(row => {
+      rows.push([
+        row.code,
+        row.name_zh,
+        row.region,
+        row.lossA.toFixed(1),
+        row.lossB.toFixed(1),
+        row.delta.toFixed(1),
+        row.isSaved ? 'RESCUED_MITIGATED' : row.isWorse ? 'DETERIORATED' : 'NEUTRAL'
+      ]);
+    });
+
+    const csvContent = '\uFEFF' + rows.map(r => r.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `bis_contagion_diff_A_vs_B_${selectedQuarter}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="glass-panel rounded-2xl p-3 sm:p-4 shadow-2xl space-y-2.5 scroll-mt-24">
       {/* Top Header & Simulation Controls */}
@@ -520,6 +682,17 @@ export default function NetworkContagionSimulator({
             </button>
           </div>
 
+          {onOpenChartCard && (
+            <button
+              onClick={onOpenChartCard}
+              className="px-2 py-1 bg-blue-950/60 hover:bg-blue-900/60 border border-blue-500/40 rounded-lg text-sky-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs font-mono"
+              title="一键生成投行级研报卡片 (Publication-Ready Chart Card)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+              <span className="hidden sm:inline">研报卡片</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportScenarioCsv}
             className="px-2 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs font-mono"
@@ -571,6 +744,20 @@ export default function NetworkContagionSimulator({
                 <GitCompare className="w-3 h-3" />
                 <span>🔬 实验台</span>
               </button>
+              <button
+                onClick={() => {
+                  soundFx.playTick();
+                  setActiveViewTab('diff_ab');
+                }}
+                className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                  activeViewTab === 'diff_ab'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <GitCompare className="w-3 h-3" />
+                <span>⚖️ A/B 差分对比</span>
+              </button>
             </div>
           )}
 
@@ -604,7 +791,7 @@ export default function NetworkContagionSimulator({
                 ⚙️ 自由调参
               </button>
             </>
-          ) : (
+          ) : activeViewTab === 'workbench' ? (
             <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2">
               <span className="text-slate-500">对照机制:</span>
               <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">1.0x 严格外储</span>
@@ -612,6 +799,26 @@ export default function NetworkContagionSimulator({
               <span className="px-1.5 py-0.2 rounded bg-purple-900/50 text-purple-200 border border-purple-500/30">1.5x 学术基准</span>
               <span>vs</span>
               <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">2.0x 广义缓冲</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+              <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1 shrink-0">
+                <Sparkles className="w-3 h-3" /> 对决预设:
+              </span>
+              {DIFF_PRESET_PAIRS.map(pair => (
+                <button
+                  key={pair.id}
+                  onClick={() => {
+                    soundFx.playTick();
+                    setDiffScenarioA(pair.a);
+                    setDiffScenarioB(pair.b);
+                  }}
+                  className="px-2 py-0.5 rounded text-[11px] font-medium transition-all shrink-0 cursor-pointer border bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:border-emerald-500/50"
+                  title={pair.name}
+                >
+                  {pair.name.split(':')[0]}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -871,6 +1078,256 @@ export default function NetworkContagionSimulator({
                   <div>· <strong>1.5x 学术基准机制：</strong> 经典 Eisenberg-Noe 宏观金融网络基准设定，允许适度动用二级流动性缓冲与主权财政空间。</div>
                   <div>· <strong>2.0x 广义缓冲机制：</strong> 考虑双边央行流动性互换协议（Swap Lines）与常备借贷便利介入后的系统韧性。</div>
                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : simMode === 'en_clearing' && activeViewTab === 'diff_ab' ? (
+        /* Scenario A vs. B Parallel Delta Diff View */
+        <div className="space-y-4 animate-fade-in">
+          {/* Top Diff Actions & Presets */}
+          <div className="p-3 bg-slate-900/90 border border-emerald-500/30 rounded-xl flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <GitCompare className="w-4 h-4 text-emerald-400" />
+                <span>平行情景 A/B 差分对比实验台 (Scenario A vs. B Delta Diff)</span>
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 font-bold">
+                Phase 1 交付特性
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportDiffCsv}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow-md transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-mono"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>导出差分对比 CSV</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Scenario A & B Dual Parameters Panel */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+            {/* Scenario A Card */}
+            <div className="p-3.5 rounded-xl border border-rose-500/40 bg-slate-900/80 space-y-3">
+              <div className="flex items-center justify-between border-b border-rose-500/20 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                  <span className="text-xs font-bold text-white">{diffScenarioA.name}</span>
+                </div>
+                <span className="text-xs font-mono font-bold text-rose-400">
+                  全网违约: ${diffResults?.totalA?.toFixed(1) ?? '...'}B
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold text-[11px]">震中经济体:</label>
+                  <select
+                    value={diffScenarioA.epicenter}
+                    onChange={(e) => setDiffScenarioA(prev => ({ ...prev, epicenter: e.target.value }))}
+                    className="w-full bg-slate-800 border border-slate-700 text-white font-bold px-2 py-1 rounded-lg text-xs"
+                  >
+                    {countries.map(c => (
+                      <option key={c.code} value={c.code}>{c.name_zh} ({c.code})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold text-[11px]">
+                    减记率: <span className="text-rose-400 font-mono">{diffScenarioA.haircutPct}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={5}
+                    max={60}
+                    step={5}
+                    value={diffScenarioA.haircutPct}
+                    onChange={(e) => setDiffScenarioA(prev => ({ ...prev, haircutPct: parseInt(e.target.value, 10) }))}
+                    className="w-full accent-rose-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold text-[11px]">外储缓冲倍数:</label>
+                  <select
+                    value={diffScenarioA.bufferMultiplier}
+                    onChange={(e) => setDiffScenarioA(prev => ({ ...prev, bufferMultiplier: parseFloat(e.target.value) }))}
+                    className="w-full bg-slate-800 border border-slate-700 text-white font-bold px-2 py-1 rounded-lg text-xs"
+                  >
+                    <option value={1.0}>1.0x 严格外储 (极度紧缩)</option>
+                    <option value={1.5}>1.5x 学术基准</option>
+                    <option value={2.0}>2.0x 广义缓冲</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Scenario B Card */}
+            <div className="p-3.5 rounded-xl border border-emerald-500/40 bg-slate-900/80 space-y-3">
+              <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  <span className="text-xs font-bold text-white">{diffScenarioB.name}</span>
+                </div>
+                <span className="text-xs font-mono font-bold text-emerald-400">
+                  全网违约: ${diffResults?.totalB?.toFixed(1) ?? '...'}B
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold text-[11px]">震中经济体:</label>
+                  <select
+                    value={diffScenarioB.epicenter}
+                    onChange={(e) => setDiffScenarioB(prev => ({ ...prev, epicenter: e.target.value }))}
+                    className="w-full bg-slate-800 border border-slate-700 text-white font-bold px-2 py-1 rounded-lg text-xs"
+                  >
+                    {countries.map(c => (
+                      <option key={c.code} value={c.code}>{c.name_zh} ({c.code})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold text-[11px]">
+                    减记率: <span className="text-emerald-400 font-mono">{diffScenarioB.haircutPct}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={5}
+                    max={60}
+                    step={5}
+                    value={diffScenarioB.haircutPct}
+                    onChange={(e) => setDiffScenarioB(prev => ({ ...prev, haircutPct: parseInt(e.target.value, 10) }))}
+                    className="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded appearance-none cursor-pointer mt-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold text-[11px]">外储缓冲倍数:</label>
+                  <select
+                    value={diffScenarioB.bufferMultiplier}
+                    onChange={(e) => setDiffScenarioB(prev => ({ ...prev, bufferMultiplier: parseFloat(e.target.value) }))}
+                    className="w-full bg-slate-800 border border-slate-700 text-white font-bold px-2 py-1 rounded-lg text-xs"
+                  >
+                    <option value={1.0}>1.0x 严格外储</option>
+                    <option value={1.5}>1.5x 学术基准</option>
+                    <option value={2.0}>2.0x 广义缓冲 (互换救助)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Delta Executive Summary */}
+          {diffResults && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
+                <span className="text-[11px] font-mono text-slate-400">全网违约赤字差值 (Delta S_total)</span>
+                <div className={`text-2xl font-black font-mono mt-1 ${
+                  diffResults.deltaTotal < 0 ? 'text-emerald-400' : diffResults.deltaTotal > 0 ? 'text-rose-400' : 'text-slate-200'
+                }`}>
+                  {diffResults.deltaTotal > 0 ? '+' : ''}${diffResults.deltaTotal.toFixed(1)}B
+                </div>
+                <span className={`text-[10px] font-mono font-bold mt-1 ${
+                  diffResults.deltaTotal < 0 ? 'text-emerald-300' : 'text-rose-300'
+                }`}>
+                  {diffResults.deltaTotal < 0 ? `阻断违约挽救 ${Math.abs(parseFloat(diffResults.deltaPct))}%` : `受损扩大 +${diffResults.deltaPct}%`}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
+                <span className="text-[11px] font-mono text-slate-400">最大减损受惠经济体</span>
+                <div className="text-base font-bold text-white mt-1">
+                  {diffResults.topSaved.length > 0 
+                    ? `${diffResults.topSaved[0].name_zh} (${diffResults.topSaved[0].code})`
+                    : '全网未发生显著二阶转移'}
+                </div>
+                <span className="text-[10px] font-mono text-emerald-400 mt-1">
+                  {diffResults.topSaved.length > 0
+                    ? `挽救损益 -$${Math.abs(diffResults.topSaved[0].delta).toFixed(1)}B`
+                    : '基准参数对齐'}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
+                <span className="text-[11px] font-mono text-slate-400">不动点收敛状态</span>
+                <div className="text-base font-bold font-mono text-sky-400 mt-1 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+                  <span>CONVERGED &lt; 1e-4</span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 mt-1">
+                  情景 A ({diffResults.resA?.shockConvergence?.iterCount ?? 0}次) · 情景 B ({diffResults.resB?.shockConvergence?.iterCount ?? 0}次)
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Comparative Table */}
+          {diffResults && (
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+              <div className="p-3 border-b border-slate-800 flex items-center justify-between text-xs">
+                <span className="font-bold text-white">跨国经济体受损差分明细表 (按挽救减损额排序)</span>
+                <span className="text-[11px] font-mono text-slate-400">绿负值 (Δ &lt; 0) 表示干预后受损减轻</span>
+              </div>
+              <div className="overflow-x-auto max-h-[420px] scrollbar-thin">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950 text-slate-400 sticky top-0 border-b border-slate-800 font-mono text-[11px]">
+                    <tr>
+                      <th className="py-2 px-3">经济体</th>
+                      <th className="py-2 px-3">区域</th>
+                      <th className="py-2 px-3 text-right text-rose-300">情景 A 受损 ($B)</th>
+                      <th className="py-2 px-3 text-right text-emerald-300">情景 B 受损 ($B)</th>
+                      <th className="py-2 px-3 text-right font-bold">差分 Δ ($B)</th>
+                      <th className="py-2 px-3 text-center">干预效果评级</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {diffResults.jurisdictionDiffs.map(row => (
+                      <tr 
+                        key={row.code}
+                        onClick={() => onSelectCountry(row.code)}
+                        className="hover:bg-slate-800/50 cursor-pointer transition-colors"
+                      >
+                        <td className="py-2 px-3 font-bold text-white flex items-center gap-1.5 font-sans">
+                          <span>{row.name_zh}</span>
+                          <span className="text-slate-400 font-mono text-[10px]">({row.code})</span>
+                        </td>
+                        <td className="py-2 px-3 text-slate-400 text-[11px]">{row.region}</td>
+                        <td className="py-2 px-3 text-right text-rose-300">${row.lossA.toFixed(1)}B</td>
+                        <td className="py-2 px-3 text-right text-emerald-300">${row.lossB.toFixed(1)}B</td>
+                        <td className={`py-2 px-3 text-right font-bold ${
+                          row.delta < -0.01 ? 'text-emerald-400' : row.delta > 0.01 ? 'text-rose-400' : 'text-slate-400'
+                        }`}>
+                          {row.delta > 0 ? '+' : ''}{row.delta.toFixed(1)}B
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          {row.delta < -5 ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/30 font-bold">
+                              大幅挽救
+                            </span>
+                          ) : row.delta < -0.01 ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-400 border border-emerald-500/20">
+                              轻微减损
+                            </span>
+                          ) : row.delta > 0.01 ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-rose-950 text-rose-300 border border-rose-500/30">
+                              受损走阔
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">
+                              中性持平
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

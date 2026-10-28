@@ -14,8 +14,8 @@
  */
 
 export const CLEARING_VERSION_REGISTRY = {
-  PRODUCT: 'v1.0.0',
-  MODEL: 'v1.0-DualBaseline-Workbench-EN2001',
+  PRODUCT: 'v1.5.0',
+  MODEL: 'v1.5-DualBaseline-Workbench-Diff-EN2001',
   DATA: (quarter) => {
     if (quarter <= '2026Q1') return 'BIS-SDMX-Official';
     if (quarter === '2026Q2') return 'BIS-Pending-Release (2026-10-30)';

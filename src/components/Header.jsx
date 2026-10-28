@@ -46,7 +46,9 @@ export default function Header({
   isSoundMuted = false,
   onToggleSound,
   onOpenAppendix,
-  onCopyDeepLink
+  onCopyDeepLink,
+  onOpenChangelog,
+  onOpenChartCard
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const currentQuarterIdx = quarters.indexOf(selectedQuarter);
@@ -180,6 +182,29 @@ export default function Header({
                 >
                   <Bot className="w-3.5 h-3.5 text-purple-400" />
                   <span className="text-xs">宏观 AI</span>
+                </button>
+              )}
+
+              {onOpenChartCard && (
+                <button
+                  onClick={onOpenChartCard}
+                  className="hidden sm:flex h-7 px-2.5 rounded-lg border border-blue-500/40 bg-blue-950/40 text-sky-300 hover:text-white hover:bg-blue-900/50 items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-sm transition-all"
+                  title="一键生成投行级研报单图卡片 (Publication-Ready Chart Card)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="text-xs">研报卡片</span>
+                </button>
+              )}
+
+              {onOpenChangelog && (
+                <button
+                  onClick={onOpenChangelog}
+                  className="h-7 px-2 rounded-lg border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:text-white hover:bg-emerald-900/50 flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-sm transition-all"
+                  title="查看 v1.5.0 版本更迭记录与演进历程"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-mono text-[11px] font-bold">v1.5.0</span>
+                  <span className="hidden xl:inline text-xs">日志</span>
                 </button>
               )}
 
