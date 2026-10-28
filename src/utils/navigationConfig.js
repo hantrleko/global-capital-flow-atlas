@@ -23,7 +23,8 @@ export const NAVIGATION_DOMAINS = [
       { id: 'gsib', label: 'G-SIB 顶级银行透镜', desc: 'Top 30 Systemic Banks' },
       { id: 'contagion', label: '银行级联传染模拟', desc: 'Eisenberg-Noe Contagion' },
       { id: 'shadow', label: '影子银行与非银透视', desc: 'Offshore NBFIs & FX Swaps' },
-      { id: 'maturity', label: '期限结构与转期挤兑', desc: 'CBS Residual Maturity' }
+      { id: 'maturity', label: '期限结构与转期挤兑', desc: 'CBS Residual Maturity' },
+      { id: 'portfolio', label: '组合压力映射', desc: 'Portfolio Stress Overlay & Custom VaR' }
     ]
   },
   {
@@ -73,7 +74,7 @@ export function getTabTaskMeta(activeTab) {
       let coreTask = 'overview'; // 1. 看全局
       if (['compare', 'risk', 'comparison', 'gravity'].includes(tab.id)) {
         coreTask = 'compare'; // 2. 比差异
-      } else if (['contagion', 'ews', 'gsib', 'shadow', 'maturity', 'swaps'].includes(tab.id)) {
+      } else if (['contagion', 'ews', 'gsib', 'shadow', 'maturity', 'swaps', 'portfolio'].includes(tab.id)) {
         coreTask = 'stress'; // 3. 测压力
       }
       return {

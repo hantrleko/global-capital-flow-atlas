@@ -324,13 +324,13 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const mainViewport = page.locator('#main-viewport');
     await expect(mainViewport).toBeVisible({ timeout: 10000 });
 
-    // 1. Verify v1.8.0 Changelog Modal opens and renders evolution timeline
-    const changelogBtn = page.getByRole('button', { name: /v1\.8\.0/i }).first();
+    // 1. Verify v2.0.0 Changelog Modal opens and renders evolution timeline
+    const changelogBtn = page.getByRole('button', { name: /v2\.0\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
     await expect(page.getByText('版本更迭记录与架构演进日志')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Phase 2 交付：离岸金融中心穿透还原 (Look-Through OFCs) 与部门×工具多维切片')).toBeVisible();
+    await expect(page.getByText('Phase 3 终极跃迁交付：我的组合压力映射 (Portfolio Stress Overlay) 与机构账户风控仪表盘')).toBeVisible();
     const closeChangelogBtn = page.getByRole('button', { name: /关闭/i }).last();
     await closeChangelogBtn.click();
 
@@ -392,6 +392,67 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(page.getByText('CBS Table B', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('离岸穿透信贷池')).toBeVisible();
     await expect(page.getByText('穿透后最终母国再分配敞口')).toBeVisible();
+
+    const closeCardBtn = page.locator('[data-testid="close-chart-card-modal"]').first();
+    await closeCardBtn.click();
+  });
+
+  test('11. Phase 3 v2.0.0: Portfolio Stress Overlay, Presets, Sensitivity & Card Template', async ({ page }) => {
+    // 1. Visit Portfolio Stress Overlay page
+    await page.goto('/?tab=portfolio&q=2026Q1');
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    const overlay = page.locator('[data-testid="portfolio-stress-overlay"]');
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('我的组合压力映射 (Portfolio Stress Overlay)')).toBeVisible();
+    await expect(page.getByText('Phase 3 · v2.0.0')).toBeVisible();
+
+    // 2. Verify KPI row values
+    await expect(page.getByText('组合基准资产规模')).toBeVisible();
+    await expect(page.getByText('预期压力净减记')).toBeVisible();
+    await expect(page.getByText('$500M').first()).toBeVisible();
+
+    // 3. Switch Presets: Check Bank Treasury & Liquidity Book ($2000M)
+    const bankPresetBtn = page.locator('[data-testid="preset-bank_treasury_liquidity"]');
+    await expect(bankPresetBtn).toBeVisible();
+    await bankPresetBtn.click();
+    await expect(page.getByText('$2000M').first()).toBeVisible({ timeout: 5000 });
+
+    // Switch Presets: Check EM High Yield Credit ($250M)
+    const emPresetBtn = page.locator('[data-testid="preset-em_high_yield_credit"]');
+    await expect(emPresetBtn).toBeVisible();
+    await emPresetBtn.click();
+    await expect(page.getByText('$250M').first()).toBeVisible({ timeout: 5000 });
+
+    // 4. Switch Macro Scenario: Offshore Dollar Squeeze
+    const scenarioBtn = page.locator('[data-testid="scenario-dollar_liquidity_freeze"]');
+    await expect(scenarioBtn).toBeVisible();
+    await scenarioBtn.click();
+
+    // 5. Verify ECharts canvas container exists
+    const chartCanvas = page.locator('[data-testid="portfolio-stress-chart"] canvas, [data-testid="portfolio-stress-chart"]').first();
+    await expect(chartCanvas).toBeVisible({ timeout: 10000 });
+
+    // 6. Test Header quick-access button [组合压力]
+    const headerBtn = page.locator('[data-testid="header-portfolio-btn"]');
+    await expect(headerBtn).toBeVisible();
+
+    // 7. Open Chart Card Modal and verify Template 6 (Portfolio Stress Card)
+    const chartCardBtn = page.getByRole('button', { name: /研报卡片/i }).first();
+    await expect(chartCardBtn).toBeVisible();
+    await chartCardBtn.click();
+
+    await expect(page.getByText('投行级研报单图卡片导出 (Publication-Ready Chart Card)')).toBeVisible({ timeout: 5000 });
+
+    // Switch to Template 6: 6. 组合压力映射卡
+    const portfolioCardTab = page.getByRole('button', { name: /6\.\s*组合压力映射卡/i });
+    await expect(portfolioCardTab).toBeVisible();
+    await portfolioCardTab.click();
+
+    await expect(page.getByText('机构账户组合压力映射与极端 VaR 评估')).toBeVisible();
+    await expect(page.getByText('预期净减记额')).toBeVisible();
+    await expect(page.getByText('受损最深持仓敞口')).toBeVisible();
 
     const closeCardBtn = page.locator('[data-testid="close-chart-card-modal"]').first();
     await closeCardBtn.click();

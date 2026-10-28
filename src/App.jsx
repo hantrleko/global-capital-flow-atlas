@@ -48,6 +48,7 @@ const CustomDataImporter = React.lazy(() => import('./components/CustomDataImpor
 const MethodologyAppendixModal = React.lazy(() => import('./components/MethodologyAppendixModal'));
 const ChangelogModal = React.lazy(() => import('./components/ChangelogModal'));
 const InstitutionalChartCardModal = React.lazy(() => import('./components/InstitutionalChartCardModal'));
+const PortfolioStressOverlay = React.lazy(() => import('./components/PortfolioStressOverlay'));
 
 const LoadingFallback = () => (
   <div className="w-full h-80 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -570,6 +571,16 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'portfolio' && (
+            <PortfolioStressOverlay
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              selectedCurrency={selectedCurrency}
+              onOpenChartCard={() => setIsChartCardOpen(true)}
+              onOpenContagion={() => handleSelectTab('contagion')}
+            />
+          )}
+
           {activeTab === 'maturity' && (
             <MaturityRolloverMonitor
               dataset={activeDataset}
@@ -932,7 +943,7 @@ export default function App() {
               title="查看平台版本迭代记录与演进架构"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>v1.8.0 日志</span>
+              <span>v2.0.0 日志</span>
             </button>
             <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>

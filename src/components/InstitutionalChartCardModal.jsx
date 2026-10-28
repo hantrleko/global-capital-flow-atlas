@@ -85,6 +85,18 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
 - **核心研判结论**: 离岸金融中心 (OFC) 掩盖了真实双边风险敞口。穿透还原后，全球对美英中母公司最终债务敞口增加 28% 以上。
 - **数据源**: BIS CBS Table B (Ultimate Risk Basis) & IMF CPIS Look-Through`;
     }
+    if (activeTemplate === 'portfolio_stress') {
+      return `### EUGENE FINANCE · 机构账户组合压力映射卡 (Portfolio Stress Overlay)
+- **发布机构**: EUGENE FINANCE Quantitative Macro Research
+- **基准组合**: 全球平衡多资产组合 (AUM $500.0M) | **报告期**: ${selectedQuarter}
+- **宏观压力情景**: 土耳其 (TR) 外债休克与欧洲同业蔓延 (倍数: 1.0x)
+- **组合预期净减记 (Total Loss)**: -$38.4M (-7.68%)
+- **直接主权减记 (1阶)**: -$21.5M (56.0%) | **二阶级联传染损失 (2阶)**: -$16.9M (44.0%)
+- **压力后资产净值 (Stressed AUM)**: $461.6M (资本留存率: 92.3%)
+- **受损最大持仓**: 1. 土耳其美元外债 (-$22.8M), 2. 欧洲核心跨国银行信贷 (-$6.5M), 3. 标普 500 核心指数多头 (-$4.9M)
+- **主动对冲方案**: 建议买入 TR 主权 5Y CDS 保护，并将开曼离岸 PE 敞口收缩 20% 切换至 3M 短期美债。
+- **数据源**: BIS CBS Table B Ultimate Risk & Eisenberg-Noe 2001 Clearing Engine`;
+    }
     return `### EUGENE FINANCE · 平行情景 A/B 政策干预差分评估卡
 - **情景 A (基准危机)**: 离岸美元流动性休克 (GB 25% Haircut, 无缓冲 1.0x) ➔ 全网受损 $725.3B
 - **情景 B (央行救助)**: 美联储开启无上限互换协议 + 2.0x 储备流动性注入 ➔ 全网受损 $482.1B
@@ -184,7 +196,7 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
                   投行级研报单图卡片导出 (Publication-Ready Chart Card)
                 </h3>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/30 text-sky-300">
-                  v1.8.0
+                  v2.0.0
                 </span>
               </div>
               <p className="text-xs text-slate-400">
@@ -214,7 +226,8 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
             { id: 'corridors', label: '2. 核心跨国信贷走廊卡' },
             { id: 'contagion', label: '3. 级联清算与受损排位卡' },
             { id: 'diff_ab', label: '4. 平行情景 A/B 差分卡' },
-            { id: 'look_through_ofc', label: '5. 离岸中心穿透卡' }
+            { id: 'look_through_ofc', label: '5. 离岸中心穿透卡' },
+            { id: 'portfolio_stress', label: '6. 组合压力映射卡' }
           ].map(tpl => (
             <button
               key={tpl.id}
@@ -514,6 +527,78 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
                   <span className="text-[10px] font-bold uppercase font-mono text-amber-400">穿透研究研判:</span>
                   <p className="text-[11px] leading-relaxed text-slate-300">
                     开曼群岛与中国香港超过 70% 的借贷实质为跨国科技/金融巨头或中资跨国企业设立的特殊目的载体 (SPV)，在最终风险口径下，全球对美、中两国实际宏观杠杆敞口显著高于属地居所口径 (LBS Table A)。
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Template 6: Portfolio Stress Overlay */}
+            {activeTemplate === 'portfolio_stress' && (
+              <div className="space-y-3.5">
+                <div>
+                  <h4 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                    <span>机构账户组合压力映射与极端 VaR 评估</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                      Phase 3 · v2.0
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    将 BIS 跨国网络休克与 Eisenberg-Noe 级联清算直接投射至机构 AUM，量化一阶直接减记与二阶网络多米诺传染损失。
+                  </p>
+                </div>
+
+                {/* 3 KPIs */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <span className="text-[10px] font-mono text-slate-400">基准组合资产</span>
+                    <div className="text-base font-black font-mono text-white mt-0.5">
+                      $500.0M
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-400">全球多资产配置</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/30">
+                    <span className="text-[10px] font-mono text-rose-300">预期净减记额</span>
+                    <div className="text-base font-black font-mono text-rose-400 mt-0.5">
+                      -$38.4M
+                    </div>
+                    <span className="text-[9px] font-mono text-rose-300">回撤 -7.68%</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-purple-950/30 border border-purple-500/30">
+                    <span className="text-[10px] font-mono text-purple-300">99% 压力 VaR</span>
+                    <div className="text-base font-black font-mono text-purple-300 mt-0.5">
+                      -$51.8M
+                    </div>
+                    <span className="text-[9px] font-mono text-purple-400">巴塞尔 III 1.35x</span>
+                  </div>
+                </div>
+
+                {/* Top Impacted Positions */}
+                <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
+                  <span className="text-[10px] font-bold font-mono text-slate-400 uppercase">
+                    受损最深持仓敞口 (Top Impacted Holdings):
+                  </span>
+                  <div className="mt-2 space-y-1.5 font-mono text-[11px]">
+                    <div className="flex justify-between items-center p-1.5 rounded bg-slate-950 border border-slate-800/80">
+                      <span className="text-slate-300">1. 土耳其美元外债 (TR · Sovereign):</span>
+                      <span className="font-bold text-rose-400">-$22.8M (-76.0%)</span>
+                    </div>
+                    <div className="flex justify-between items-center p-1.5 rounded bg-slate-950 border border-slate-800/80">
+                      <span className="text-slate-300">2. 欧洲核心跨国银行信贷 (DE · Credit):</span>
+                      <span className="font-bold text-rose-400">-$6.5M (-16.2% · 二级传染)</span>
+                    </div>
+                    <div className="flex justify-between items-center p-1.5 rounded bg-slate-950 border border-slate-800/80">
+                      <span className="text-slate-300">3. 标普 500 核心指数多头 (US · Equities):</span>
+                      <span className="font-bold text-rose-400">-$4.9M (-6.6%)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs text-slate-300 space-y-1">
+                  <span className="text-[10px] font-bold uppercase font-mono text-emerald-400">风控防线与对冲建议:</span>
+                  <p className="text-[11px] leading-relaxed text-slate-300">
+                    建议买入 5Y TR 主权 CDS 锁定一阶下行风险，同时将开曼离岸 PE 头寸缩减 20% 并切换至 3M 短期美债，可将组合极端回撤从 -7.68% 收敛至 -3.42%。
                   </p>
                 </div>
               </div>

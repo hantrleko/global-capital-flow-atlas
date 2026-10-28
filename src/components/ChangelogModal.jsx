@@ -9,12 +9,37 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v1.8.0',
+    version: 'v2.0.0',
     date: '2026-10-28',
     status: 'LATEST',
-    title: 'Phase 2 交付：离岸金融中心穿透还原 (Look-Through OFCs) 与部门×工具多维切片',
+    title: 'Phase 3 终极跃迁交付：我的组合压力映射 (Portfolio Stress Overlay) 与机构账户风控仪表盘',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '核心突破',
+        title: '我的组合压力映射引擎 (Portfolio Stress Overlay Engine)',
+        desc: '将公共国际清算银行 (BIS) 跨国信贷网络与 Eisenberg-Noe 级联清算模型直接穿透映射至用户机构投资账户。全面支持全球宏观多空平衡组合、跨国银行司库流动性专户、新兴市场高收益外债专户及自定义组合 AUM 配置。'
+      },
+      {
+        tag: '风控穿透',
+        title: '一阶直接主权外债减记 vs 二阶网络多米诺级联损失拆解',
+        desc: '基于资产类别贝塔弹性（主权债 0.95x、企业金融 1.35x、权益 1.65x、外汇衍生品 1.45x）及离岸穿透还原，精确量化各持仓标的损失贡献率与 99% 极端压力 VaR。'
+      },
+      {
+        tag: '主动防御',
+        title: 'AI 宏观对冲策略与资本防线生成 (Institutional Hedging Intelligence)',
+        desc: '针对最大受损敞口自动生成主权 CDS 保护、交叉货币基差套保及离岸 SPV 去杠杆建议，并支持一键导出投行级「组合压力研报卡片」。'
+      }
+    ]
+  },
+  {
+    version: 'v1.8.0',
+    date: '2026-10-28',
+    status: 'STABLE',
+    title: 'Phase 2 交付：离岸金融中心穿透还原 (Look-Through OFCs) 与部门×工具多维切片',
+    badge: '重要迭代',
+    badgeColor: 'border-sky-500/50 bg-sky-950/60 text-sky-300',
     highlights: [
       {
         tag: '核心穿透',
@@ -179,7 +204,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
   const handleCopyChangelog = () => {
     soundFx.playChime();
     const md = `# EUGENE FINANCE Global Capital Flow Atlas - Version Changelog
-Current Version: v1.8.0 (Updated 2026-10-28)
+Current Version: v2.0.0 (Updated 2026-10-28)
 
 ${SYSTEM_CHANGELOG.map(rel => `## ${rel.version} (${rel.date}) - ${rel.title}
 ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
@@ -209,7 +234,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v1.8.0 Current
+                  v2.0.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -274,7 +299,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
           </div>
 
           <div className="text-[11px] font-mono text-slate-500">
-            发布周期: 2026-10-16 至 2026-10-28 (累计 7 次关键发版)
+            发布周期: 2026-10-16 至 2026-10-28 (累计 8 次关键发版)
           </div>
         </div>
 
@@ -283,7 +308,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
           {activeTab === 'timeline' ? (
             <div className="relative border-l-2 border-slate-800 ml-3 sm:ml-4 pl-4 sm:pl-6 space-y-8">
               {SYSTEM_CHANGELOG.map((rel, idx) => {
-                const isLatest = rel.version === 'v1.5.0';
+                const isLatest = idx === 0 || rel.status === 'LATEST';
                 return (
                   <div key={rel.version} className="relative group">
                     {/* Timeline Node Dot */}
@@ -393,7 +418,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                     <div>
                       <span className="text-[10px] font-mono text-emerald-400 font-bold">L5 · 研报交付层</span>
                       <h5 className="font-bold text-white mt-1">投行级研报卡片</h5>
-                      <p className="text-[11px] text-slate-400 mt-1">5 款即时生成卡片（含离岸穿透），高清 2x 导出与水印</p>
+                      <p className="text-[11px] text-slate-400 mt-1">6 款即时生成卡片（含机构组合压力与离岸穿透），高清 2x 导出与水印</p>
                     </div>
                     <span className="text-[9px] font-mono text-emerald-400 mt-2">Publication-Ready</span>
                   </div>

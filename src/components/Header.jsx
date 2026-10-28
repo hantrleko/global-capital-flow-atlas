@@ -5,7 +5,7 @@ import {
   Search, Coins, X, Sun, Moon, ArrowRightLeft, Clock, Sparkles,
   Zap, Radio, Command, HelpCircle, Split, Volume2, VolumeX, Bot,
   BookOpen, FileText, Sliders, Code, History, UploadCloud, Building2,
-  Compass, ChevronRight, ChevronLeft, ArrowRight, Check, Share2
+  Compass, ChevronRight, ChevronLeft, ArrowRight, Check, Share2, Briefcase
 } from 'lucide-react';
 import EugeneLogo from './EugeneLogo';
 import soundFx from '../utils/soundEffects';
@@ -185,6 +185,20 @@ export default function Header({
                 </button>
               )}
 
+              <button
+                onClick={() => onSelectTab && onSelectTab('portfolio')}
+                data-testid="header-portfolio-btn"
+                className={`hidden sm:flex h-7 px-2.5 rounded-lg border text-xs font-semibold items-center gap-1.5 cursor-pointer shadow-sm transition-all ${
+                  activeTab === 'portfolio'
+                    ? 'border-purple-500 bg-purple-600 text-white'
+                    : 'border-purple-500/40 bg-purple-950/40 text-purple-300 hover:text-white hover:bg-purple-900/50'
+                }`}
+                title="打开我的组合压力映射风控仪表盘 (Portfolio Stress Overlay)"
+              >
+                <Briefcase className="w-3.5 h-3.5 text-purple-400" />
+                <span className="text-xs">组合压力</span>
+              </button>
+
               {onOpenChartCard && (
                 <button
                   onClick={onOpenChartCard}
@@ -200,10 +214,10 @@ export default function Header({
                 <button
                   onClick={onOpenChangelog}
                   className="h-7 px-2 rounded-lg border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:text-white hover:bg-emerald-900/50 flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-sm transition-all"
-                  title="查看 v1.8.0 版本更迭记录与演进历程"
+                  title="查看 v2.0.0 版本更迭记录与演进历程"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-mono text-[11px] font-bold">v1.8.0</span>
+                  <span className="font-mono text-[11px] font-bold">v2.0.0</span>
                   <span className="hidden xl:inline text-xs">日志</span>
                 </button>
               )}

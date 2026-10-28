@@ -28,6 +28,12 @@ import {
   transformToUltimateRiskLinks,
   getOfcLookThroughSummary
 } from '../src/utils/lookThroughEngine.js';
+import {
+  PORTFOLIO_PRESETS,
+  MACRO_STRESS_SCENARIOS,
+  ASSET_CLASS_PROFILES,
+  computePortfolioStressOverlay
+} from '../src/utils/portfolioStressEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -901,7 +907,7 @@ function runTestSuite() {
         }
       });
     });
-    assert(totalTabsCount === 18, `Must cover all 18 analytical tabs (got ${totalTabsCount})`);
+    assert(totalTabsCount === 19, `Must cover all 19 analytical tabs (got ${totalTabsCount})`);
 
     // 2. Chart Lifecycle Unmount/Remount Simulation:
     // When a DOM element unmounts and remounts, stale chart instances referencing detached DOM must be safely disposed
@@ -954,10 +960,10 @@ function runTestSuite() {
   // =========================================================================
   // Test 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing (v1.8.0)
   // =========================================================================
-  console.log('\nTest 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing (v1.8.0)');
+  console.log('\nTest 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing');
   {
-    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v1.8.0', 'Clearing version registry PRODUCT must be v1.8.0');
-    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v1.8-UltimateRisk-LookThrough'), 'Model registry must declare v1.8-UltimateRisk-LookThrough');
+    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v2.0.0', 'Clearing version registry PRODUCT must be v2.0.0');
+    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v2.0-PortfolioStress'), 'Model registry must declare v2.0-PortfolioStress');
 
     // Conduit detection
     assert(isOffshoreConduit('KY'), 'KY (Cayman Islands) must be identified as offshore conduit');
@@ -1011,6 +1017,53 @@ function runTestSuite() {
       selectedInstrument: 'loans'
     });
     assert(loansResult.links[0].claims_usd_bn < sampleLinks[0].claims_usd_bn, 'Loans-only claims must be weighted subset of total claims');
+  }
+
+  // =========================================================================
+  // Test 34: Phase 3 Portfolio Stress Overlay Engine (v2.0.0)
+  // =========================================================================
+  console.log('\nTest 34: Phase 3 Portfolio Stress Overlay Engine (v2.0.0)');
+  {
+    assert(PORTFOLIO_PRESETS.length >= 3, `Must provide at least 3 institutional portfolio presets (got ${PORTFOLIO_PRESETS.length})`);
+    assert(MACRO_STRESS_SCENARIOS.length >= 4, `Must provide at least 4 macro stress scenarios (got ${MACRO_STRESS_SCENARIOS.length})`);
+
+    const defaultPreset = PORTFOLIO_PRESETS[0]; // Global Balanced ($500M)
+    assert(defaultPreset.baseAumUsdMn === 500.0, 'Default portfolio AUM must be $500M');
+    assert(defaultPreset.positions.length > 0, 'Portfolio positions must be populated');
+
+    // Run baseline stress test under TR Sovereign Crisis
+    const stressResult = computePortfolioStressOverlay(defaultPreset, {
+      scenarioId: 'tr_sovereign_crisis',
+      stressMultiplier: 1.0,
+      enableLookThrough: true
+    });
+
+    assert(stressResult.baseAumUsdMn === 500.0, 'Stress result must retain base AUM');
+    assert(stressResult.totalLossMn > 0, `Total stress loss must be strictly positive (got ${stressResult.totalLossMn}M)`);
+    assert(stressResult.portfolioLossPct > 0, `Portfolio loss percentage must be positive (got ${stressResult.portfolioLossPct}%)`);
+    assert(stressResult.stressedAumMn < stressResult.baseAumUsdMn, 'Stressed AUM must be strictly less than base AUM');
+    assert(stressResult.stressedAumMn > 0, 'Stressed AUM must remain solvent and positive');
+
+    // Mathematical Conservation: Total Loss strictly equals First-Order + Second-Order
+    const decomposedLossSum = Math.round((stressResult.firstOrderLossMn + stressResult.secondOrderLossMn) * 10) / 10;
+    assert(Math.abs(stressResult.totalLossMn - decomposedLossSum) <= 0.2, 'Direct and cascading losses must sum to total stress loss within rounding');
+
+    // Sensitivity check: 2.0x multiplier must produce strictly higher losses than 1.0x
+    const stressResult2x = computePortfolioStressOverlay(defaultPreset, {
+      scenarioId: 'tr_sovereign_crisis',
+      stressMultiplier: 2.0,
+      enableLookThrough: true
+    });
+    assert(stressResult2x.totalLossMn > stressResult.totalLossMn, '2.0x stress multiplier must yield strictly higher portfolio loss than 1.0x');
+
+    // Look-Through OFC Effect: Positions in KY must be flagged and unpacked
+    const kyPos = stressResult.positionResults.find(p => p.country === 'KY');
+    assert(kyPos !== undefined, 'KY position must exist in global balanced portfolio');
+    assert(kyPos.isLookedThrough === true, 'KY position must have isLookedThrough set to true');
+
+    // Hedging Recommendations
+    assert(stressResult.hedgingAdvice.length >= 2, `Hedging recommendations must be generated (got ${stressResult.hedgingAdvice.length})`);
+    assert(stressResult.topVictims.length > 0, 'Top victim exposures must be identified');
   }
 
   console.log('\n===============================================================');
