@@ -325,7 +325,7 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(mainViewport).toBeVisible({ timeout: 10000 });
 
     // 1. Verify v3.0.0 Changelog Modal opens and renders evolution timeline
-    const changelogBtn = page.getByRole('button', { name: /v[23]\.[05]\.0/i }).first();
+    const changelogBtn = page.getByRole('button', { name: /v[2-4]\./i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
@@ -406,7 +406,7 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const overlay = page.locator('[data-testid="portfolio-stress-overlay"]');
     await expect(overlay).toBeVisible({ timeout: 10000 });
     await expect(overlay.getByText('我的组合压力映射').first()).toBeVisible();
-    await expect(overlay.getByText('v3.5.0 · 专户风控').first()).toBeVisible();
+    await expect(overlay.getByText('v4.0.0 · 专户风控').first()).toBeVisible();
 
     // 2. Verify KPI row values
     await expect(page.getByText('组合基准资产规模')).toBeVisible();
@@ -531,13 +531,13 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(exitBtn).toBeVisible();
     await exitBtn.click();
 
-    // 6. Verify Changelog Modal Displays v3.5.0 Current
-    const changelogBtn = page.getByRole('button', { name: /v[23]\.[05]\.0/i }).first();
+    // 6. Verify Changelog Modal Displays v4.0.0 Current
+    const changelogBtn = page.getByRole('button', { name: /v[2-4]\.[05]\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
-    await expect(page.getByText('v3.5.0 Current').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/机构级静奢投研终端版/).first()).toBeVisible();
+    await expect(page.getByText('v4.0.0 Current').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/认知破壁与全景串联/).first()).toBeVisible();
   });
 
   test('13. Phase 5 v3.0.0: Automated Playbook State Choreography, Live Contagion-to-Portfolio Bridge & Active Hedge Overlay', async ({ page }) => {
@@ -689,6 +689,89 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
       return violations;
     });
     expect(sub11Nodes).toEqual([]);
+  });
+
+  test('15. Phase 7 v4.0.0: Cognitive Onboarding, Plain-Language Lens, Concept Tooltip & Visual Diagrams', async ({ page }) => {
+    // 1. Visit Atlas with intro suppressed
+    await page.goto('/?intro=0&q=2026Q1');
+    await expect(page.locator('#main-viewport')).toBeVisible({ timeout: 10000 });
+
+    // 2. Beginner Mode Toggle Verification
+    const beginnerToggle = page.locator('[data-testid="header-beginner-toggle"]');
+    await expect(beginnerToggle).toBeVisible();
+
+    // Verify initial state has beginner lens
+    await expect(page.locator('[data-testid="verdict-beginner-badge"]')).toBeVisible();
+
+    // Toggle to professional terminology
+    await beginnerToggle.click();
+    await expect(page.locator('[data-testid="verdict-beginner-badge"]')).not.toBeVisible();
+    await expect(beginnerToggle).toContainText('专业术语');
+
+    // Toggle back to plain-language mode
+    await beginnerToggle.click();
+    await expect(page.locator('[data-testid="verdict-beginner-badge"]')).toBeVisible();
+    await expect(beginnerToggle).toContainText('白话解读');
+
+    // 3. Newbie Tour Guide Modal & 3 Personas Selection
+    const tourBtn = page.locator('[data-testid="header-tour-btn"]');
+    await expect(tourBtn).toBeVisible();
+    await tourBtn.click();
+
+    const introModal = page.locator('[data-testid="project-intro-modal"]');
+    await expect(introModal).toBeVisible({ timeout: 5000 });
+    await expect(introModal.getByText('30 秒极速就绪：选择您的探索身份')).toBeVisible();
+
+    // Verify all 3 persona cards exist
+    const explorerCard = page.locator('[data-testid="persona-card-curious_explorer"]');
+    const investorCard = page.locator('[data-testid="persona-card-macro_investor"]');
+    const researcherCard = page.locator('[data-testid="persona-card-quant_researcher"]');
+    await expect(explorerCard).toBeVisible();
+    await expect(investorCard).toBeVisible();
+    await expect(researcherCard).toBeVisible();
+
+    // Select Macro Investor Persona -> Should navigate directly to Portfolio Stress Overlay
+    await investorCard.click();
+    await expect(introModal).not.toBeVisible();
+
+    // Verify Portfolio Stress View is active and breadcrumb strip is displayed
+    const portfolioOverlay = page.locator('[data-testid="portfolio-stress-overlay"]');
+    await expect(portfolioOverlay).toBeVisible({ timeout: 10000 });
+    const causalBreadcrumb = page.locator('[data-testid="portfolio-causal-breadcrumb"]');
+    await expect(causalBreadcrumb).toBeVisible();
+    await expect(causalBreadcrumb).toContainText('全景因果链');
+
+    // 4. Focus Mode Causal Workflow Navigation
+    // Navigate to Step 1: 查资金去向 (map)
+    const mapTabBtn = page.locator('[data-testid="header-tab-map"]');
+    await expect(mapTabBtn).toBeVisible();
+    await mapTabBtn.click();
+
+    // Enable Look-Through OFCs on map using canonical toggle
+    const lookThroughToggle = page.locator('[data-testid="toggle-look-through-ofcs"]');
+    await expect(lookThroughToggle).toBeVisible({ timeout: 5000 });
+    const isAlreadyActive = await page.locator('[data-testid="look-through-active-banner"]').isVisible();
+    if (!isAlreadyActive) {
+      await lookThroughToggle.click();
+    }
+    const lookThroughDiagram = page.locator('[data-testid="look-through-visual-diagram"]');
+    await expect(lookThroughDiagram).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('出资国跨国大行')).toBeVisible();
+    await expect(page.getByText('剥离离岸过桥空壳')).toBeVisible();
+    await expect(page.getByText('还原最终风险母国')).toBeVisible();
+
+    // Navigate to Step 3: 算多米诺骨牌 (contagion)
+    const contagionTabBtn = page.locator('[data-testid="header-tab-contagion"]');
+    await expect(contagionTabBtn).toBeVisible();
+    await contagionTabBtn.click();
+
+    // Verify Domino 4-Stage Shockwave Strip
+    const dominoStrip = page.locator('[data-testid="domino-shockwave-strip"]');
+    await expect(dominoStrip).toBeVisible({ timeout: 10000 });
+    await expect(dominoStrip.getByText('第0阶: 震中引爆')).toBeVisible();
+    await expect(dominoStrip.getByText('第1阶: 直接债主冲销')).toBeVisible();
+    await expect(dominoStrip.getByText('第2阶: 同业踩踏外溢')).toBeVisible();
+    await expect(dominoStrip.getByText('第3阶: 专户组合防线')).toBeVisible();
   });
 
 });

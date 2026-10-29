@@ -5,6 +5,7 @@ import MethodologyFootnote from './MethodologyFootnote';
 import DataClassificationBadge from './DataClassificationBadge';
 import MobileFilterDrawer from './MobileFilterDrawer';
 import MobileInspectCard from './MobileInspectCard';
+import ConceptTooltip from './ConceptTooltip';
 import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 import soundFx from '../utils/soundEffects';
 import { normalizeCorridorExposures } from '../utils/eisenbergNoeClearing';
@@ -1367,20 +1368,55 @@ export default function CapitalFlowMap({
       {accountingBasis === 'ultimate_risk' && (
         <div 
           data-testid="look-through-active-banner"
-          className={`flex items-center justify-between gap-3 p-2.5 px-3.5 bg-[#131b2e]/95 border border-indigo-400/35 rounded-xl text-xs text-slate-200 shadow-md animate-fade-in ${isSpotlightPulse ? 'animate-spotlight' : ''}`}
+          className={`p-3 bg-[#131b2e]/95 border border-indigo-400/35 rounded-xl text-xs text-slate-200 shadow-md space-y-2.5 animate-fade-in ${isSpotlightPulse ? 'animate-spotlight' : ''}`}
         >
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
-            <span>
-              <strong className="text-indigo-200">已开启离岸中心穿透还原 (Look-Through OFCs · CBS Table B)</strong>：已将开曼群岛 (KY)、卢森堡 (LU)、中国香港 (HK) 等 <strong>${lookThroughResult?.totalBypassedBn ?? '6840'}B</strong> 离岸通道资金按母国国籍穿透并入母公司最终风险敞口（以美中德英日为主），虚化离岸中转重影。
-            </span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+              <span>
+                <strong className="text-indigo-200">已开启离岸中心穿透还原 (Look-Through OFCs · CBS Table B)</strong>：已将开曼群岛 (KY)、卢森堡 (LU)、中国香港 (HK) 等 <strong>${lookThroughResult?.totalBypassedBn ?? '6840'}B</strong> 离岸通道资金按母国国籍穿透并入母公司最终风险敞口（以美中德英日为主），虚化离岸中转重影。
+              </span>
+            </div>
+            <button
+              onClick={() => setAccountingBasis('residence')}
+              className="text-[11px] underline text-indigo-300 hover:text-white shrink-0 cursor-pointer"
+            >
+              还原至居住地 (LBS)
+            </button>
           </div>
-          <button
-            onClick={() => setAccountingBasis('residence')}
-            className="text-[11px] underline text-indigo-300 hover:text-white shrink-0 cursor-pointer"
+
+          {/* Visual 3-Stage Look-Through Flow Strip */}
+          <div
+            data-testid="look-through-visual-diagram"
+            className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-2 border-t border-white/[0.08]"
           >
-            还原至居住地 (LBS)
-          </button>
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-[#0d1321] border border-sky-500/25">
+              <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold text-[11px]">1</span>
+              <div>
+                <div className="font-semibold text-sky-200">出资国跨国大行</div>
+                <div className="text-[11px] text-slate-400">美德日等主权银行 (US / DE / JP)</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-[11px]">2</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-amber-200 flex items-center gap-1">
+                  <span>剥离离岸过桥空壳</span>
+                  <span className="text-[10px] px-1 rounded bg-amber-500/20 text-amber-300 font-mono">-$6.84T</span>
+                </div>
+                <div className="text-[11px] text-slate-400 truncate">开曼/卢森堡/香港通道 (KY / LU / HK)</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+              <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-[11px]">3</span>
+              <div>
+                <div className="font-semibold text-emerald-200">还原最终风险母国</div>
+                <div className="text-[11px] text-slate-400">穿透归并终极母公司 (US / CN / GB)</div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

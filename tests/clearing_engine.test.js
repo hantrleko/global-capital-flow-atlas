@@ -43,6 +43,11 @@ import {
   getModuleVerdict,
   getModuleCausalLinks
 } from '../src/utils/causalIntelligence.js';
+import {
+  FINANCIAL_GLOSSARY,
+  CAUSAL_WORKFLOW_STEPS,
+  USER_PERSONAS
+} from '../src/utils/financialGlossary.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -971,8 +976,8 @@ function runTestSuite() {
   // =========================================================================
   console.log('\nTest 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing');
   {
-    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v3.5.0', 'Clearing version registry PRODUCT must be v3.5.0');
-    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v3.5-QuietLuxury'), 'Model registry must declare v3.5-QuietLuxury');
+    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v4.0.0', 'Clearing version registry PRODUCT must be v4.0.0');
+    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v4.0-CognitiveOnboarding'), 'Model registry must declare v4.0-CognitiveOnboarding');
 
     // Conduit detection
     assert(isOffshoreConduit('KY'), 'KY (Cayman Islands) must be identified as offshore conduit');
@@ -1278,6 +1283,44 @@ function runTestSuite() {
     });
     assert(hedgedVerdict.headline.includes(`-$${hedgedPortfolioStress.hedgedLossMn}M`), 'Hedged portfolio headline must reflect residual hedgedLossMn');
     assert(hedgedVerdict.headline.includes(`+$${hedgedPortfolioStress.netSavedMn}M`), 'Hedged portfolio headline must reflect netSavedMn');
+  }
+
+  // =========================================================================
+  // Test 38: Phase 7 V4.0.0 Financial Glossary, Personas & Causal Workflow Integrity
+  // =========================================================================
+  console.log('\nTest 38: Phase 7 V4.0.0 Financial Glossary, Personas & Causal Workflow Integrity');
+  {
+    // 1. Verify all 18 core financial concepts exist with required schema
+    const requiredConcepts = [
+      'lbs', 'cbs', 'eisenberg_noe', 'look_through', 'haircut', 'deleveraging',
+      'fima', 'picard', 'unhedged_fx', 'fx_swaps', 'nbfis', 'cip_basis',
+      'gsib', 'var', 'cds', 'direct_loss', 'swap_lines', 'offshore_conduits'
+    ];
+    assert(Object.keys(FINANCIAL_GLOSSARY).length >= 18, `Financial glossary must contain at least 18 concepts (got ${Object.keys(FINANCIAL_GLOSSARY).length})`);
+    
+    requiredConcepts.forEach(key => {
+      const item = FINANCIAL_GLOSSARY[key];
+      assert(item, `Concept '${key}' must exist in FINANCIAL_GLOSSARY`);
+      assert(typeof item.term === 'string' && item.term.length > 0, `'${key}' must have valid term`);
+      assert(typeof item.simpleTitle === 'string' && item.simpleTitle.length > 0, `'${key}' must have valid simpleTitle`);
+      assert(typeof item.plainText === 'string' && item.plainText.length > 10, `'${key}' must have valid plainText explanation`);
+      assert(typeof item.metaphor === 'string' && item.metaphor.length > 5, `'${key}' must have valid real-world metaphor`);
+      assert(typeof item.readingRule === 'string' && item.readingRule.length > 5, `'${key}' must have valid readingRule`);
+    });
+
+    // 2. Verify Causal Workflow 4 steps
+    assert(CAUSAL_WORKFLOW_STEPS.length === 4, 'CAUSAL_WORKFLOW_STEPS must declare exactly 4 canonical steps');
+    const stepIds = CAUSAL_WORKFLOW_STEPS.map(s => s.id);
+    assert(JSON.stringify(stepIds) === JSON.stringify(['map', 'shadow', 'contagion', 'portfolio']), 'Workflow steps must match canonical causal chain');
+
+    // 3. Verify User Personas
+    assert(USER_PERSONAS.length === 3, 'USER_PERSONAS must declare 3 persona presets');
+    USER_PERSONAS.forEach(p => {
+      assert(p.id && p.name && p.badge, `Persona must declare valid metadata`);
+      assert(p.actions && typeof p.actions.enableBeginnerMode === 'boolean', `Persona ${p.id} must declare enableBeginnerMode`);
+      assert(['focus', 'pro'].includes(p.actions.viewMode), `Persona ${p.id} must declare valid viewMode`);
+      assert(['residence', 'ultimate_risk'].includes(p.actions.accountingBasis), `Persona ${p.id} must declare valid accountingBasis`);
+    });
   }
 
   console.log('\n===============================================================');

@@ -150,6 +150,43 @@ export default function App() {
     return localStorage.getItem('bis_atlas_view_mode') || 'focus';
   });
 
+  // v4.0 Zero-Threshold Plain-Language Lens State (Default true for lowest cognitive barrier)
+  const [isBeginnerMode, setIsBeginnerMode] = useState(() => {
+    const saved = localStorage.getItem('bis_atlas_beginner_mode');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  const handleToggleBeginnerMode = () => {
+    soundFx.playTick();
+    setIsBeginnerMode(prev => {
+      const next = !prev;
+      localStorage.setItem('bis_atlas_beginner_mode', String(next));
+      setToastMessage(next ? '💡 已开启【白话通俗解读】视角 (降低门槛与通俗类比)' : '🏛️ 已切换至【专业量化术语】视角 (高精学术/机构口径)');
+      setTimeout(() => setToastMessage(null), 3000);
+      return next;
+    });
+  };
+
+  const handleSelectPersona = (persona) => {
+    if (!persona) return;
+    if (persona.actions?.enableBeginnerMode !== undefined) {
+      setIsBeginnerMode(persona.actions.enableBeginnerMode);
+      localStorage.setItem('bis_atlas_beginner_mode', String(persona.actions.enableBeginnerMode));
+    }
+    if (persona.actions?.viewMode) {
+      setViewMode(persona.actions.viewMode);
+      localStorage.setItem('bis_atlas_view_mode', persona.actions.viewMode);
+    }
+    if (persona.actions?.accountingBasis) {
+      setExternalMapConfig(prev => ({ ...(prev || {}), accountingBasis: persona.actions.accountingBasis }));
+    }
+    if (persona.recommendedTab) {
+      handleSelectTab(persona.recommendedTab);
+    }
+    setToastMessage(`✨ 已就绪【${persona.name}】预设视角！`);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
   // v2.5 Guided Investigation Playbooks State
   const [activeInvestigationTrack, setActiveInvestigationTrack] = useState(null);
   const [currentInvestigationStepIndex, setCurrentInvestigationStepIndex] = useState(0);
@@ -536,6 +573,8 @@ export default function App() {
         viewMode={viewMode}
         onToggleViewMode={handleToggleViewMode}
         onOpenInvestigationModal={() => setIsInvestigationModalOpen(true)}
+        isBeginnerMode={isBeginnerMode}
+        onToggleBeginnerMode={handleToggleBeginnerMode}
       />
 
       {/* Historical Macro Milestones Ribbon (2018-2026 Epochs) */}
@@ -622,6 +661,8 @@ export default function App() {
           activeTab={activeTab}
           onSelectTab={handleSelectTab}
           context={liveVerdictContext}
+          isBeginnerMode={isBeginnerMode}
+          onToggleBeginnerMode={handleToggleBeginnerMode}
         />
 
         <ErrorBoundary fallbackTitle="当前主视图分析模块">
@@ -848,6 +889,10 @@ export default function App() {
         onClose={() => setIsIntroOpen(false)}
         onExploreFeature={(tab) => {
           handleSelectTab(tab);
+          setIsIntroOpen(false);
+        }}
+        onSelectPersona={(persona) => {
+          handleSelectPersona(persona);
           setIsIntroOpen(false);
         }}
       />
@@ -1085,7 +1130,7 @@ export default function App() {
               title="查看平台版本迭代记录与演进架构"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>v3.5.0 日志</span>
+              <span>v4.0.0 日志</span>
             </button>
             <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>

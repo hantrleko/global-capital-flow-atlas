@@ -1710,6 +1710,114 @@ export default function NetworkContagionSimulator({
       </div>
     </div>
 
+      {/* v4.0 Domino 4-Stage Shockwave Strip */}
+      {simResults && (
+        <div
+          data-testid="domino-shockwave-strip"
+          className="p-3 bg-[#0d1321]/95 border border-white/[0.08] rounded-xl shadow-lg space-y-2.5 animate-fade-in"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🀄</span>
+              <span className="font-semibold text-white text-xs">
+                多米诺骨牌级联推演全景链路 (4-Stage Domino Shockwave)
+              </span>
+              <span className="text-[11px] text-slate-400 font-mono hidden md:inline">
+                · 从微观震中违约到专户投资防线的四阶因果传导
+              </span>
+            </div>
+            {onMapToPortfolio && (
+              <button
+                onClick={() => {
+                  soundFx.playChime();
+                  onMapToPortfolio({
+                    epicenter: epicenterCountry.code,
+                    haircut: haircutPct,
+                    victimList: simResults?.impactList || simResults?.jurisdictionImpacts || [],
+                    incrementalDisplayShortfall: simResults?.incrementalTotalDisplay,
+                    topVictimCountry: simResults?.topVictim?.name_zh || simResults?.topVictim?.code
+                  });
+                }}
+                className="text-[11px] font-semibold text-indigo-300 hover:text-white flex items-center gap-1 cursor-pointer"
+              >
+                <span>映射至我的专户对冲</span>
+                <span>➔</span>
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+            {/* Stage 0 */}
+            <div className="p-2.5 rounded-lg bg-rose-950/30 border border-rose-500/30 space-y-1">
+              <div className="flex items-center justify-between text-rose-300 font-semibold text-[11px]">
+                <span className="flex items-center gap-1">
+                  <span>💥 第0阶: 震中引爆</span>
+                </span>
+                <span className="font-mono text-rose-400">Haircut {haircutPct}%</span>
+              </div>
+              <div className="font-bold text-white text-sm">
+                {epicenterCountry.name_zh} ({epicenterCountry.code})
+              </div>
+              <div className="text-[11px] text-slate-400 leading-tight">
+                主权债违约或外债展期中断，外部硬流动性瞬间抽干
+              </div>
+            </div>
+
+            {/* Stage 1 */}
+            <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-500/30 space-y-1">
+              <div className="flex items-center justify-between text-amber-300 font-semibold text-[11px]">
+                <span className="flex items-center gap-1">
+                  <span>🩸 第1阶: 直接债主冲销</span>
+                </span>
+                <span className="font-mono text-amber-400">
+                  {simResults.totalR1Loss ? `$${simResults.totalR1Loss}B` : (simResults.topVictim ? `增量第1` : '直接损失')}
+                </span>
+              </div>
+              <div className="font-bold text-white text-sm truncate">
+                {simResults.topVictim ? `${simResults.topVictim.name_zh}首当其冲` : '跨国直贷行坏账'}
+              </div>
+              <div className="text-[11px] text-slate-400 leading-tight">
+                主要债权国跨国银行计提直接坏账损失，冲销一级资本
+              </div>
+            </div>
+
+            {/* Stage 2 */}
+            <div className="p-2.5 rounded-lg bg-sky-950/30 border border-sky-500/30 space-y-1">
+              <div className="flex items-center justify-between text-sky-300 font-semibold text-[11px]">
+                <span className="flex items-center gap-1">
+                  <span>🌊 第2阶: 同业踩踏外溢</span>
+                </span>
+                <span className="font-mono text-sky-400">
+                  {simResults.incrementalTotalDisplay ? `+${simResults.incrementalTotalDisplay}B` : `$${simResults.totalSystemicLoss || 285}B`}
+                </span>
+              </div>
+              <div className="font-bold text-white text-sm">
+                Eisenberg-Noe 级联清算
+              </div>
+              <div className="text-[11px] text-slate-400 leading-tight">
+                受损银行压缩同业信贷，跨国银行网络被动去杠杆踩踏
+              </div>
+            </div>
+
+            {/* Stage 3 */}
+            <div className="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-500/30 space-y-1">
+              <div className="flex items-center justify-between text-emerald-300 font-semibold text-[11px]">
+                <span className="flex items-center gap-1">
+                  <span>🛡️ 第3阶: 专户组合防线</span>
+                </span>
+                <span className="font-mono text-emerald-400">主动对冲</span>
+              </div>
+              <div className="font-bold text-white text-sm">
+                组合压力映射与 CDS
+              </div>
+              <div className="text-[11px] text-slate-400 leading-tight">
+                穿透至二级市场资产池，计算在险价值 VaR 并建立防御
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary KPI Badges */}
       {simResults && (
         simMode === 'en_clearing' ? (

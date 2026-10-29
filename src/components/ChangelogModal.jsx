@@ -9,12 +9,42 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v3.5.0',
+    version: 'v4.0.0',
     date: '2026-10-29',
     status: 'LATEST',
-    title: 'Phase 6 审美与交互跃迁：机构级静奢投研终端版 (Institutional Quiet-Luxury Terminal)',
+    title: 'Phase 7 认知破壁与全景串联：零门槛投研导览与通俗因果叙事版 (Zero-Threshold Onboarding & Narrative Causal Atlas)',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '小白透视',
+        title: '全局白话解读视角与 18 个核心金融术语通俗卡片 (Plain-Language Lens & Concept Tooltips)',
+        desc: '全平台新增「💡 白话解读 / 🏛️ 专业术语」视角切换开关。内置 18 个核心金融量化概念词典（LBS/CBS、离岸壳、Eisenberg-Noe、CIP 基差、外汇掉期、VaR、主权 CDS 等），为每个术语提供通俗大白话、生活类比（如火灾险、中介费、民间借贷）与实战研读标准，悬停点击即可秒懂。'
+      },
+      {
+        tag: '角色就绪',
+        title: '三大受众预设角色与 30 秒极速就绪向导 (3 User Personas & Instant Setup)',
+        desc: '新手导览提供「🌱 初次探索者」、「💼 宏观投资者」、「🔬 量化研究员」三大预设卡片。一键点击即可自动加载最佳视角、切换焦点/专家模式、设置离岸穿透与定位首选模块，消除“不知道从哪看起”的迷茫。'
+      },
+      {
+        tag: '因果串联',
+        title: '焦点模式四步因果推演主线与跨模块指引 (4-Step Causal Workflow & Breadcrumbs)',
+        desc: '重构焦点模式 4 大核心支柱为因果闭环主线：① 查资金去向 ➔ ② 抓隐形杠杆 ➔ ③ 算多米诺骨牌 ➔ ④ 护住我的账户。在顶部增加链路指示器与导向箭头，专户风控页顶部新增全景传导面包屑，帮助使用者清晰掌握每一步的输入输出关联。'
+      },
+      {
+        tag: '机制直观',
+        title: '离岸穿透三段式图形化解构与多米诺四阶冲击波 (Visual Look-Through & Domino Shockwave Strips)',
+        desc: '在双边地图中将抽象的 CBS 离岸穿透机制直观图解为「出资国跨国大行 ➔ 剥离 $6.84T 离岸通道空壳 ➔ 还原最终母国」三段式图板；在级联传染模拟器中新增「💥 震中引爆 ➔ 🩸 直接债主冲销 ➔ 🌊 同业踩踏外溢 ➔ 🛡️ 专户组合防线」四阶冲击波光条，彻底击破认知壁垒。'
+      }
+    ]
+  },
+  {
+    version: 'v3.5.0',
+    date: '2026-10-29',
+    status: 'STABLE',
+    title: 'Phase 6 审美与交互跃迁：机构级静奢投研终端版 (Institutional Quiet-Luxury Terminal)',
+    badge: '历史稳定版',
+    badgeColor: 'border-slate-500/50 bg-slate-900/60 text-slate-300',
     highlights: [
       {
         tag: '静奢双轨',
@@ -324,7 +354,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v3.5.0 Current
+                  v4.0.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">

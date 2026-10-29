@@ -1,13 +1,43 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, ArrowRight, ArrowLeft } from 'lucide-react';
+import { ChevronDown, ChevronUp, ArrowRight, ArrowLeft, Lightbulb } from 'lucide-react';
 import { getModuleVerdict, getModuleCausalLinks } from '../utils/causalIntelligence.js';
+import ConceptTooltip from './ConceptTooltip';
 
-export default function ExecutiveVerdictBanner({ activeTab, onSelectTab, context = {} }) {
+const TAB_METAPHORS = {
+  map: {
+    analogy: '全球跨国借贷网络就像地球的金融血液血管图。从借出方到借入方，追踪每一万亿美元资金的真实走向。',
+    takeaway: '重点排查开曼/卢森堡等离岸避税中继站，避免把空壳公司所在国误判为最终债务人。'
+  },
+  shadow: {
+    analogy: '影子银行就像无央行贴现窗的民间借贷社，其巨额表外外汇掉期没有列入资产负债表，是隐藏的暗雷。',
+    takeaway: '当离岸借美元成本（CIP 基差）剧烈扩大时，高杠杆非银最容易被追缴保证金引发挤兑。'
+  },
+  contagion: {
+    analogy: '多米诺骨牌连续倒塌实验：一家核心债务人违约，会顺着银行同业拆借网络拉垮债主与债主的债主。',
+    takeaway: '不仅要防一阶直接借款人违约，更要防范二阶跨国银行同业踩踏与被动缩表风暴。'
+  },
+  portfolio: {
+    analogy: '你的个人持仓防洪工程：根据宏观网络推演，算清楚你的美股、中资美元债、国债等最坏会亏多少。',
+    takeaway: '及时配置主权 CDS 保险或调降重灾区权重，以小额保费对冲 80% 以上硬损失。'
+  }
+};
+
+export default function ExecutiveVerdictBanner({
+  activeTab,
+  onSelectTab,
+  context = {},
+  isBeginnerMode = true,
+  onToggleBeginnerMode
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const verdict = getModuleVerdict(activeTab, context);
   const causalLinks = getModuleCausalLinks(activeTab);
   const primaryDownstream = causalLinks.downstream?.[0] || null;
+  const metaphorData = TAB_METAPHORS[activeTab] || {
+    analogy: '将复杂的国际金融高阶数学网络转化为可观测、可归因、可对冲的宏观决策证据链。',
+    takeaway: '顺着因果链条依次排查：查资金 ➔ 抓杠杆 ➔ 算骨牌 ➔ 护账户。'
+  };
 
   const cleanCtaText = (cta = '') => cta.replace(/\s*[➔→]+\s*$/, '').trim();
 
@@ -58,6 +88,17 @@ export default function ExecutiveVerdictBanner({ activeTab, onSelectTab, context
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {getSeverityBadge(verdict.severity)}
 
+          {isBeginnerMode && (
+            <span
+              data-testid="verdict-beginner-badge"
+              className="hidden sm:inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 shrink-0"
+              title="当前处于白话通俗解读模式，已开启低门槛类比与通俗释义"
+            >
+              <Lightbulb className="w-3 h-3 text-amber-400" />
+              <span>白话透视</span>
+            </span>
+          )}
+
           <span
             className="font-semibold text-slate-200 shrink-0 hidden sm:inline"
             title="Executive Verdict · 三段式动态研判台"
@@ -103,6 +144,35 @@ export default function ExecutiveVerdictBanner({ activeTab, onSelectTab, context
       {/* Expandable 3-Stage Reasoning Deck */}
       {isExpanded && (
         <div className="px-3.5 pb-3.5 pt-2.5 border-t border-white/[0.06] bg-[#0a0f1c]/90 space-y-3 animate-fade-in">
+          {isBeginnerMode && (
+            <div
+              data-testid="verdict-beginner-deck"
+              className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+            >
+              <div className="flex items-start sm:items-center gap-2">
+                <div className="p-1 rounded bg-amber-500/20 text-amber-300 shrink-0 mt-0.5 sm:mt-0">
+                  <Lightbulb className="w-3.5 h-3.5" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="font-semibold text-amber-200">
+                    通俗白话解读: <span className="font-normal text-slate-200">{metaphorData.analogy}</span>
+                  </div>
+                  <div className="text-[11px] text-amber-300/90">
+                    决策启示: <span className="text-slate-300">{metaphorData.takeaway}</span>
+                  </div>
+                </div>
+              </div>
+              {onToggleBeginnerMode && (
+                <button
+                  onClick={onToggleBeginnerMode}
+                  className="text-[11px] text-amber-400 hover:text-amber-200 underline whitespace-nowrap self-end sm:self-center cursor-pointer"
+                >
+                  切换专业学术术语 ➔
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
             {/* Stage 1: Observation */}
             <div className="p-3 rounded-lg bg-[#131b2e]/70 border border-white/[0.07]">

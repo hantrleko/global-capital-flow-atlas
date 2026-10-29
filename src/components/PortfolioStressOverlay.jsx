@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import { useAnimatedNumber } from '../utils/useAnimatedValue';
+import ConceptTooltip from './ConceptTooltip';
 import {
   PORTFOLIO_PRESETS,
   MACRO_STRESS_SCENARIOS,
@@ -264,6 +265,28 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
 
   return (
     <div className="space-y-3.5 text-slate-200 animate-fade-in" data-testid="portfolio-stress-overlay">
+      {/* v4.0 Causal Chain Context Breadcrumb Strip */}
+      <div
+        data-testid="portfolio-causal-breadcrumb"
+        className="px-3.5 py-2 rounded-xl bg-[#0d1321]/90 border border-indigo-400/20 text-xs flex flex-wrap items-center justify-between gap-2 shadow-sm"
+      >
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-slate-400 font-mono text-[11px]">🔗 全景因果链:</span>
+          <span className="text-slate-400">① 查资金去向</span>
+          <span className="text-slate-600 font-mono">➔</span>
+          <span className="text-slate-400">② 抓隐形杠杆</span>
+          <span className="text-slate-600 font-mono">➔</span>
+          <span className="text-slate-400">③ 算多米诺骨牌</span>
+          <span className="text-slate-600 font-mono">➔</span>
+          <span className="text-indigo-300 font-semibold bg-indigo-500/15 px-2 py-0.5 rounded border border-indigo-400/30">
+            ④ 护住我的账户 (终局防线)
+          </span>
+        </div>
+        <div className="text-[11px] text-slate-400 hidden sm:block">
+          宏观清算受损向量已实时投射至专户 · 可勾选 CDS 对冲减震
+        </div>
+      </div>
+
       {/* 1. Quiet-Luxury Header Card & Portfolio Presets */}
       <div className="rounded-2xl p-4 bg-[#0d1321]/95 border border-white/[0.08] shadow-xl">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -280,7 +303,7 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                   我的组合压力映射
                 </h2>
                 <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-400/30">
-                  v3.5.0 · 专户风控
+                  v4.0.0 · 专户风控
                 </span>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                   BIS CBS 穿透映射
@@ -434,9 +457,11 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
         {/* Stress VaR 99% */}
         <div className="p-3.5 rounded-xl bg-[#131b2e]/90 border border-indigo-400/30 flex flex-col justify-between col-span-2 sm:col-span-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-indigo-200" title="99% 1-Month Stress Value-at-Risk (Basel III 1.35x)">
-              99% 压力 VaR (1M)
-            </span>
+            <ConceptTooltip termKey="var">
+              <span className="text-xs font-semibold text-indigo-200 cursor-help" title="99% 1-Month Stress Value-at-Risk (Basel III 1.35x)">
+                99% 压力 VaR (1M)
+              </span>
+            </ConceptTooltip>
             <ShieldAlert className="w-3.5 h-3.5 text-indigo-300" />
           </div>
           <div className="text-xl font-bold font-mono text-indigo-200 mt-1">
@@ -650,7 +675,13 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1 text-xs font-semibold">
-                        <span className={isChecked ? 'text-emerald-200' : 'text-slate-300'}>{h.title}</span>
+                        {h.id === 'cds_hedge' ? (
+                          <ConceptTooltip termKey="cds">
+                            <span className={`${isChecked ? 'text-emerald-200' : 'text-slate-300'} cursor-help`}>{h.title}</span>
+                          </ConceptTooltip>
+                        ) : (
+                          <span className={isChecked ? 'text-emerald-200' : 'text-slate-300'}>{h.title}</span>
+                        )}
                         <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-slate-800/90 text-emerald-300 border border-emerald-500/25 shrink-0">
                           {h.tag}
                         </span>

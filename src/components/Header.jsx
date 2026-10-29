@@ -8,6 +8,7 @@ import EugeneLogo from './EugeneLogo';
 import soundFx from '../utils/soundEffects';
 import { NAVIGATION_DOMAINS, getTabTaskMeta } from '../utils/navigationConfig';
 import { getDataClassification } from '../utils/dataClassification';
+import { CAUSAL_WORKFLOW_STEPS } from '../utils/financialGlossary';
 
 export { NAVIGATION_DOMAINS, getTabTaskMeta };
 
@@ -40,7 +41,9 @@ export default function Header({
   onOpenChartCard,
   viewMode = 'focus',
   onToggleViewMode,
-  onOpenInvestigationModal
+  onOpenInvestigationModal,
+  isBeginnerMode = true,
+  onToggleBeginnerMode
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isToolboxOpen, setIsToolboxOpen] = useState(false);
@@ -98,13 +101,6 @@ export default function Header({
       onSelectQuarter(quarters[currentQuarterIdx + 1]);
     }
   };
-
-  const FOCUS_PILLARS = [
-    { id: 'map', label: '1. 全球双边信贷流向', desc: 'BIS LBS Table A & CBS Table B Look-Through' },
-    { id: 'contagion', label: '2. 银行级联传染模拟', desc: 'Eisenberg-Noe (2001) Picard Fixed-Point Clearing' },
-    { id: 'shadow', label: '3. 影子银行与非银透视', desc: 'Offshore NBFIs & Off-Balance-Sheet FX Swaps' },
-    { id: 'portfolio', label: '4. 我的组合压力映射', desc: 'Institutional Portfolio Stress Overlay & Active Hedges' }
-  ];
 
   return (
     <header className="sticky top-0 z-40 bg-[#070a12]/95 backdrop-blur-md border-b border-white/[0.08] shadow-md">
@@ -226,6 +222,35 @@ export default function Header({
                 </div>
               )}
             </div>
+
+            {/* v4.0 Beginner Tour Guide Button */}
+            {onOpenIntro && (
+              <button
+                onClick={onOpenIntro}
+                data-testid="header-tour-btn"
+                className="h-7 px-2.5 rounded-lg border border-indigo-400/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-200 hover:text-white flex items-center gap-1 text-xs font-semibold cursor-pointer transition-all whitespace-nowrap"
+                title="打开 30 秒新手导览、角色极速就绪与四步因果推演流程图"
+              >
+                <span>🧭</span>
+                <span className="hidden sm:inline">新手导览</span>
+              </button>
+            )}
+
+            {/* v4.0 Plain Language vs Pro Terminology Toggle */}
+            {onToggleBeginnerMode && (
+              <button
+                onClick={onToggleBeginnerMode}
+                data-testid="header-beginner-toggle"
+                className={`h-7 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap ${
+                  isBeginnerMode
+                    ? 'border-amber-400/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
+                    : 'border-white/[0.08] bg-[#0d1321] hover:bg-[#131b2e] text-slate-300 hover:text-white'
+                }`}
+                title={isBeginnerMode ? '当前为【白话通俗解读】模式 (通俗比喻与三点释义)，点击切换至学术量化口径' : '当前为【专业量化术语】模式，点击开启零门槛白话释义'}
+              >
+                <span>{isBeginnerMode ? '💡 白话解读' : '🏛️ 专业术语'}</span>
+              </button>
+            )}
 
             {/* Guided Investigation Playbooks */}
             {onOpenInvestigationModal && (
@@ -409,10 +434,10 @@ export default function Header({
               <button
                 onClick={onOpenChangelog}
                 className="h-7 px-2 rounded-lg border border-white/[0.1] bg-[#0d1321] hover:bg-[#131b2e] text-slate-200 hover:text-white flex items-center gap-1.5 text-[11px] font-mono font-semibold cursor-pointer transition-all whitespace-nowrap"
-                title="查看 v3.5.0 版本更迭记录与架构演进日志"
+                title="查看 v4.0.0 版本更迭记录与架构演进日志"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span>v3.5.0</span>
+                <span>v4.0.0</span>
               </button>
             )}
           </div>
@@ -441,25 +466,36 @@ export default function Header({
           {viewMode === 'focus' ? (
             <>
               <div className="flex items-center gap-1 shrink-0">
-                {FOCUS_PILLARS.map(tab => {
+                {CAUSAL_WORKFLOW_STEPS.map((tab, idx) => {
                   const isTabActive = activeTab === tab.id;
                   return (
-                    <button
-                      key={tab.id}
-                      data-testid={tab.id === 'portfolio' ? 'header-portfolio-btn' : undefined}
-                      onClick={() => {
-                        soundFx.playTick();
-                        onSelectTab(tab.id);
-                      }}
-                      className={`h-7 px-3 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
-                        isTabActive
-                          ? 'atlas-pill-active font-semibold'
-                          : 'text-slate-400 hover:text-white hover:bg-[#0d1321] border border-transparent'
-                      }`}
-                      title={`${tab.label} · ${tab.desc}`}
-                    >
-                      <span>{tab.label}</span>
-                    </button>
+                    <React.Fragment key={tab.id}>
+                      {idx > 0 && (
+                        <span className="text-slate-600 text-[11px] px-0.5 select-none shrink-0 font-mono">➔</span>
+                      )}
+                      <button
+                        data-testid={tab.id === 'portfolio' ? 'header-portfolio-btn' : `header-tab-${tab.id}`}
+                        onClick={() => {
+                          soundFx.playTick();
+                          onSelectTab(tab.id);
+                        }}
+                        className={`h-7 px-2.5 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
+                          isTabActive
+                            ? 'atlas-pill-active font-semibold'
+                            : 'text-slate-400 hover:text-white hover:bg-[#0d1321] border border-transparent'
+                        }`}
+                        title={`${tab.shortTitle} · ${tab.label}\n【核心问题】: ${tab.question}\n【分析目标】: ${tab.purpose}`}
+                      >
+                        <span className={isTabActive ? 'text-indigo-200 font-semibold' : 'text-slate-300'}>
+                          {isBeginnerMode ? tab.shortTitle : `${tab.step}. ${tab.label}`}
+                        </span>
+                        {isBeginnerMode && (
+                          <span className="hidden xl:inline text-[11px] text-slate-400 font-normal">
+                            · {tab.label}
+                          </span>
+                        )}
+                      </button>
+                    </React.Fragment>
                   );
                 })}
               </div>
