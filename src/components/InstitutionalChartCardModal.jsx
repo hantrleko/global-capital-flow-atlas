@@ -196,7 +196,7 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
                   投行级研报单图卡片导出 (Publication-Ready Chart Card)
                 </h3>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/30 text-sky-300">
-                  v2.0.0
+                  v2.5.0
                 </span>
               </div>
               <p className="text-xs text-slate-400">

@@ -9,12 +9,42 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v2.0.0',
-    date: '2026-10-28',
+    version: 'v2.5.0',
+    date: '2026-10-29',
     status: 'LATEST',
-    title: 'Phase 3 终极跃迁交付：我的组合压力映射 (Portfolio Stress Overlay) 与机构账户风控仪表盘',
+    title: 'Phase 4 升级：认知聚焦与因果智能版 (Cognitive Focus & Causal Intelligence) · 三段式研判台、侦探主线与双模式架构',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '结论研判',
+        title: '三段式结论研判台 ("So What?" Executive Verdict Banner)',
+        desc: '各分析工作台顶部常驻「现象 (Observation) ➔ 机理 (Mechanism) ➔ 结论与行动 (Verdict & Action)」三位一体研判台。直击使用者痛点，对 19 大模块分别输出最凝练的定量异动特征、深层驱动逻辑及具体风控/交易行动指引。'
+      },
+      {
+        tag: '知识图谱',
+        title: '宏观因果知识链 & 上下游下一跳 (Causal Knowledge Graph & Next-Step Bridge)',
+        desc: '构建全球宏观跨模块因果逻辑图谱，打通上下游分析通道。提供一键直达前因溯源与后果推演的动态 CTA 跳转通道（如全球流向 ➔ 影子银行 ➔ 级联传染 ➔ 投资组合对冲）。'
+      },
+      {
+        tag: '主线破案',
+        title: '剧本式宏观侦探主线 (Guided Investigation Playbooks)',
+        desc: '预设 3 条顶级对冲基金实战破案故事线（离岸影子杠杆穿透案、主权债务引爆全球大行案、地缘割裂与去美元化实证案）。底部常驻沉浸式导航 HUD，手把手带领使用者逐层解开全球资本流动暗流。'
+      },
+      {
+        tag: '认知降维',
+        title: '焦点决策模式 vs 专家全量模式 (Focus Mode vs. Pro Mode Toggle)',
+        desc: '顶栏引入模式一键切换。焦点模式精简收敛为 4 大核心决策支柱（流向、传染、影子、组合），消除认知过载；专家模式保留 5 大宏观领域全量 19 个量化分析模块与参数，满足资深宽客深度研究需求。'
+      }
+    ]
+  },
+  {
+    version: 'v2.0.0',
+    date: '2026-10-28',
+    status: 'STABLE',
+    title: 'Phase 3 终极跃迁交付：我的组合压力映射 (Portfolio Stress Overlay) 与机构账户风控仪表盘',
+    badge: '历史稳定版',
+    badgeColor: 'border-slate-500/50 bg-slate-900/60 text-slate-300',
     highlights: [
       {
         tag: '核心突破',
@@ -234,7 +264,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v2.0.0 Current
+                  v2.5.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">

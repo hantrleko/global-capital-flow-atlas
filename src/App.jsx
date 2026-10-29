@@ -21,6 +21,9 @@ import MacroIntelligenceBriefing from './components/MacroIntelligenceBriefing';
 import ExecutiveKpiRow from './components/ExecutiveKpiRow';
 import GlobalPinnedEntityBar from './components/GlobalPinnedEntityBar';
 import MacroInsightsBanner from './components/MacroInsightsBanner';
+import ExecutiveVerdictBanner from './components/ExecutiveVerdictBanner';
+import GuidedInvestigationHUD from './components/GuidedInvestigationHUD';
+import InvestigationTracksModal from './components/InvestigationTracksModal';
 import soundFx from './utils/soundEffects';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getDataClassification } from './utils/dataClassification';
@@ -140,6 +143,69 @@ export default function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('bis_atlas_theme') || 'dark';
   });
+
+  // v2.5 Focus Mode vs Pro Mode
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('bis_atlas_view_mode') || 'focus';
+  });
+
+  // v2.5 Guided Investigation Playbooks State
+  const [activeInvestigationTrack, setActiveInvestigationTrack] = useState(null);
+  const [currentInvestigationStepIndex, setCurrentInvestigationStepIndex] = useState(0);
+  const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
+
+  const handleToggleViewMode = () => {
+    soundFx.playTick();
+    setViewMode(prev => {
+      const next = prev === 'focus' ? 'pro' : 'focus';
+      localStorage.setItem('bis_atlas_view_mode', next);
+      setToastMessage(next === 'focus' ? '🎯 已切换至【焦点模式】(精简4大核心支柱)' : '🔬 已切换至【专家全量模式】(全量19模块与5大领域)');
+      setTimeout(() => setToastMessage(null), 3000);
+      return next;
+    });
+  };
+
+  const handleStartInvestigationTrack = (track) => {
+    soundFx.playChime();
+    setActiveInvestigationTrack(track);
+    setCurrentInvestigationStepIndex(0);
+    if (track.steps && track.steps[0]) {
+      handleSelectTab(track.steps[0].tabId);
+    }
+    setToastMessage(`🕵️ 已启程调查主线: ${track.title}`);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleNextInvestigationStep = () => {
+    if (!activeInvestigationTrack) return;
+    const steps = activeInvestigationTrack.steps || [];
+    if (currentInvestigationStepIndex < steps.length - 1) {
+      soundFx.playTick();
+      const nextIdx = currentInvestigationStepIndex + 1;
+      setCurrentInvestigationStepIndex(nextIdx);
+      handleSelectTab(steps[nextIdx].tabId);
+    } else {
+      soundFx.playChime();
+      setToastMessage(`🎉 恭喜！已完成【${activeInvestigationTrack.title}】全部推演！`);
+      setTimeout(() => setToastMessage(null), 4000);
+      setActiveInvestigationTrack(null);
+      setCurrentInvestigationStepIndex(0);
+    }
+  };
+
+  const handlePrevInvestigationStep = () => {
+    if (!activeInvestigationTrack || currentInvestigationStepIndex <= 0) return;
+    soundFx.playTick();
+    const prevIdx = currentInvestigationStepIndex - 1;
+    setCurrentInvestigationStepIndex(prevIdx);
+    handleSelectTab(activeInvestigationTrack.steps[prevIdx].tabId);
+  };
+
+  const handleExitInvestigationTrack = () => {
+    soundFx.playTick();
+    setActiveInvestigationTrack(null);
+    setCurrentInvestigationStepIndex(0);
+  };
 
   // Keep URL search params synchronized for deep linking
   useEffect(() => {
@@ -406,6 +472,9 @@ export default function App() {
         onCopyDeepLink={handleCopyDeepLink}
         onOpenChangelog={() => setIsChangelogOpen(true)}
         onOpenChartCard={() => setIsChartCardOpen(true)}
+        viewMode={viewMode}
+        onToggleViewMode={handleToggleViewMode}
+        onOpenInvestigationModal={() => setIsInvestigationModalOpen(true)}
       />
 
       {/* Historical Macro Milestones Ribbon (2018-2026 Epochs) */}
@@ -673,6 +742,12 @@ export default function App() {
           )}
         </Suspense>
         </ErrorBoundary>
+
+        {/* v2.5 Executive Verdict Banner: 现象 ➔ 机理 ➔ 行动结论与因果下一跳 (位于主图下方，保护首屏折叠线) */}
+        <ExecutiveVerdictBanner
+          activeTab={activeTab}
+          onSelectTab={handleSelectTab}
+        />
 
         {/* Collapsible Deep Intelligence Briefing: 宏观态势速览与研判依据 (位于主图下方，不抢占首屏) */}
         <MacroIntelligenceBriefing
@@ -943,7 +1018,7 @@ export default function App() {
               title="查看平台版本迭代记录与演进架构"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>v2.0.0 日志</span>
+              <span>v2.5.0 日志</span>
             </button>
             <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>
@@ -961,6 +1036,22 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* v2.5 Floating Guided Investigation HUD */}
+      <GuidedInvestigationHUD
+        activeTrack={activeInvestigationTrack}
+        currentStepIndex={currentInvestigationStepIndex}
+        onNextStep={handleNextInvestigationStep}
+        onPrevStep={handlePrevInvestigationStep}
+        onExitTrack={handleExitInvestigationTrack}
+      />
+
+      {/* v2.5 Guided Investigation Playbooks Modal */}
+      <InvestigationTracksModal
+        isOpen={isInvestigationModalOpen}
+        onClose={() => setIsInvestigationModalOpen(false)}
+        onStartTrack={handleStartInvestigationTrack}
+      />
     </div>
   );
 }

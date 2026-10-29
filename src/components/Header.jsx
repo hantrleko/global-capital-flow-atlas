@@ -48,7 +48,10 @@ export default function Header({
   onOpenAppendix,
   onCopyDeepLink,
   onOpenChangelog,
-  onOpenChartCard
+  onOpenChartCard,
+  viewMode = 'focus',
+  onToggleViewMode,
+  onOpenInvestigationModal
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const currentQuarterIdx = quarters.indexOf(selectedQuarter);
@@ -163,6 +166,35 @@ export default function Header({
 
             {/* Quick Action Buttons */}
             <div className="flex items-center gap-1">
+              {/* v2.5 Focus vs Pro Mode Switcher */}
+              {onToggleViewMode && (
+                <button
+                  onClick={onToggleViewMode}
+                  data-testid="header-view-mode-toggle"
+                  className={`h-7 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-sm transition-all ${
+                    viewMode === 'focus'
+                      ? 'border-cyan-500/60 bg-cyan-950/60 text-cyan-200 hover:bg-cyan-900/60 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                      : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500'
+                  }`}
+                  title={viewMode === 'focus' ? "当前为【焦点模式】(精简4大核心支柱)，点击切换为【专家全量模式】(全量19模块)" : "当前为【专家全量模式】(全量19模块)，点击切换为【焦点模式】(精简4大核心支柱)"}
+                >
+                  <span>{viewMode === 'focus' ? '🎯 焦点模式' : '🔬 专家模式'}</span>
+                </button>
+              )}
+
+              {/* v2.5 Guided Investigation Playbooks Modal Trigger */}
+              {onOpenInvestigationModal && (
+                <button
+                  onClick={onOpenInvestigationModal}
+                  data-testid="header-investigation-btn"
+                  className="h-7 px-2.5 rounded-lg border border-amber-500/50 bg-amber-950/40 text-amber-300 hover:text-white hover:bg-amber-900/50 flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-sm transition-all"
+                  title="打开剧本式宏观侦探主线推演 (3条经典破案路径)"
+                >
+                  <span className="text-amber-400">🕵️</span>
+                  <span>侦探主线</span>
+                </button>
+              )}
+
               {onCopyDeepLink && (
                 <button
                   onClick={onCopyDeepLink}
@@ -214,10 +246,10 @@ export default function Header({
                 <button
                   onClick={onOpenChangelog}
                   className="h-7 px-2 rounded-lg border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:text-white hover:bg-emerald-900/50 flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-sm transition-all"
-                  title="查看 v2.0.0 版本更迭记录与演进历程"
+                  title="查看 v2.5.0 版本更迭记录与演进历程"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-mono text-[11px] font-bold">v2.0.0</span>
+                  <span className="font-mono text-[11px] font-bold">v2.5.0</span>
                   <span className="hidden xl:inline text-xs">日志</span>
                 </button>
               )}
@@ -419,29 +451,73 @@ export default function Header({
           data-testid="module-nav-container"
           className="h-9 flex items-center gap-2 overflow-x-auto scrollbar-none py-1"
         >
-          <span className="text-[11px] font-mono text-slate-400 shrink-0 hidden sm:inline">
-            {currentDisplayDomain.title}模块:
-          </span>
-          {currentDisplayDomain.tabs.map(tab => {
-            const isTabActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  soundFx.playTick();
-                  onSelectTab(tab.id);
-                }}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
-                  isTabActive
-                    ? 'bg-blue-600/30 text-sky-200 border border-blue-500/60 font-semibold shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
-                }`}
-                title={`${tab.label} · ${tab.desc}`}
-              >
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+          {viewMode === 'focus' ? (
+            <>
+              <span className="text-[11px] font-mono text-cyan-400 shrink-0 hidden sm:inline font-semibold">
+                🎯 核心决策支柱:
+              </span>
+              {[
+                { id: 'map', label: '1. 全球双边信贷流向', desc: 'Bilateral Claims & Positions' },
+                { id: 'contagion', label: '2. 银行级联传染模拟', desc: 'Eisenberg-Noe Contagion' },
+                { id: 'shadow', label: '3. 影子银行与非银透视', desc: 'Offshore NBFIs & FX Swaps' },
+                { id: 'portfolio', label: '4. 我的组合压力映射', desc: 'Portfolio Stress Overlay' }
+              ].map(tab => {
+                const isTabActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      soundFx.playTick();
+                      onSelectTab(tab.id);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
+                      isTabActive
+                        ? 'bg-cyan-500/30 text-cyan-200 border border-cyan-400/80 font-bold shadow-[0_0_12px_rgba(6,182,212,0.25)]'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
+                    }`}
+                    title={`${tab.label} · ${tab.desc}`}
+                  >
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+              {/* If current active tab is not in the 4 pillars (e.g. from investigation or deep link), display it */}
+              {!['map', 'contagion', 'shadow', 'portfolio'].includes(activeTab) && (
+                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-700/80 shrink-0">
+                  <span className="text-[10px] text-amber-400 uppercase font-mono">当前展开:</span>
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/20 text-amber-200 border border-amber-500/40">
+                    {getTabTaskMeta(activeTab).label}
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="text-[11px] font-mono text-slate-400 shrink-0 hidden sm:inline">
+                {currentDisplayDomain.title}模块:
+              </span>
+              {currentDisplayDomain.tabs.map(tab => {
+                const isTabActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      soundFx.playTick();
+                      onSelectTab(tab.id);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
+                      isTabActive
+                        ? 'bg-blue-600/30 text-sky-200 border border-blue-500/60 font-semibold shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
+                    }`}
+                    title={`${tab.label} · ${tab.desc}`}
+                  >
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </>
+          )}
         </div>
 
       </div>

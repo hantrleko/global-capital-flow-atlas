@@ -324,8 +324,8 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const mainViewport = page.locator('#main-viewport');
     await expect(mainViewport).toBeVisible({ timeout: 10000 });
 
-    // 1. Verify v2.0.0 Changelog Modal opens and renders evolution timeline
-    const changelogBtn = page.getByRole('button', { name: /v2\.0\.0/i }).first();
+    // 1. Verify v2.5.0 Changelog Modal opens and renders evolution timeline
+    const changelogBtn = page.getByRole('button', { name: /v2\.[05]\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
@@ -456,6 +456,81 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
 
     const closeCardBtn = page.locator('[data-testid="close-chart-card-modal"]').first();
     await closeCardBtn.click();
+  });
+
+  test('12. Phase 4 v2.5.0: Executive Verdict Banner, Guided Investigation Track & Focus Mode Toggle', async ({ page }) => {
+    // 1. Visit root view
+    await page.goto('/?tab=map&q=2026Q1');
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    // 2. Verify Three-Stage Executive Verdict Banner
+    await expect(page.getByText('三段式研判台 (Executive Verdict)').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('宏观异动现象 (Observation)').first()).toBeVisible();
+    await expect(page.getByText('深层驱动机理 (Mechanism)').first()).toBeVisible();
+    await expect(page.getByText('研判结论与行动 (Verdict & Action)').first()).toBeVisible();
+
+    // 3. Test Causal Next-Step Bridge CTA Button
+    const shadowNextBtn = page.getByRole('button', { name: /穿透离岸影子通道/i }).first();
+    await expect(shadowNextBtn).toBeVisible();
+    await shadowNextBtn.click();
+
+    // Verify Tab jumped to Shadow Banking
+    await expect(page.getByText('离岸影子银行与非银机构表外负债透视').first()).toBeVisible({ timeout: 6000 });
+    await expect(page.getByText('三段式研判台 (Executive Verdict) · 影子银行与非银机构透视').first()).toBeVisible();
+
+    // 4. Test Header Mode Toggle (Focus Mode vs Pro Mode)
+    const modeToggle = page.locator('[data-testid="header-view-mode-toggle"]');
+    await expect(modeToggle).toBeVisible();
+    await expect(modeToggle).toContainText('焦点模式');
+
+    // Click toggle to switch to Pro Mode
+    await modeToggle.click();
+    await expect(modeToggle).toContainText('专家模式');
+
+    // Click toggle back to Focus Mode
+    await modeToggle.click();
+    await expect(modeToggle).toContainText('焦点模式');
+
+    // 5. Test Guided Investigation Playbook Modal & Floating HUD
+    const investigationBtn = page.locator('[data-testid="header-investigation-btn"]');
+    await expect(investigationBtn).toBeVisible();
+    await investigationBtn.click();
+
+    // Verify Modal
+    await expect(page.getByText('剧本式宏观侦探主线 (Guided Investigation Playbooks)')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('离岸美元避税与影子杠杆穿透追踪')).toBeVisible();
+
+    // Start Track 1
+    const startTrackBtn = page.getByRole('button', { name: /启程调查/i }).first();
+    await expect(startTrackBtn).toBeVisible();
+    await startTrackBtn.click();
+
+    // Verify Floating HUD
+    await expect(page.getByText('侦探主线 [1/4]').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('第 1 步：发现避税中枢资金异常积聚').first()).toBeVisible();
+
+    // Advance to Step 2
+    const nextStepBtn = page.getByRole('button', { name: /下一步：前往影子银行核查表外掉期/i }).first();
+    await expect(nextStepBtn).toBeVisible();
+    await nextStepBtn.click();
+
+    // Verify Step 2 HUD
+    await expect(page.getByText('侦探主线 [2/4]').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('第 2 步：核查非银机构外汇掉期暗雷').first()).toBeVisible();
+
+    // Exit Guided Track
+    const exitBtn = page.getByRole('button', { name: '✕' }).first();
+    await expect(exitBtn).toBeVisible();
+    await exitBtn.click();
+
+    // 6. Verify Changelog Modal Displays v2.5.0 Current
+    const changelogBtn = page.getByRole('button', { name: /v2\.5\.0/i }).first();
+    await expect(changelogBtn).toBeVisible();
+    await changelogBtn.click();
+
+    await expect(page.getByText('v2.5.0 Current').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/认知聚焦与因果智能版/).first()).toBeVisible();
   });
 
 });

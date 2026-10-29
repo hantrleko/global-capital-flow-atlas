@@ -34,6 +34,13 @@ import {
   ASSET_CLASS_PROFILES,
   computePortfolioStressOverlay
 } from '../src/utils/portfolioStressEngine.js';
+import {
+  MODULE_VERDICTS,
+  MODULE_CAUSAL_LINKS,
+  INVESTIGATION_TRACKS,
+  getModuleVerdict,
+  getModuleCausalLinks
+} from '../src/utils/causalIntelligence.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -962,8 +969,8 @@ function runTestSuite() {
   // =========================================================================
   console.log('\nTest 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing');
   {
-    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v2.0.0', 'Clearing version registry PRODUCT must be v2.0.0');
-    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v2.0-PortfolioStress'), 'Model registry must declare v2.0-PortfolioStress');
+    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v2.5.0', 'Clearing version registry PRODUCT must be v2.5.0');
+    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v2.5-CausalIntelligence'), 'Model registry must declare v2.5-CausalIntelligence');
 
     // Conduit detection
     assert(isOffshoreConduit('KY'), 'KY (Cayman Islands) must be identified as offshore conduit');
@@ -1064,6 +1071,62 @@ function runTestSuite() {
     // Hedging Recommendations
     assert(stressResult.hedgingAdvice.length >= 2, `Hedging recommendations must be generated (got ${stressResult.hedgingAdvice.length})`);
     assert(stressResult.topVictims.length > 0, 'Top victim exposures must be identified');
+  }
+
+  // =========================================================================
+  // Test 35: Phase 4 Causal Intelligence, Verdict Engine & Guided Storylines (v2.5.0)
+  // =========================================================================
+  console.log('\nTest 35: Phase 4 Causal Intelligence, Verdict Engine & Guided Storylines (v2.5.0)');
+  {
+    // 1. Module Verdicts Coverage
+    const coreTabs = ['map', 'network', 'routing', 'ews', 'gsib', 'contagion', 'shadow', 'maturity', 'portfolio', 'usd', 'fragmentation'];
+    for (const tab of coreTabs) {
+      const v = MODULE_VERDICTS[tab];
+      assert(v !== undefined, `MODULE_VERDICTS must contain verdict entry for '${tab}'`);
+      assert(v.id === tab, `Verdict id for '${tab}' must match tab`);
+      assert(typeof v.observation === 'string' && v.observation.length > 10, `Verdict observation for '${tab}' must be substantive`);
+      assert(typeof v.mechanism === 'string' && v.mechanism.length > 10, `Verdict mechanism for '${tab}' must be substantive`);
+      assert(typeof v.verdict === 'string' && v.verdict.length > 10, `Verdict action for '${tab}' must be substantive`);
+      assert(['CRITICAL', 'WARNING', 'INFO'].includes(v.severity), `Verdict severity for '${tab}' must be valid`);
+    }
+
+    // Fallback verdict lookup for unknown tab
+    const fallbackVerdict = getModuleVerdict('unknown_experimental_tab');
+    assert(fallbackVerdict.id === 'unknown_experimental_tab', 'Fallback verdict must adopt requested tabId');
+    assert(fallbackVerdict.severity === 'INFO', 'Fallback verdict must default to INFO severity');
+
+    // 2. Causal Knowledge Links
+    const mapLinks = getModuleCausalLinks('map');
+    assert(Array.isArray(mapLinks.downstream), 'Map module must return downstream causal links array');
+    assert(mapLinks.downstream.length > 0, 'Map module must have actionable downstream links');
+    const shadowTarget = mapLinks.downstream.find(l => l.tab === 'shadow');
+    assert(shadowTarget !== undefined, 'Map module downstream links must include shadow banking');
+    assert(typeof shadowTarget.cta === 'string', 'Causal link must declare actionable CTA text');
+
+    const contagionLinks = getModuleCausalLinks('contagion');
+    assert(Array.isArray(contagionLinks.upstream), 'Contagion module must have upstream causes');
+    assert(contagionLinks.upstream.some(u => u.tab === 'ews'), 'Contagion upstream must link to EWS');
+    assert(contagionLinks.downstream.some(d => d.tab === 'portfolio'), 'Contagion downstream must link to Portfolio Stress Overlay');
+
+    // 3. Guided Investigation Playbooks (Storylines)
+    assert(Array.isArray(INVESTIGATION_TRACKS), 'INVESTIGATION_TRACKS must be an array');
+    assert(INVESTIGATION_TRACKS.length >= 3, `Must provide at least 3 macro mystery tracks (got ${INVESTIGATION_TRACKS.length})`);
+
+    INVESTIGATION_TRACKS.forEach((track, tIdx) => {
+      assert(typeof track.id === 'string', `Track ${tIdx} must have string id`);
+      assert(typeof track.title === 'string', `Track ${tIdx} must have title`);
+      assert(typeof track.description === 'string', `Track ${tIdx} must have description`);
+      assert(Array.isArray(track.steps), `Track ${track.id} must have steps array`);
+      assert(track.steps.length >= 3, `Track ${track.id} must have at least 3 investigation steps`);
+
+      track.steps.forEach((st, sIdx) => {
+        assert(st.stepIndex === sIdx + 1, `Track ${track.id} step index must be sequential`);
+        assert(typeof st.tabId === 'string', `Track ${track.id} step ${sIdx + 1} must specify target tabId`);
+        assert(typeof st.title === 'string', `Track ${track.id} step ${sIdx + 1} must specify title`);
+        assert(typeof st.prompt === 'string', `Track ${track.id} step ${sIdx + 1} must specify prompt guide`);
+        assert(typeof st.actionLabel === 'string', `Track ${track.id} step ${sIdx + 1} must specify actionLabel`);
+      });
+    });
   }
 
   console.log('\n===============================================================');
