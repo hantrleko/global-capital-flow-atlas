@@ -32,6 +32,8 @@ import {
   PORTFOLIO_PRESETS,
   MACRO_STRESS_SCENARIOS,
   ASSET_CLASS_PROFILES,
+  INSTITUTIONAL_HEDGE_CATALOG,
+  buildLiveClearingShockMap,
   computePortfolioStressOverlay
 } from '../src/utils/portfolioStressEngine.js';
 import {
@@ -969,8 +971,8 @@ function runTestSuite() {
   // =========================================================================
   console.log('\nTest 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing');
   {
-    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v2.5.0', 'Clearing version registry PRODUCT must be v2.5.0');
-    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v2.5-CausalIntelligence'), 'Model registry must declare v2.5-CausalIntelligence');
+    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v3.0.0', 'Clearing version registry PRODUCT must be v3.0.0');
+    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v3.0-DynamicIntelligence'), 'Model registry must declare v3.0-DynamicIntelligence');
 
     // Conduit detection
     assert(isOffshoreConduit('KY'), 'KY (Cayman Islands) must be identified as offshore conduit');
@@ -1127,6 +1129,90 @@ function runTestSuite() {
         assert(typeof st.actionLabel === 'string', `Track ${track.id} step ${sIdx + 1} must specify actionLabel`);
       });
     });
+  }
+
+  // =========================================================================
+  // Test 36: Phase 5 Live Dynamic Verdicts, Live Clearing-to-Portfolio Bridge & Interactive Hedge Simulation (v3.0.0)
+  // =========================================================================
+  console.log('\nTest 36: Phase 5 Live Dynamic Verdicts, Live Clearing-to-Portfolio Bridge & Interactive Hedge Simulation (v3.0.0)');
+  {
+    // 1. Dynamic Module Verdict Engine
+    const dynamicMapVerdict = getModuleVerdict('map', {
+      dataset,
+      selectedQuarter: '2026Q1',
+      selectedCountry: null
+    });
+    assert(dynamicMapVerdict.id === 'map', 'Map verdict must have id map');
+    assert(dynamicMapVerdict.isDynamic === true, 'Verdict with dataset context must be marked isDynamic');
+    assert(dynamicMapVerdict.observation.includes('47.62T') || dynamicMapVerdict.observation.includes('万亿美元'), 'Observation must include total claims metric');
+
+    // Dynamic country focus verdict
+    const dynamicTrVerdict = getModuleVerdict('map', {
+      dataset,
+      selectedQuarter: '2026Q1',
+      selectedCountry: 'TR'
+    });
+    assert(dynamicTrVerdict.isDynamic === true, 'Country-focused verdict must be dynamic');
+    assert(dynamicTrVerdict.observation.includes('TR'), 'Country-focused verdict observation must mention target country TR');
+    assert(dynamicTrVerdict.mechanism.includes('TR') || dynamicTrVerdict.verdict.includes('TR'), 'Verdict mechanism or action must mention TR');
+
+    // 2. Playbook State Choreography: Every step must declare valid statePayload
+    INVESTIGATION_TRACKS.forEach(track => {
+      track.steps.forEach(step => {
+        assert(step.statePayload !== undefined && typeof step.statePayload === 'object', `Track ${track.id} step ${step.stepIndex} must have statePayload`);
+      });
+    });
+
+    // Verify Track 1 step 1 state payload
+    const track1Step1 = INVESTIGATION_TRACKS[0].steps[0];
+    assert(track1Step1.statePayload.lookThrough === true, 'Track 1 Step 1 must configure lookThrough = true');
+    assert(track1Step1.statePayload.country === 'KY', 'Track 1 Step 1 must target country KY');
+
+    // 3. Contagion-to-Portfolio Shock Bridge
+    // Run an Eisenberg-Noe clearing scenario
+    const clearingOutput = computeClearingScenario({
+      dataset,
+      quarter: '2026Q1',
+      epicenter: 'KY',
+      haircutPct: 50
+    });
+    assert(clearingOutput && clearingOutput.allConverged, 'Clearing output must compute valid losses');
+
+    const liveShockMap = buildLiveClearingShockMap(clearingOutput);
+    assert(liveShockMap !== null && typeof liveShockMap === 'object', 'buildLiveClearingShockMap must return valid shock map');
+    assert(liveShockMap['KY'] !== undefined, 'Shock map must contain epicenter KY');
+    assert(liveShockMap['KY'] >= 0.4, 'Epicenter shock must reflect severe impairment');
+
+    // Portfolio stress test using live custom contagion
+    const defaultPortfolio = PORTFOLIO_PRESETS[0];
+    const liveStressResult = computePortfolioStressOverlay(defaultPortfolio, {
+      scenarioId: 'live_custom_contagion',
+      liveClearingShockMap: liveShockMap,
+      stressMultiplier: 1.0,
+      enableLookThrough: true,
+      activeHedges: []
+    });
+
+    assert(liveStressResult.scenarioName.includes('实时级联清算'), 'Scenario name must reflect live contagion');
+    assert(liveStressResult.totalLossMn > 0, 'Live custom contagion stress must yield positive loss');
+
+    // 4. Institutional Active Hedge Simulation
+    assert(Array.isArray(INSTITUTIONAL_HEDGE_CATALOG), 'INSTITUTIONAL_HEDGE_CATALOG must be an array');
+    assert(INSTITUTIONAL_HEDGE_CATALOG.length >= 3, 'Must offer at least 3 hedging instruments');
+
+    const hedgedStressResult = computePortfolioStressOverlay(defaultPortfolio, {
+      scenarioId: 'tr_sovereign_crisis',
+      stressMultiplier: 1.0,
+      enableLookThrough: true,
+      activeHedges: ['cds_hedge', 'derisk_ofc']
+    });
+
+    assert(hedgedStressResult.activeHedges.length === 2, 'Result must record 2 active hedges');
+    assert(hedgedStressResult.hedgeCostMn > 0, 'Active hedges must incur positive hedging cost');
+    assert(hedgedStressResult.hedgedLossMn < hedgedStressResult.unhedgedLossMn, 'Hedged loss must be strictly lower than unhedged loss');
+    assert(hedgedStressResult.netSavedMn > 0, 'Active hedging must deliver strictly positive net capital saved');
+    assert(hedgedStressResult.hedgedStressedAumMn > hedgedStressResult.stressedAumMn, 'Hedged stressed AUM must be greater than unhedged stressed AUM');
+    assert(hedgedStressResult.hedgedStressVaR99Mn < hedgedStressResult.stressVaR99Mn, 'Hedged VaR99 must be lower than unhedged VaR99');
   }
 
   console.log('\n===============================================================');

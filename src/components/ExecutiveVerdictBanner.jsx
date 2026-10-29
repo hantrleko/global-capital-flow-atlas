@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { getModuleVerdict, getModuleCausalLinks } from '../utils/causalIntelligence.js';
 
-export default function ExecutiveVerdictBanner({ activeTab, onSelectTab }) {
+export default function ExecutiveVerdictBanner({ activeTab, onSelectTab, context = {} }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
-  const verdict = getModuleVerdict(activeTab);
+  const verdict = getModuleVerdict(activeTab, context);
   const causalLinks = getModuleCausalLinks(activeTab);
 
   const getSeverityBadge = (severity) => {

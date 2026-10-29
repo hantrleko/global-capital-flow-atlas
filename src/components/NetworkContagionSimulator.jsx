@@ -3,7 +3,7 @@ import * as echarts from 'echarts';
 import { 
   AlertOctagon, Play, RotateCcw, ShieldAlert, ArrowRight, 
   TrendingDown, Layers, Zap, Download, Info, ChevronDown, ChevronUp, HelpCircle, FileText,
-  Activity, GitCompare, Sliders, CheckCircle2, BarChart2, Sparkles
+  Activity, GitCompare, Sliders, CheckCircle2, BarChart2, Sparkles, Briefcase
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import MethodologyFootnote from './MethodologyFootnote';
@@ -26,7 +26,8 @@ export default function NetworkContagionSimulator({
   onSelectCountry,
   contagionConfig,
   onOpenAppendix,
-  onOpenChartCard
+  onOpenChartCard,
+  onMapToPortfolio
 }) {
   const countries = dataset.countries || [];
 
@@ -690,6 +691,27 @@ export default function NetworkContagionSimulator({
             >
               <Sparkles className="w-3.5 h-3.5 text-sky-400" />
               <span className="hidden sm:inline">研报卡片</span>
+            </button>
+          )}
+
+          {onMapToPortfolio && (
+            <button
+              onClick={() => {
+                soundFx.playChime();
+                onMapToPortfolio({
+                  epicenter: epicenterCountry.code,
+                  haircut: haircutPct,
+                  victimList: simResults?.impactList || simResults?.jurisdictionImpacts || [],
+                  incrementalDisplayShortfall: simResults?.incrementalTotalDisplay,
+                  topVictimCountry: simResults?.topVictim?.name_zh || simResults?.topVictim?.code
+                });
+              }}
+              data-testid="map-contagion-to-portfolio-btn"
+              className="px-2.5 py-1 bg-purple-950/60 hover:bg-purple-900/70 border border-purple-500/50 rounded-lg text-purple-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold shadow-sm"
+              title="将当前 Eisenberg-Noe 清算受损向量直接映射至投资专户进行风控与对冲评估"
+            >
+              <Briefcase className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden sm:inline">映射至组合对冲 ➔</span>
             </button>
           )}
 

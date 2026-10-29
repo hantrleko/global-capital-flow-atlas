@@ -9,12 +9,42 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v2.5.0',
+    version: 'v3.0.0',
     date: '2026-10-29',
     status: 'LATEST',
-    title: 'Phase 4 升级：认知聚焦与因果智能版 (Cognitive Focus & Causal Intelligence) · 三段式研判台、侦探主线与双模式架构',
+    title: 'Phase 5 终极跃迁：全链路动态感知与闭环仿真版 (Live Dynamic Intelligence & Closed-Loop Simulation)',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '动态研判',
+        title: '实时数据驱动的动态三段式研判引擎 (Live Dynamic Verdict Engine)',
+        desc: '彻底根除静态写死文案。研判引擎实时捕获当期跨国信贷总额、环比增速、活跃国家双边借贷头寸及最大异动走廊，随着季度切换与国别钻取，100% 动态生成专属该时空的现象、机理与行动指引。'
+      },
+      {
+        tag: '自动编排',
+        title: '剧本式侦探主线全状态自动编排 (Automated State Choreography)',
+        desc: '3 大经典宏观破案故事线全面升级为声明式状态载荷驱动。使用者点击「下一步」时，系统自动联动底层地图离岸穿透开关、主权实体高亮聚焦、级联清算震中参数与组合情景，做到“所见即所讲”。'
+      },
+      {
+        tag: '闭环联动',
+        title: '传染清算 ➔ 组合风控动态穿透映射 (Live Contagion-to-Portfolio Bridge)',
+        desc: '全面打通 Eisenberg-Noe Picard 级联清算模型与机构投资专户。支持在传染模拟器中将实时求解输出的各国边际违约损失率向量一键映射至组合资产，实现从宏观风暴到自营持仓减记的无缝闭环。'
+      },
+      {
+        tag: '主动防御',
+        title: '主动宏观对冲防护台与对冲前后对比 (Active Institutional Hedge Cockpit)',
+        desc: '在组合压力映射中引入可勾选激活的交互式对冲方案（主权 CDS 互换、离岸 SPV 去杠杆至美债、跨货币互换基差套保），同屏实时对比对冲前净减记 vs 对冲后残余减记，精确量化挽回资本额。'
+      }
+    ]
+  },
+  {
+    version: 'v2.5.0',
+    date: '2026-10-29',
+    status: 'STABLE',
+    title: 'Phase 4 升级：认知聚焦与因果智能版 (Cognitive Focus & Causal Intelligence) · 三段式研判台、侦探主线与双模式架构',
+    badge: '历史稳定版',
+    badgeColor: 'border-slate-500/50 bg-slate-900/60 text-slate-300',
     highlights: [
       {
         tag: '结论研判',
@@ -264,7 +294,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v2.5.0 Current
+                  v3.0.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">

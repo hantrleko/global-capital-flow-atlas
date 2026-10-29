@@ -24,6 +24,7 @@ import MacroInsightsBanner from './components/MacroInsightsBanner';
 import ExecutiveVerdictBanner from './components/ExecutiveVerdictBanner';
 import GuidedInvestigationHUD from './components/GuidedInvestigationHUD';
 import InvestigationTracksModal from './components/InvestigationTracksModal';
+import { buildLiveClearingShockMap } from './utils/portfolioStressEngine';
 import soundFx from './utils/soundEffects';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getDataClassification } from './utils/dataClassification';
@@ -154,6 +155,34 @@ export default function App() {
   const [currentInvestigationStepIndex, setCurrentInvestigationStepIndex] = useState(0);
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
 
+  // Phase 5 v3.0: Cross-Engine Bridges & State Choreography
+  const [liveClearingShockMap, setLiveClearingShockMap] = useState(null);
+  const [externalMapConfig, setExternalMapConfig] = useState(null);
+
+  const applyInvestigationStatePayload = (payload) => {
+    if (!payload) return;
+    if (payload.country !== undefined) {
+      setSelectedCountry(payload.country);
+      if (payload.country) setIsCountryDrawerOpen(false);
+    }
+    if (payload.accountingBasis || payload.lookThrough !== undefined) {
+      setExternalMapConfig({
+        accountingBasis: payload.accountingBasis || (payload.lookThrough ? 'ultimate_risk' : 'residence'),
+        selectedSector: payload.sector || 'all',
+        selectedInstrument: payload.instrument || 'all'
+      });
+    }
+    if (payload.epicenter || payload.haircut) {
+      setContagionConfig(prev => ({
+        ...(prev || {}),
+        epicenter: payload.epicenter || prev?.epicenter || 'TR',
+        haircut: payload.haircut || 35,
+        deleveraging: 1.8,
+        dollarSqueeze: 15
+      }));
+    }
+  };
+
   const handleToggleViewMode = () => {
     soundFx.playTick();
     setViewMode(prev => {
@@ -170,7 +199,11 @@ export default function App() {
     setActiveInvestigationTrack(track);
     setCurrentInvestigationStepIndex(0);
     if (track.steps && track.steps[0]) {
-      handleSelectTab(track.steps[0].tabId);
+      const step0 = track.steps[0];
+      handleSelectTab(step0.tabId);
+      if (step0.statePayload) {
+        applyInvestigationStatePayload(step0.statePayload);
+      }
     }
     setToastMessage(`🕵️ 已启程调查主线: ${track.title}`);
     setTimeout(() => setToastMessage(null), 3500);
@@ -183,7 +216,11 @@ export default function App() {
       soundFx.playTick();
       const nextIdx = currentInvestigationStepIndex + 1;
       setCurrentInvestigationStepIndex(nextIdx);
-      handleSelectTab(steps[nextIdx].tabId);
+      const nextStep = steps[nextIdx];
+      handleSelectTab(nextStep.tabId);
+      if (nextStep.statePayload) {
+        applyInvestigationStatePayload(nextStep.statePayload);
+      }
     } else {
       soundFx.playChime();
       setToastMessage(`🎉 恭喜！已完成【${activeInvestigationTrack.title}】全部推演！`);
@@ -198,13 +235,25 @@ export default function App() {
     soundFx.playTick();
     const prevIdx = currentInvestigationStepIndex - 1;
     setCurrentInvestigationStepIndex(prevIdx);
-    handleSelectTab(activeInvestigationTrack.steps[prevIdx].tabId);
+    const prevStep = activeInvestigationTrack.steps[prevIdx];
+    handleSelectTab(prevStep.tabId);
+    if (prevStep.statePayload) {
+      applyInvestigationStatePayload(prevStep.statePayload);
+    }
   };
 
   const handleExitInvestigationTrack = () => {
     soundFx.playTick();
     setActiveInvestigationTrack(null);
     setCurrentInvestigationStepIndex(0);
+  };
+
+  const handleMapContagionToPortfolio = (contagionPayload) => {
+    const shockMap = buildLiveClearingShockMap(contagionPayload);
+    setLiveClearingShockMap(shockMap);
+    handleSelectTab('portfolio');
+    setToastMessage('🛡️ 已将当前 Eisenberg-Noe 实时清算受损向量同步至投资专户！');
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   // Keep URL search params synchronized for deep linking
@@ -304,6 +353,14 @@ export default function App() {
       datasetRevision
     };
   }, [customMatrix, selectedQuarter, datasetRevision, datasetState]);
+
+  const liveVerdictContext = useMemo(() => ({
+    dataset: activeDataset,
+    selectedQuarter,
+    selectedCountry,
+    selectedCurrency,
+    lookThroughEnabled: externalMapConfig?.accountingBasis === 'ultimate_risk'
+  }), [activeDataset, selectedQuarter, selectedCountry, selectedCurrency, externalMapConfig]);
 
   const toggleSound = () => {
     const next = soundFx.toggleMute();
@@ -567,6 +624,7 @@ export default function App() {
               onSelectCountry={(code) => setSelectedCountry(code)}
               selectedCurrency={selectedCurrency}
               onOpenAppendix={() => setIsAppendixOpen(true)}
+              externalMapConfig={externalMapConfig}
             />
           )}
 
@@ -637,6 +695,7 @@ export default function App() {
               contagionConfig={contagionConfig}
               onOpenAppendix={() => setIsAppendixOpen(true)}
               onOpenChartCard={() => setIsChartCardOpen(true)}
+              onMapToPortfolio={handleMapContagionToPortfolio}
             />
           )}
 
@@ -647,6 +706,7 @@ export default function App() {
               selectedCurrency={selectedCurrency}
               onOpenChartCard={() => setIsChartCardOpen(true)}
               onOpenContagion={() => handleSelectTab('contagion')}
+              liveClearingShockMap={liveClearingShockMap}
             />
           )}
 
@@ -743,10 +803,11 @@ export default function App() {
         </Suspense>
         </ErrorBoundary>
 
-        {/* v2.5 Executive Verdict Banner: 现象 ➔ 机理 ➔ 行动结论与因果下一跳 (位于主图下方，保护首屏折叠线) */}
+        {/* v3.0 Live Executive Verdict Banner: 实时动态现象 ➔ 机理 ➔ 行动结论与因果下一跳 (位于主图下方，保护首屏折叠线) */}
         <ExecutiveVerdictBanner
           activeTab={activeTab}
           onSelectTab={handleSelectTab}
+          context={liveVerdictContext}
         />
 
         {/* Collapsible Deep Intelligence Briefing: 宏观态势速览与研判依据 (位于主图下方，不抢占首屏) */}
@@ -1018,7 +1079,7 @@ export default function App() {
               title="查看平台版本迭代记录与演进架构"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>v2.5.0 日志</span>
+              <span>v3.0.0 日志</span>
             </button>
             <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>

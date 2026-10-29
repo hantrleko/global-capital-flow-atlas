@@ -29,7 +29,8 @@ export default function CapitalFlowMap({
   selectedCountry,
   onSelectCountry,
   selectedCurrency = 'USD',
-  onOpenAppendix
+  onOpenAppendix,
+  externalMapConfig = null
 }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -55,6 +56,21 @@ export default function CapitalFlowMap({
   const [accountingBasis, setAccountingBasis] = useState('residence'); // 'residence' | 'ultimate_risk'
   const [selectedSector, setSelectedSector] = useState('all'); // 'all' | 'banks' | 'nbfi' | 'sovereign' | 'non_financial'
   const [selectedInstrument, setSelectedInstrument] = useState('all'); // 'all' | 'loans' | 'securities' | 'derivatives'
+
+  // Sync external configuration from guided playbooks
+  useEffect(() => {
+    if (externalMapConfig) {
+      if (externalMapConfig.accountingBasis) {
+        setAccountingBasis(externalMapConfig.accountingBasis);
+      }
+      if (externalMapConfig.selectedSector) {
+        setSelectedSector(externalMapConfig.selectedSector);
+      }
+      if (externalMapConfig.selectedInstrument) {
+        setSelectedInstrument(externalMapConfig.selectedInstrument);
+      }
+    }
+  }, [externalMapConfig]);
 
   const countries = dataset.countries || [];
   const countryMap = useMemo(() => Object.fromEntries(countries.map(c => [c.code, c])), [countries]);

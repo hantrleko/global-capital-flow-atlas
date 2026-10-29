@@ -324,13 +324,13 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const mainViewport = page.locator('#main-viewport');
     await expect(mainViewport).toBeVisible({ timeout: 10000 });
 
-    // 1. Verify v2.5.0 Changelog Modal opens and renders evolution timeline
-    const changelogBtn = page.getByRole('button', { name: /v2\.[05]\.0/i }).first();
+    // 1. Verify v3.0.0 Changelog Modal opens and renders evolution timeline
+    const changelogBtn = page.getByRole('button', { name: /v[23]\.[05]\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
     await expect(page.getByText('版本更迭记录与架构演进日志')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Phase 3 终极跃迁交付：我的组合压力映射 (Portfolio Stress Overlay) 与机构账户风控仪表盘')).toBeVisible();
+    await expect(page.getByText(/Phase 5 终极跃迁/i).first()).toBeVisible();
     const closeChangelogBtn = page.getByRole('button', { name: /关闭/i }).last();
     await closeChangelogBtn.click();
 
@@ -524,13 +524,81 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(exitBtn).toBeVisible();
     await exitBtn.click();
 
-    // 6. Verify Changelog Modal Displays v2.5.0 Current
-    const changelogBtn = page.getByRole('button', { name: /v2\.5\.0/i }).first();
+    // 6. Verify Changelog Modal Displays v3.0.0 Current
+    const changelogBtn = page.getByRole('button', { name: /v[23]\.[05]\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
-    await expect(page.getByText('v2.5.0 Current').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/认知聚焦与因果智能版/).first()).toBeVisible();
+    await expect(page.getByText('v3.0.0 Current').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/全链路动态感知与闭环仿真版/).first()).toBeVisible();
+  });
+
+  test('13. Phase 5 v3.0.0: Automated Playbook State Choreography, Live Contagion-to-Portfolio Bridge & Active Hedge Overlay', async ({ page }) => {
+    // 1. Start on Capital Flow Map with clean URL
+    await page.goto('/?tab=map&q=2026Q1');
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    // 2. Open Guided Investigation Playbooks and check state choreography on Track 1
+    const investigationBtn = page.locator('[data-testid="header-investigation-btn"]');
+    await expect(investigationBtn).toBeVisible();
+    await investigationBtn.click();
+
+    await expect(page.getByText('剧本式宏观侦探主线 (Guided Investigation Playbooks)')).toBeVisible({ timeout: 5000 });
+
+    // Start Track 1: 离岸美元避税与影子杠杆穿透追踪
+    const startTrackBtn = page.getByRole('button', { name: /启程调查/i }).first();
+    await expect(startTrackBtn).toBeVisible();
+    await startTrackBtn.click();
+
+    // Verify HUD mounts at Step 1 and automatically choreographs Map state (KY focus, Look-Through enabled)
+    await expect(page.locator('[data-testid="hud-step-badge"]')).toContainText('侦探主线 [1/4]');
+    const activeLookThroughBanner = page.locator('[data-testid="look-through-active-banner"]');
+    await expect(activeLookThroughBanner).toBeVisible({ timeout: 5000 });
+
+    // Advance to Step 3 (Cascade Contagion Simulation shock on KY)
+    const nextStepBtn = page.getByRole('button', { name: /下一步/i }).first();
+    await expect(nextStepBtn).toBeVisible();
+    await nextStepBtn.click(); // to Step 2
+    await expect(page.locator('[data-testid="hud-step-badge"]')).toContainText('侦探主线 [2/4]');
+
+    await nextStepBtn.click(); // to Step 3
+    await expect(page.locator('[data-testid="hud-step-badge"]')).toContainText('侦探主线 [3/4]');
+
+    // Exit Guided Track HUD
+    const exitBtn = page.getByRole('button', { name: '✕' }).first();
+    await expect(exitBtn).toBeVisible();
+    await exitBtn.click();
+
+    // 3. Test Contagion-to-Portfolio Bridge in Contagion Simulator
+    await page.goto('/?tab=contagion&q=2026Q1');
+    await expect(page.locator('#main-viewport')).toBeVisible({ timeout: 10000 });
+
+    // Click [🛡️ 映射至组合对冲 ➔] button
+    const mapToPortfolioBtn = page.locator('[data-testid="map-contagion-to-portfolio-btn"]');
+    await expect(mapToPortfolioBtn).toBeVisible({ timeout: 8000 });
+    await mapToPortfolioBtn.click();
+
+    // Verify it automatically navigated to portfolio tab with custom contagion shock active
+    await expect(page.locator('[data-testid="portfolio-stress-overlay"]')).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText(/实时清算冲击/i).first()).toBeVisible();
+
+    // 4. Test Interactive Institutional Hedges in Portfolio Stress Overlay
+    // Verify hedge switches exist
+    const cdsToggle = page.locator('[data-testid="hedge-toggle-cds_hedge"]');
+    await expect(cdsToggle).toBeVisible();
+
+    // Verify Net Saved Capital badge is rendered
+    await expect(page.getByText(/挽回 \+\$/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('主动宏观对冲防护台').first()).toBeVisible();
+
+    // Toggle on Offshore Derisking
+    const deriskToggle = page.locator('[data-testid="hedge-toggle-derisk_ofc"]');
+    await expect(deriskToggle).toBeVisible();
+    await deriskToggle.click();
+
+    // Verify saved capital reflects active hedges
+    await expect(page.getByText(/保全 \+\$/i).first()).toBeVisible();
   });
 
 });

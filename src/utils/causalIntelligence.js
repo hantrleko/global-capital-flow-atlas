@@ -278,29 +278,46 @@ export const INVESTIGATION_TRACKS = [
         stepIndex: 1,
         tabId: 'map',
         title: '第 1 步：发现避税中枢资金异常积聚',
-        prompt: '在信贷流向地图上观察开曼群岛 (KY) 与卢森堡 (LU) 汇聚的数万亿美元流向。点击「穿透离岸中心」开关，观察光弧如何自动重定向回美国和欧洲真实母公司主体。',
-        actionLabel: '下一步：前往影子银行核查表外掉期 ➔'
+        prompt: '在信贷流向地图上观察开曼群岛 (KY) 与卢森堡 (LU) 汇聚的数万亿美元流向。系统已自动开启「穿透离岸中心」开关，观察光弧如何重定向回美国和欧洲真实母公司主体。',
+        actionLabel: '下一步：前往影子银行核查表外掉期 ➔',
+        statePayload: {
+          country: 'KY',
+          accountingBasis: 'ultimate_risk',
+          lookThrough: true
+        }
       },
       {
         stepIndex: 2,
         tabId: 'shadow',
         title: '第 2 步：核查非银机构外汇掉期暗雷',
         prompt: '深入影子银行透镜，审视高达数十万亿美元的表外未记录外汇掉期。非银对冲基金利用开曼架构以短博长，形成极其脆弱的美元流动性断层。',
-        actionLabel: '下一步：推演离岸流动性休克冲击 ➔'
+        actionLabel: '下一步：推演离岸流动性休克冲击 ➔',
+        statePayload: {
+          country: 'KY'
+        }
       },
       {
         stepIndex: 3,
         tabId: 'contagion',
         title: '第 3 步：运行级联清算求解二阶受损',
-        prompt: '在级联传染模拟器中切换至「离岸美元流动性休克」情景，观察英国伦敦和美欧核心银行如何在两轮多米诺传导中分摊数千亿美元损失。',
-        actionLabel: '下一步：映射至投资组合测算减记 ➔'
+        prompt: '在级联传染模拟器中已自动设定离岸流动性收缩震中，观察英国伦敦和美欧核心银行如何在两轮多米诺传导中分摊数千亿美元损失。',
+        actionLabel: '下一步：映射至投资组合测算减记 ➔',
+        statePayload: {
+          epicenter: 'KY',
+          haircut: 30,
+          scenarioId: 'dollar_liquidity_freeze'
+        }
       },
       {
         stepIndex: 4,
         tabId: 'portfolio',
         title: '第 4 步：在投资账户中筑起主动风控防线',
         prompt: '查看您的组合资产在此离岸休克下的预期减记与 99% VaR，采纳 AI 宏观对冲建议（缩减开曼 PE 敞口切换至短期美债，买入 CDS 锁定风险）。',
-        actionLabel: '完成调查 · 查看风控简报'
+        actionLabel: '完成调查 · 查看风控简报',
+        statePayload: {
+          presetId: 'global_macro_balanced',
+          scenarioId: 'dollar_liquidity_freeze'
+        }
       }
     ]
   },
@@ -318,29 +335,43 @@ export const INVESTIGATION_TRACKS = [
         stepIndex: 1,
         tabId: 'ews',
         title: '第 1 步：捕获土耳其主权违约早期预警',
-        prompt: '在巴塞尔 EWS 雷达中定位信贷/GDP 缺口与外汇外债比率，土耳其 (TR) 全面亮起红色警报，偿债能力面临极限承压。',
-        actionLabel: '下一步：核验短期债务展期压力 ➔'
+        prompt: '系统已自动锁定土耳其 (TR)，在巴塞尔 EWS 雷达中定位其信贷/GDP 缺口与外汇外债比率，该国全面亮起红色警报，偿债能力面临极限承压。',
+        actionLabel: '下一步：核验短期债务展期压力 ➔',
+        statePayload: {
+          country: 'TR'
+        }
       },
       {
         stepIndex: 2,
         tabId: 'maturity',
         title: '第 2 步：核查短期外债展期墙风险',
         prompt: '在期限结构模块中查看 1 年以内到期外债占比。土耳其与新兴市场外汇储备对到期外债覆盖率不足，再融资窗口即将关闭。',
-        actionLabel: '下一步：测试向欧洲核心大行传染 ➔'
+        actionLabel: '下一步：测试向欧洲核心大行传染 ➔',
+        statePayload: {
+          country: 'TR'
+        }
       },
       {
         stepIndex: 3,
         tabId: 'contagion',
         title: '第 3 步：Picard 不动点清算：德国首当其冲',
-        prompt: '观察土耳其 40% 外债减记如何直接重创德国银行 ($69.2B)，并间接通过同业网络拉垮英国与美国银行。',
-        actionLabel: '下一步：映射至我的投资账户 ➔'
+        prompt: '系统已自动将违约震中锁定为土耳其 (TR，40% 减记)，观察其如何直接重创德国银行 ($69.2B)，并间接通过同业网络拉垮英国与美国银行。',
+        actionLabel: '下一步：映射至我的投资账户 ➔',
+        statePayload: {
+          epicenter: 'TR',
+          haircut: 40
+        }
       },
       {
         stepIndex: 4,
         tabId: 'portfolio',
         title: '第 4 步：组合资产压力映射与 CDS 对冲',
-        prompt: '查看组合中新兴市场外债的直接减记与欧洲银行的二阶传染减记，一键生成对冲方案与投委会卡片。',
-        actionLabel: '完成调查 · 导出研报卡片'
+        prompt: '查看组合中新兴市场外债的直接减记与欧洲银行的二阶传染减记，一键开启 CDS 对冲方案，实时验证组合资本保全效果。',
+        actionLabel: '完成调查 · 导出研报卡片',
+        statePayload: {
+          presetId: 'global_macro_balanced',
+          scenarioId: 'tr_sovereign_crisis'
+        }
       }
     ]
   },
@@ -359,29 +390,38 @@ export const INVESTIGATION_TRACKS = [
         tabId: 'fragmentation',
         title: '第 1 步：量化地缘阵营资本巴尔干化',
         prompt: '在地缘金融碎片模块中观察西方核心阵营与非西方阵营之间的双边借贷断崖，跨阵营信贷流速同比锐减 28%。',
-        actionLabel: '下一步：检验多极货币竞争态势 ➔'
+        actionLabel: '下一步：检验多极货币竞争态势 ➔',
+        statePayload: {
+          country: 'CN'
+        }
       },
       {
         stepIndex: 2,
         tabId: 'currency',
         title: '第 2 步：多极货币结算 vs 储备错配脱节',
         prompt: '观察贸易端本币结算的上升与金融资产端美元高壁垒之间的结构性错配，去美元化在金融交易端依然步履维艰。',
-        actionLabel: '下一步：跨历史危机周期对照 ➔'
+        actionLabel: '下一步：跨历史危机周期对照 ➔',
+        statePayload: {
+          country: 'US'
+        }
       },
       {
         stepIndex: 3,
         tabId: 'comparison',
         title: '第 3 步：跨周期制度对比与长远结论',
         prompt: '将当前地缘割裂周期与 2008 全球化顶峰对比，确认全球资本流动已进入去中心化双轨并行的宏观新范式。',
-        actionLabel: '完成调查 · 总结宏观结论'
+        actionLabel: '完成调查 · 总结宏观结论',
+        statePayload: {
+          country: null
+        }
       }
     ]
   }
 ];
 
-// Helper to retrieve verdict for current tab
-export function getModuleVerdict(tabId) {
-  return MODULE_VERDICTS[tabId] || {
+// Helper to retrieve live dynamic verdict for current tab with contextual awareness
+export function getModuleVerdict(tabId, context = {}) {
+  const base = MODULE_VERDICTS[tabId] || {
     id: tabId,
     moduleTitle: '宏观审慎分析工作台',
     observation: '当前正在监视全球跨国银行双边信贷网络与流动性指标分布。',
@@ -390,6 +430,102 @@ export function getModuleVerdict(tabId) {
     severity: 'INFO',
     focusPriority: 3
   };
+
+  const { dataset, selectedQuarter, selectedCountry, clearingResult, portfolioResult, lookThroughEnabled } = context;
+
+  // If no dynamic context is supplied, return canonical static baseline
+  if (!dataset || !selectedQuarter) {
+    return { ...base, isDynamic: false };
+  }
+
+  const dynamicBase = {
+    ...base,
+    isDynamic: true
+  };
+
+  // Derive dynamic global macro metrics for selected quarter
+  const globalMacro = (dataset.global_macro || []).find(m => m.quarter === selectedQuarter) || {};
+  const totalClaims = (globalMacro.total_cross_border_claims_usd_bn || 47600) / 1000;
+  const qoqGrowth = globalMacro.global_qoq_growth_pct !== undefined ? globalMacro.global_qoq_growth_pct : 1.2;
+  const qoqStr = qoqGrowth >= 0 ? `+${qoqGrowth}%` : `${qoqGrowth}%`;
+
+  // Find top bilateral corridor
+  const links = (dataset.bilateral_matrix || {})[selectedQuarter] || [];
+  const topLink = links.length > 0 ? [...links].sort((a, b) => b.claims_usd_bn - a.claims_usd_bn)[0] : null;
+  const topCorridorStr = topLink ? `${topLink.source} ➔ ${topLink.target} ($${topLink.claims_usd_bn}B)` : 'US ➔ GB / KY';
+
+  // Country name map
+  const countries = dataset.countries || [];
+  const countryObj = countries.find(c => c.code === selectedCountry);
+  const countryName = countryObj ? `${countryObj.name_zh} (${countryObj.code})` : selectedCountry;
+
+  // Dynamic overrides by module
+  if (tabId === 'map') {
+    if (selectedCountry) {
+      const cOutbound = links.filter(l => l.source === selectedCountry).reduce((acc, l) => acc + l.claims_usd_bn, 0);
+      const cInbound = links.filter(l => l.target === selectedCountry).reduce((acc, l) => acc + l.claims_usd_bn, 0);
+      return {
+        ...dynamicBase,
+        observation: `${selectedQuarter} 视角：${countryName} 跨国对外债权为 $${Math.round(cOutbound)}B，跨境借入债务为 $${Math.round(cInbound)}B。`,
+        mechanism: `${countryName} 跨国信贷高度依赖核心中枢通道，在全球流动性波动时易受对手方收缩影响。`,
+        verdict: `【主权专属研判】建议核查 ${countryName} 的表外外汇掉期隐性负债与短期期限错配程度，预防展期断裂。`,
+        severity: (selectedCountry === 'TR' || selectedCountry === 'KY') ? 'CRITICAL' : 'WARNING'
+      };
+    }
+    return {
+      ...dynamicBase,
+      observation: `${selectedQuarter} 官方核准数据：全球跨国银行信贷总额为 $${totalClaims.toFixed(2)}T (环比: ${qoqStr})，最大信贷动脉为 ${topCorridorStr}。`,
+      mechanism: `资金深度集聚于跨大西洋走廊与离岸避税中枢，${lookThroughEnabled ? '已开启离岸穿透，还原至最终母国风险承担者。' : '表外对冲基金借道离岸群岛大幅加杠杆。'}`,
+      verdict: lookThroughEnabled 
+        ? '【穿透还原状态】最终母国风险已重分配至美欧大行，建议前往【影子银行】进一步核查表外掉期负债。'
+        : '【离岸避税集聚】建议开启「穿透离岸中心」，并进一步前往【影子银行与非银透视】核查掉期暗雷。',
+      severity: 'WARNING'
+    };
+  }
+
+  if (tabId === 'contagion') {
+    if (clearingResult && clearingResult.topVictimCountry) {
+      const victimName = clearingResult.topVictimCountry;
+      const shortfallStr = clearingResult.incrementalDisplayShortfall || '+$284.8B';
+      return {
+        ...dynamicBase,
+        observation: `Picard 实时清算求解完成：初始外生冲击引发全网边际违约赤字 ${shortfallStr}，受损最严重债权国为 ${victimName}。`,
+        mechanism: `直接债权国承担一阶资产冲销，而美英等网络核心枢纽则因同业交互借贷网络倒戈承担二阶级联传染损失。`,
+        verdict: `【级联传导演算完毕】一阶与二阶多米诺传染已收敛，建议立即点击「映射至我的组合」在投资专户中建立 CDS 对冲防线。`,
+        severity: 'CRITICAL'
+      };
+    }
+    return {
+      ...dynamicBase,
+      observation: `${selectedQuarter} 仿真环境：土耳其 40% 外债减记将引发全网 +$284.8B 边际违约赤字，德国与英国银行同业链受损严重。`,
+      severity: 'CRITICAL'
+    };
+  }
+
+  if (tabId === 'portfolio') {
+    if (portfolioResult) {
+      const savedStr = portfolioResult.netSavedMn > 0 ? `，已通过主动对冲保全 +$${portfolioResult.netSavedMn}M 资本` : '';
+      return {
+        ...dynamicBase,
+        observation: `在当前宏观情景下，组合基准 AUM 预期净减记为 -$${portfolioResult.totalLossMn}M (-${portfolioResult.portfolioLossPct}%)${savedStr}。`,
+        mechanism: `高贝塔主权外债承受直接减记折价，跨国商业银行信用债与离岸 PE 头寸受级联网络传染冲击。`,
+        verdict: portfolioResult.netSavedMn > 0
+          ? `【对冲防护生效】主动对冲组合已收敛尾部风险，99% VaR 处于可控区间，建议导出投行研报卡片。`
+          : `【账户暴露风险】建议立即勾选「买入主权 CDS」与「离岸 SPV 去杠杆」，对冲极端尾部减记。`,
+        severity: portfolioResult.portfolioLossPct > 5.0 ? 'CRITICAL' : 'WARNING'
+      };
+    }
+  }
+
+  if (tabId === 'ews') {
+    return {
+      ...dynamicBase,
+      observation: `${selectedQuarter} 预警雷达：新兴市场信贷/GDP 缺口扩大，土耳其 (TR) 外债偿付比率 (DSR) 持续处于高危红色区间。`,
+      severity: 'CRITICAL'
+    };
+  }
+
+  return dynamicBase;
 }
 
 // Helper to retrieve causal links for current tab

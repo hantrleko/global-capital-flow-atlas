@@ -19,12 +19,16 @@ export default function PortfolioStressOverlay({
   selectedQuarter = '2026Q1',
   selectedCurrency = 'USD',
   onOpenChartCard,
-  onOpenContagion
+  onOpenContagion,
+  liveClearingShockMap = null
 }) {
   const [selectedPresetId, setSelectedPresetId] = useState('global_macro_balanced');
-  const [selectedScenarioId, setSelectedScenarioId] = useState('tr_sovereign_crisis');
+  const [selectedScenarioId, setSelectedScenarioId] = useState(() => {
+    return (liveClearingShockMap && Object.keys(liveClearingShockMap).length > 0) ? 'live_custom_contagion' : 'tr_sovereign_crisis';
+  });
   const [stressMultiplier, setStressMultiplier] = useState(1.0);
   const [enableLookThrough, setEnableLookThrough] = useState(true);
+  const [activeHedges, setActiveHedges] = useState(['cds_hedge']);
   const [copiedMemo, setCopiedMemo] = useState(false);
 
   // Custom portfolio state
@@ -59,10 +63,12 @@ export default function PortfolioStressOverlay({
   const stressResult = useMemo(() => {
     return computePortfolioStressOverlay(activePortfolio, {
       scenarioId: selectedScenarioId,
+      customShockMap: selectedScenarioId === 'live_custom_contagion' ? liveClearingShockMap : null,
       stressMultiplier,
-      enableLookThrough
+      enableLookThrough,
+      activeHedges
     });
-  }, [activePortfolio, selectedScenarioId, stressMultiplier, enableLookThrough]);
+  }, [activePortfolio, selectedScenarioId, liveClearingShockMap, stressMultiplier, enableLookThrough, activeHedges]);
 
   // Render ECharts Loss Attribution Horizontal Bar Chart
   useEffect(() => {
@@ -308,9 +314,16 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
           <div className="text-xl font-black font-mono text-rose-400 mt-1">
             -${stressResult.totalLossMn}M
           </div>
-          <span className="text-[10px] font-mono font-bold text-rose-300 mt-1">
-            回撤: -{stressResult.portfolioLossPct}%
-          </span>
+          <div className="flex items-center justify-between gap-1 mt-1">
+            <span className="text-[10px] font-mono font-bold text-rose-300">
+              回撤: -{stressResult.portfolioLossPct}%
+            </span>
+            {stressResult.netSavedMn > 0 && (
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                挽回 +${stressResult.netSavedMn}M
+              </span>
+            )}
+          </div>
         </div>
 
         {/* First-Order vs Second-Order */}
@@ -366,7 +379,24 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
             宏观冲击情景:
           </span>
           <div className="flex items-center gap-1.5 flex-wrap">
-            {MACRO_STRESS_SCENARIOS.map(sc => (
+            {liveClearingShockMap && Object.keys(liveClearingShockMap).length > 0 && (
+              <button
+                onClick={() => {
+                  soundFx.playChime();
+                  setSelectedScenarioId('live_custom_contagion');
+                }}
+                data-testid="scenario-live_custom_contagion"
+                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  selectedScenarioId === 'live_custom_contagion'
+                    ? 'bg-amber-500 text-slate-950 shadow-md animate-pulse'
+                    : 'bg-amber-950/60 text-amber-300 hover:text-white border border-amber-500/50'
+                }`}
+                title="已同步接收网络传染模拟器的 Eisenberg-Noe 实时清算损失率"
+              >
+                <span>⚡ 实时清算冲击</span>
+              </button>
+            )}
+            {MACRO_STRESS_SCENARIOS.filter(s => s.id !== 'live_custom_contagion').map(sc => (
               <button
                 key={sc.id}
                 onClick={() => {
@@ -448,23 +478,76 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
           />
         </div>
 
-        {/* Right Col: Actionable Institutional Hedging Advice */}
+        {/* Right Col: Actionable Institutional Hedging Advice & Active Hedge Cockpit */}
         <div className="glass-panel rounded-xl p-4 border border-slate-800 bg-slate-900/60 flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold text-white">宏观对冲与防线建议</h3>
+              <h3 className="text-sm font-bold text-white">主动宏观对冲防护台 (Active Hedge Overlay)</h3>
             </div>
-            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
-              主动风控
-            </span>
+            {stressResult.netSavedMn > 0 && (
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/40 font-bold animate-pulse">
+                保全 +${stressResult.netSavedMn}M
+              </span>
+            )}
           </div>
 
-          <div className="space-y-2.5 flex-1 overflow-y-auto pr-1">
-            {stressResult.hedgingAdvice.map((adv, idx) => (
+          {/* Interactive Hedge Strategies Switches */}
+          <div className="space-y-2">
+            {[
+              { id: 'cds_hedge', title: '买入主权违约互换 (Sovereign CDS)', tag: '80% 冲销', desc: '锁定高危主权外债头寸违约减记' },
+              { id: 'derisk_ofc', title: '离岸 SPV 调降至短期美债 (T-Bills)', tag: '50% 避险', desc: '开曼/离岸 PE 敞口削减 50% 转入 0-Beta HQLA' },
+              { id: 'swap_basis_collar', title: '跨货币互换基差套保 (Basis Collar)', tag: '70% 减震', desc: '对冲外汇掉期表外保证金追缴' }
+            ].map(h => {
+              const isChecked = activeHedges.includes(h.id);
+              return (
+                <label
+                  key={h.id}
+                  data-testid={`hedge-toggle-${h.id}`}
+                  className={`p-2 rounded-lg border flex items-start gap-2.5 cursor-pointer transition-all ${
+                    isChecked
+                      ? 'bg-emerald-950/30 border-emerald-500/50 text-white'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => {
+                      soundFx.playTick();
+                      setActiveHedges(prev =>
+                        prev.includes(h.id) ? prev.filter(x => x !== h.id) : [...prev, h.id]
+                      );
+                    }}
+                    className="mt-0.5 accent-emerald-500 cursor-pointer"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className={isChecked ? 'text-emerald-300' : 'text-slate-300'}>{h.title}</span>
+                      <span className="text-[9px] font-mono px-1 rounded bg-slate-800 text-emerald-400 border border-emerald-500/30">{h.tag}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{h.desc}</p>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+
+          {/* Hedge Capital Preserved Bar */}
+          {stressResult.netSavedMn > 0 && (
+            <div className="p-2.5 rounded-lg bg-emerald-950/50 border border-emerald-500/40 text-xs font-mono flex items-center justify-between">
+              <span className="text-emerald-300 font-bold">对冲净挽回资本:</span>
+              <span className="text-emerald-400 font-black text-sm">+{selectedCurrency === 'USD' ? '$' : ''}{stressResult.netSavedMn}M</span>
+            </div>
+          )}
+
+          {/* AI Hedging Advice List */}
+          <div className="space-y-2 pt-1 border-t border-slate-800">
+            <span className="text-[11px] font-mono text-slate-400 font-semibold">AI 宏观研判备忘:</span>
+            {stressResult.hedgingAdvice.slice(0, 2).map((adv, idx) => (
               <div 
                 key={idx} 
-                className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-slate-700 transition-colors space-y-1"
+                className="p-2 rounded-lg bg-slate-950/80 border border-slate-800/80 space-y-1"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-200">{adv.title}</span>
@@ -476,7 +559,7 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                     {adv.priority}
                   </span>
                 </div>
-                <p className="text-[11px] leading-relaxed text-slate-400">
+                <p className="text-[10px] leading-relaxed text-slate-400">
                   {adv.desc}
                 </p>
               </div>

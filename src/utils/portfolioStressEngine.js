@@ -172,8 +172,74 @@ export const MACRO_STRESS_SCENARIOS = [
       KY: 0.26,
       LU: 0.19
     }
+  },
+  {
+    id: 'live_custom_contagion',
+    name: 'Eisenberg-Noe 实时级联清算仿真冲击 (Live Contagion Shock)',
+    desc: '由网络传染模拟器实时 Picard 不动点求解输出的各国边际违约率向量驱动',
+    epicenter: 'LIVE',
+    haircut: 0.35,
+    bufferMultiplier: 1.0,
+    systemicShockMap: {}
   }
 ];
+
+// Institutional Hedging Strategies Catalog
+export const INSTITUTIONAL_HEDGE_CATALOG = [
+  {
+    id: 'cds_hedge',
+    title: '买入主权违约互换 (Sovereign CDS)',
+    desc: '为震中及最高危主权外债头寸建立 80% 违约冲销保护',
+    costRate: 0.012,
+    efficiency: 0.80,
+    targetAssetClass: 'sovereign_debt'
+  },
+  {
+    id: 'derisk_ofc',
+    title: '离岸 SPV 去杠杆至短期美债 (De-risk Offshore SPVs)',
+    desc: '将开曼/离岸 PE 与对冲股权头寸调降 50% 并再分配至 0-Beta 短期国库券',
+    costRate: 0.002,
+    efficiency: 0.50,
+    targetAssetClass: 'equities'
+  },
+  {
+    id: 'swap_basis_collar',
+    title: '跨货币互换基差套保 (Basis Swap Collar)',
+    desc: '对冲外汇掉期与表外衍生品保证金追缴及基差走阔损失 70%',
+    costRate: 0.005,
+    efficiency: 0.70,
+    targetAssetClass: 'fx_derivatives'
+  }
+];
+
+/**
+ * Builds a dynamic shock map from Eisenberg-Noe Picard clearing output
+ */
+export function buildLiveClearingShockMap(clearingOutput = {}) {
+  const shockMap = {};
+  if (!clearingOutput) return shockMap;
+
+  // Set epicenter shock
+  const epi = clearingOutput.epicenter || clearingOutput.epicenterCode;
+  if (epi) {
+    const rawHaircut = clearingOutput.haircut !== undefined ? clearingOutput.haircut : (clearingOutput.haircutPct !== undefined ? clearingOutput.haircutPct : 35);
+    shockMap[epi] = Math.min(1.0, rawHaircut > 1 ? rawHaircut / 100 : rawHaircut);
+  }
+
+  // Iterate over creditors/victims in clearing output
+  const victims = clearingOutput.victimList || clearingOutput.impactList || clearingOutput.creditorImpacts || [];
+  victims.forEach(v => {
+    const code = v.country || v.code;
+    if (code && !shockMap[code]) {
+      const shortfall = v.incrementalShortfall || v.rawShortfall || v.loss || v.enIncrementalShortfallRaw || 0;
+      // Convert raw dollar shortfall to proportional haircut scale (capped at 50%)
+      const ratio = Math.min(0.50, Math.max(0.04, shortfall / 180));
+      shockMap[code] = Math.round(ratio * 1000) / 1000;
+    }
+  });
+
+  return shockMap;
+}
 
 /**
  * Compute Portfolio Stress Overlay under a given Macro Shock
@@ -186,8 +252,10 @@ export function computePortfolioStressOverlay(portfolio, options = {}) {
   const {
     scenarioId = 'tr_sovereign_crisis',
     customShockMap = null,
+    liveClearingShockMap = null,
     stressMultiplier = 1.0,
-    enableLookThrough = true
+    enableLookThrough = true,
+    activeHedges = []
   } = options;
 
   const positions = portfolio?.positions || [];
@@ -196,8 +264,9 @@ export function computePortfolioStressOverlay(portfolio, options = {}) {
   // Resolve shock map
   let activeShockMap = {};
   const presetScenario = MACRO_STRESS_SCENARIOS.find(s => s.id === scenarioId);
-  if (customShockMap && Object.keys(customShockMap).length > 0) {
-    activeShockMap = { ...customShockMap };
+  const providedMap = customShockMap || liveClearingShockMap;
+  if (providedMap && Object.keys(providedMap).length > 0) {
+    activeShockMap = { ...providedMap };
   } else if (presetScenario) {
     activeShockMap = { ...presetScenario.systemicShockMap };
   } else {
@@ -286,8 +355,44 @@ export function computePortfolioStressOverlay(portfolio, options = {}) {
   const portfolioLossPct = Math.round((totalLossMn / Math.max(1, baseAum)) * 1000) / 10;
   const stressedAumMn = Math.max(0, Math.round((baseAum - totalLossMn) * 10) / 10);
 
+  // Calculate Active Hedges overlay effect
+  let hedgedLossMn = totalLossMn;
+  let hedgeCostMn = 0;
+
+  if (activeHedges && activeHedges.length > 0) {
+    let lossReduction = 0;
+    positionResults.forEach(pos => {
+      // CDS Hedge: covers sovereign debt losses on high risk or epicenter assets
+      if (activeHedges.includes('cds_hedge') && (pos.assetClass === 'sovereign_debt' || pos.country === 'TR')) {
+        const covered = pos.lossMn * 0.80;
+        lossReduction += covered;
+        hedgeCostMn += pos.amountMn * 0.012;
+      }
+      // De-risk OFC: reduces offshore equity losses by 50%
+      if (activeHedges.includes('derisk_ofc') && (pos.isLookedThrough || pos.assetClass === 'equities' || pos.country === 'KY')) {
+        const covered = pos.lossMn * 0.50;
+        lossReduction += covered;
+        hedgeCostMn += pos.amountMn * 0.002;
+      }
+      // Swap Basis Collar: mitigates FX derivatives losses by 70%
+      if (activeHedges.includes('swap_basis_collar') && (pos.assetClass === 'fx_derivatives' || pos.assetClass === 'interbank_loans')) {
+        const covered = pos.lossMn * 0.70;
+        lossReduction += covered;
+        hedgeCostMn += pos.amountMn * 0.005;
+      }
+    });
+
+    hedgedLossMn = Math.max(0, Math.round((totalLossMn - lossReduction) * 10) / 10);
+    hedgeCostMn = Math.round(hedgeCostMn * 10) / 10;
+  }
+
+  const netSavedMn = Math.max(0, Math.round((totalLossRounded - hedgedLossMn - hedgeCostMn) * 10) / 10);
+  const hedgedStressedAumMn = Math.round((baseAum - hedgedLossMn - hedgeCostMn) * 10) / 10;
+  const hedgedLossPct = Math.round((hedgedLossMn / Math.max(1, baseAum)) * 1000) / 10;
+
   // Stress VaR (99% 1-Month Horizon): Historical Basel multiplier on expected stress loss
   const stressVaR99Mn = Math.round(totalLossRounded * 1.35 * 10) / 10;
+  const hedgedStressVaR99Mn = Math.round(hedgedLossMn * 1.35 * 10) / 10;
 
   // Generate Institutional Hedging Recommendations
   const topVictims = positionResults.slice(0, 3);
@@ -301,9 +406,18 @@ export function computePortfolioStressOverlay(portfolio, options = {}) {
     stressedAumMn,
     totalLossMn: totalLossRounded,
     portfolioLossPct,
+    unhedgedLossMn: totalLossRounded,
+    hedgedLossMn,
+    hedgedLossPct,
+    hedgeCostMn,
+    netSavedMn,
+    hedgedStressedAumMn,
+    activeHedges,
+    availableHedges: INSTITUTIONAL_HEDGE_CATALOG,
     firstOrderLossMn: Math.round(totalFirstOrderLossMn * 10) / 10,
     secondOrderLossMn: Math.round(totalSecondOrderLossMn * 10) / 10,
     stressVaR99Mn,
+    hedgedStressVaR99Mn,
     positionsCount: positions.length,
     positionResults,
     topVictims,
