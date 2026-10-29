@@ -146,7 +146,7 @@ export default function GravityEconometrics({
     ];
 
     const option = {
-      backgroundColor: '#080c14',
+      backgroundColor: 'transparent',
       tooltip: {
         trigger: 'item',
         backgroundColor: '#0f172a',

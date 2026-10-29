@@ -27,7 +27,8 @@ export default function NetworkContagionSimulator({
   contagionConfig,
   onOpenAppendix,
   onOpenChartCard,
-  onMapToPortfolio
+  onMapToPortfolio,
+  onClearingResultChange
 }) {
   const countries = dataset.countries || [];
 
@@ -176,6 +177,13 @@ export default function NetworkContagionSimulator({
     executeSimulation();
   }, [dataFingerprint]);
 
+  // Synchronize live clearing output to parent ExecutiveVerdictBanner
+  useEffect(() => {
+    if (simResults && onClearingResultChange) {
+      onClearingResultChange(simResults);
+    }
+  }, [simResults, onClearingResultChange]);
+
   // Render Cascade Chart
   useEffect(() => {
     if (!chartRef.current) return;
@@ -196,17 +204,60 @@ export default function NetworkContagionSimulator({
 
     const topImpacted = simResults.impactList.slice(0, 10).reverse();
     const isEn = simMode === 'en_clearing';
+    const isIncrementalMode = isEn && enSortMetric === 'incremental';
+
+    const enLegend = isIncrementalMode
+      ? ['一阶直接减记 (Direct ΔS)', '二阶级联溢出 (Indirect ΔS)']
+      : ['零冲击基线短缺 (Zero-Shock Base)', '冲击净增量 (Marginal Shock Loss)'];
+
+    const enSeries = isIncrementalMode
+      ? [
+          {
+            name: '一阶直接减记 (Direct ΔS)',
+            type: 'bar',
+            stack: 'total',
+            barMaxWidth: 22,
+            itemStyle: { color: '#fb7185', borderRadius: [0, 0, 0, 0] },
+            data: topImpacted.map(d => d.enIncrementalDirect ?? 0)
+          },
+          {
+            name: '二阶级联溢出 (Indirect ΔS)',
+            type: 'bar',
+            stack: 'total',
+            barMaxWidth: 22,
+            itemStyle: { color: '#818cf8', borderRadius: [0, 4, 4, 0] },
+            data: topImpacted.map(d => d.enIncrementalIndirect ?? 0)
+          }
+        ]
+      : [
+          {
+            name: '零冲击基线短缺 (Zero-Shock Base)',
+            type: 'bar',
+            stack: 'total',
+            barMaxWidth: 22,
+            itemStyle: { color: '#334155' },
+            data: topImpacted.map(d => d.enBaselineShortfall)
+          },
+          {
+            name: '冲击净增量 (Marginal Shock Loss)',
+            type: 'bar',
+            stack: 'total',
+            barMaxWidth: 22,
+            itemStyle: { color: '#fb7185', borderRadius: [0, 4, 4, 0] },
+            data: topImpacted.map(d => d.enIncrementalShortfall)
+          }
+        ];
 
     const option = {
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: 'rgba(10, 15, 30, 0.94)',
-        borderColor: isEn ? 'rgba(244, 63, 94, 0.5)' : 'rgba(244, 63, 94, 0.4)',
+        backgroundColor: 'rgba(13, 19, 33, 0.96)',
+        borderColor: 'rgba(255, 255, 255, 0.12)',
         borderWidth: 1,
         padding: [10, 14],
-        extraCssText: 'box-shadow: 0 12px 36px rgba(0,0,0,0.6); backdrop-filter: blur(12px); border-radius: 8px;',
+        extraCssText: 'box-shadow: 0 12px 36px rgba(0,0,0,0.6); backdrop-filter: blur(12px); border-radius: 10px;',
         textStyle: { color: '#f8fafc', fontSize: 12 },
         formatter: (params) => {
           const item = topImpacted[params[0].dataIndex];
@@ -214,29 +265,23 @@ export default function NetworkContagionSimulator({
           if (isEn) {
             return `
               <div class="p-1 font-sans">
-                <div class="font-bold text-white border-b border-rose-500/40 pb-1 mb-1.5 flex items-center justify-between">
+                <div class="font-bold text-white border-b border-white/10 pb-1 mb-1.5 flex items-center justify-between gap-3">
                   <span>${item.name_zh} (${item.code})</span>
-                  <span class="text-[10px] font-mono text-rose-300">Eisenberg-Noe 双基线分解</span>
+                  <span class="text-[11px] font-mono text-indigo-300">Eisenberg-Noe 边际分解</span>
                 </div>
                 <div class="space-y-1 text-xs">
                   <div class="text-rose-400 font-bold">
-                    冲击净增量 (Marginal Shock Loss): <b class="font-mono text-white">+$${item.enIncrementalShortfall}B (+${Math.round(item.enIncrementalShortfall * 10).toLocaleString()} 亿美元)</b>
+                    冲击净增量 (ΔS): <b class="font-mono text-white">+$${item.enIncrementalShortfall}B</b>
                   </div>
-                  <div class="text-slate-400 text-[11px] pl-2 border-l border-rose-500/40">
-                    <div>· 直接受震中违约传导: <b class="font-mono text-rose-300">+$${item.enIncrementalDirect}B</b></div>
-                    <div>· 网络次生级联扩散增量: <b class="font-mono text-purple-300">+$${item.enIncrementalIndirect}B</b></div>
+                  <div class="text-slate-300 text-[11px] pl-2 border-l border-indigo-400/40">
+                    <div>· 一阶直接减记: <b class="font-mono text-rose-300">+$${item.enIncrementalDirect}B</b></div>
+                    <div>· 二阶级联溢出: <b class="font-mono text-indigo-300">+$${item.enIncrementalIndirect}B</b></div>
                   </div>
-                  <div class="border-t border-slate-800 pt-1 text-slate-300">
-                    零冲击基线短缺 (Zero-Shock Base): <b class="font-mono text-slate-400">$${item.enBaselineShortfall}B</b>
+                  <div class="border-t border-slate-800 pt-1 text-slate-400 text-[11px]">
+                    零冲击基线 (S0): <b class="font-mono text-slate-300">$${item.enBaselineShortfall}B</b> · 冲击后总额 (S*): <b class="font-mono text-white">$${item.enPostShockShortfall}B</b>
                   </div>
-                  <div class="text-slate-300">
-                    冲击后总短缺 (Post-Shock Total S*): <b class="font-mono text-white font-bold">$${item.enPostShockShortfall}B</b>
-                  </div>
-                  <div class="text-[10px] text-slate-400 pt-0.5">
-                    增量损失占官方外储比: <b class="font-mono text-amber-400">${item.enIncrementalToReservesPct !== 'NA' ? `+${item.enIncrementalToReservesPct}%` : 'NA (外储未收录)'}</b>
-                  </div>
-                  <div class="text-[10px] text-slate-500 mt-1 leading-normal">
-                    压力测试准则：严格剥离网络闭合静态基线，仅度量外生冲击所致边际缺口。
+                  <div class="text-[11px] text-slate-400">
+                    增量占官方外储比: <b class="font-mono text-amber-400">${item.enIncrementalToReservesPct !== 'NA' ? `+${item.enIncrementalToReservesPct}%` : 'NA'}</b>
                   </div>
                 </div>
               </div>
@@ -248,13 +293,13 @@ export default function NetworkContagionSimulator({
                 ${item.name_zh} (${item.code}) 行为级联损益
               </div>
               <div class="space-y-1 text-xs">
-                <div>第一轮：直接资产减记损失: <b class="font-mono text-rose-400">$${item.r1Loss}B (${Math.round(item.r1Loss * 10).toLocaleString()} 亿美元)</b></div>
-                <div>第二轮：去杠杆流动性抽离: <b class="font-mono text-amber-400">$${item.r2Spillover}B (${Math.round(item.r2Spillover * 10).toLocaleString()} 亿美元)</b></div>
-                <div>第三轮：离岸美元再融资挤压: <b class="font-mono text-sky-400">${item.r3Dollar !== null ? `$${item.r3Dollar}B (${Math.round(item.r3Dollar * 10).toLocaleString()} 亿美元)` : 'NA (数据缺失)'}</b></div>
+                <div>第一轮：直接资产减记损失: <b class="font-mono text-rose-400">$${item.r1Loss}B</b></div>
+                <div>第二轮：去杠杆流动性抽离: <b class="font-mono text-amber-400">$${item.r2Spillover}B</b></div>
+                <div>第三轮：离岸美元再融资挤压: <b class="font-mono text-sky-400">${item.r3Dollar !== null ? `$${item.r3Dollar}B` : 'NA'}</b></div>
                 <div class="border-t border-slate-800 pt-1">
-                  综合受损总额: <b class="font-mono text-white text-sm font-bold">$${item.totalImpact}B (${Math.round(item.totalImpact * 10).toLocaleString()} 亿美元)</b>
+                  综合受损总额: <b class="font-mono text-white text-sm font-bold">$${item.totalImpact}B</b>
                 </div>
-                <div class="text-[10px] text-slate-400">冲击占外汇储备比: <b class="font-mono text-rose-400">${item.impactToReservesPct}%</b></div>
+                <div class="text-[11px] text-slate-400">冲击占外汇储备比: <b class="font-mono text-rose-400">${item.impactToReservesPct}%</b></div>
               </div>
             </div>
           `;
@@ -262,22 +307,23 @@ export default function NetworkContagionSimulator({
       },
       legend: {
         data: isEn
-          ? ['零冲击基线短缺 (Zero-Shock Base)', '冲击净增量 (Marginal Shock Loss)']
+          ? enLegend
           : ['第一轮：直接资产减记 (Direct Loss)', '第二轮：去杠杆流动性抽离 (Secondary Retrenchment)', '第三轮：离岸美元再融资挤压 (USD Squeeze)'],
-        top: 8,
+        top: 6,
         textStyle: { color: '#94a3b8', fontSize: 11 }
       },
       grid: {
-        left: '18%',
-        right: '8%',
-        top: '16%',
+        left: '16%',
+        right: '7%',
+        top: '15%',
         bottom: '8%'
       },
       xAxis: {
         type: 'value',
-        name: isEn ? '清算短缺额 (USD Bn)' : '受损规模 (USD Bn)',
-        splitLine: { lineStyle: { color: '#1e293b' } },
-        axisLabel: { color: '#94a3b8', formatter: '${value}B' }
+        name: isIncrementalMode ? '边际违约赤字 ΔS ($B)' : (isEn ? '清算短缺额 ($B)' : '受损规模 ($B)'),
+        nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+        splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } },
+        axisLabel: { color: '#94a3b8', fontSize: 11, formatter: '${value}B' }
       },
       yAxis: {
         type: 'category',
@@ -286,28 +332,13 @@ export default function NetworkContagionSimulator({
         axisLabel: { color: '#cbd5e1', fontSize: 11 }
       },
       series: isEn
-        ? [
-            {
-              name: '零冲击基线短缺 (Zero-Shock Base)',
-              type: 'bar',
-              stack: 'total',
-              itemStyle: { color: '#334155' },
-              data: topImpacted.map(d => d.enBaselineShortfall)
-            },
-            {
-              name: '冲击净增量 (Marginal Shock Loss)',
-              type: 'bar',
-              stack: 'total',
-              itemStyle: { color: '#f43f5e' },
-              data: topImpacted.map(d => d.enIncrementalShortfall)
-            }
-          ]
+        ? enSeries
         : [
             {
               name: '第一轮：直接资产减记 (Direct Loss)',
               type: 'bar',
               stack: 'total',
-              itemStyle: { color: '#f43f5e' },
+              itemStyle: { color: '#fb7185' },
               data: topImpacted.map(d => d.r1Loss)
             },
             {
@@ -626,43 +657,42 @@ export default function NetworkContagionSimulator({
   };
 
   return (
-    <div className="glass-panel rounded-2xl p-3 sm:p-4 shadow-2xl space-y-2.5 scroll-mt-24">
-      {/* Top Header & Simulation Controls */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-1 gap-2">
-        <div className="flex items-center gap-2">
+    <div className="glass-panel rounded-2xl p-2.5 sm:p-3.5 shadow-2xl space-y-2 scroll-mt-24">
+      {/* Top Header & Simulation Controls (Zero-Wrap Single Row on Desktop) */}
+      <div className="flex flex-wrap lg:flex-nowrap items-center justify-between border-b border-slate-800 pb-1.5 gap-2 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2 shrink-0">
           <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
             <AlertOctagon className="w-3.5 h-3.5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
-                跨国银行网络传染模拟器 (Eisenberg-Noe)
-              </h2>
-              <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
-                {selectedQuarter}
-              </span>
-              <DataClassificationBadge
-                classification="STRESS_SIMULATION"
-                quarter={selectedQuarter}
-                sourceText="模型重构双边资产负债基准"
-                methodText="Eisenberg & Noe (2001) 级联违约清算"
-                onOpenAppendix={onOpenAppendix}
-              />
-            </div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-white whitespace-nowrap" title="Eisenberg-Noe (2001) Cross-Border Interbank Network Contagion Simulator">
+              跨国银行网络传染模拟器 (Eisenberg-Noe)
+            </h2>
+            <span className="text-[11px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">
+              {selectedQuarter}
+            </span>
+            <DataClassificationBadge
+              classification="STRESS_SIMULATION"
+              quarter={selectedQuarter}
+              sourceText="BIS 双边重构基准"
+              methodText="Eisenberg-Noe (2001)"
+              onOpenAppendix={onOpenAppendix}
+              className="hidden 2xl:inline-flex"
+            />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Model Contract Switch */}
-          <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-xs">
+          <div className="atlas-segmented text-xs">
             <button
               onClick={() => {
                 soundFx.playTick();
                 setSimMode('en_clearing');
               }}
-              className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2.5 py-0.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                 simMode === 'en_clearing'
-                  ? 'bg-purple-600 text-white shadow-sm'
+                  ? 'atlas-pill-active'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -673,9 +703,9 @@ export default function NetworkContagionSimulator({
                 soundFx.playTick();
                 setSimMode('behavioral');
               }}
-              className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2.5 py-0.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                 simMode === 'behavioral'
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'atlas-pill-active'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -686,10 +716,10 @@ export default function NetworkContagionSimulator({
           {onOpenChartCard && (
             <button
               onClick={onOpenChartCard}
-              className="px-2 py-1 bg-blue-950/60 hover:bg-blue-900/60 border border-blue-500/40 rounded-lg text-sky-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs font-mono"
+              className="px-2.5 py-1 bg-[#0d1321] hover:bg-[#131b2e] border border-white/[0.1] rounded-lg text-slate-200 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs font-medium"
               title="一键生成投行级研报卡片 (Publication-Ready Chart Card)"
             >
-              <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
               <span className="hidden sm:inline">研报卡片</span>
             </button>
           )}
@@ -707,10 +737,10 @@ export default function NetworkContagionSimulator({
                 });
               }}
               data-testid="map-contagion-to-portfolio-btn"
-              className="px-2.5 py-1 bg-purple-950/60 hover:bg-purple-900/70 border border-purple-500/50 rounded-lg text-purple-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold shadow-sm"
+              className="px-2.5 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-400/40 rounded-lg text-indigo-200 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold shadow-sm"
               title="将当前 Eisenberg-Noe 清算受损向量直接映射至投资专户进行风控与对冲评估"
             >
-              <Briefcase className="w-3.5 h-3.5 text-purple-400" />
+              <Briefcase className="w-3.5 h-3.5 text-indigo-300" />
               <span className="hidden sm:inline">映射至组合对冲 ➔</span>
             </button>
           )}
@@ -734,51 +764,51 @@ export default function NetworkContagionSimulator({
       </div>
 
       {/* Sub-bar: View Selector + Single-Scenario Presets or Workbench Indicators */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 bg-slate-900/80 border border-slate-800 rounded-xl text-xs">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+      <div className="flex items-center justify-between gap-2 p-1.5 bg-[#0d1321]/90 border border-white/[0.08] rounded-xl text-xs">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-x-auto scrollbar-none">
           {simMode === 'en_clearing' && (
-            <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-xs shrink-0 mr-1">
+            <div className="atlas-segmented text-xs shrink-0 mr-1">
               <button
                 onClick={() => {
                   soundFx.playTick();
                   setActiveViewTab('single_scenario');
                 }}
-                className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                className={`px-2.5 py-0.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                   activeViewTab === 'single_scenario'
-                    ? 'bg-rose-600 text-white shadow-sm'
+                    ? 'atlas-pill-active'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <Activity className="w-3 h-3" />
-                <span>⚡ 单一情景</span>
+                <span>单一情景</span>
               </button>
               <button
                 onClick={() => {
                   soundFx.playTick();
                   setActiveViewTab('workbench');
                 }}
-                className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                className={`px-2.5 py-0.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                   activeViewTab === 'workbench'
-                    ? 'bg-purple-600 text-white shadow-sm'
+                    ? 'atlas-pill-active'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <GitCompare className="w-3 h-3" />
-                <span>🔬 实验台</span>
+                <span>多机制实验台</span>
               </button>
               <button
                 onClick={() => {
                   soundFx.playTick();
                   setActiveViewTab('diff_ab');
                 }}
-                className={`px-2 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                className={`px-2.5 py-0.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                   activeViewTab === 'diff_ab'
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'atlas-pill-active'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <GitCompare className="w-3 h-3" />
-                <span>⚖️ A/B 差分对比</span>
+                <span>A/B 差分对比</span>
               </button>
             </div>
           )}
@@ -792,10 +822,10 @@ export default function NetworkContagionSimulator({
                 <button
                   key={p.id}
                   onClick={() => handleSelectPreset(p)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all shrink-0 cursor-pointer border ${
+                  className={`px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-all shrink-0 cursor-pointer border ${
                     activePreset === p.id
-                      ? 'bg-rose-600/30 text-rose-300 border-rose-500/60 font-bold shadow-sm'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                      ? 'atlas-pill-active font-semibold'
+                      : 'bg-slate-900/80 border-white/[0.08] text-slate-400 hover:text-white hover:bg-slate-800'
                   }`}
                   title={p.desc}
                 >
@@ -804,10 +834,10 @@ export default function NetworkContagionSimulator({
               ))}
               <button
                 onClick={() => setActivePreset('custom')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all shrink-0 cursor-pointer border ${
+                className={`px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-all shrink-0 cursor-pointer border ${
                   activePreset === 'custom'
-                    ? 'bg-sky-600/30 text-sky-300 border-sky-500/60 font-bold shadow-sm'
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                    ? 'atlas-pill-active font-semibold'
+                    : 'bg-slate-900/80 border-white/[0.08] text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
                 ⚙️ 自由调参
@@ -818,7 +848,7 @@ export default function NetworkContagionSimulator({
               <span className="text-slate-500">对照机制:</span>
               <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">1.0x 严格外储</span>
               <span>vs</span>
-              <span className="px-1.5 py-0.2 rounded bg-purple-900/50 text-purple-200 border border-purple-500/30">1.5x 学术基准</span>
+              <span className="px-1.5 py-0.2 rounded bg-indigo-950/60 text-indigo-200 border border-indigo-400/30">1.5x 学术基准</span>
               <span>vs</span>
               <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">2.0x 广义缓冲</span>
             </div>
@@ -845,15 +875,15 @@ export default function NetworkContagionSimulator({
           )}
         </div>
 
-        <div className="text-[10px] font-mono text-slate-400 flex flex-wrap items-center gap-2 shrink-0">
+        <div className="hidden xl:flex text-[11px] font-mono text-slate-400 items-center gap-1.5 shrink-0">
           {isRecomputing && (
             <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-bold">
               ⚡ 重算中...
             </span>
           )}
-          <span>产品: <strong className="text-slate-200">{simResults?.versionMeta?.productVersion || CLEARING_VERSION_REGISTRY.PRODUCT}</strong></span>
+          <span><strong className="text-slate-200">{simResults?.versionMeta?.productVersion || CLEARING_VERSION_REGISTRY.PRODUCT}</strong></span>
           <span>·</span>
-          <span>外储覆盖: <strong className="text-emerald-400">{simResults?.coverageMeta?.reservesCoverageRatio || '23/23'}</strong></span>
+          <span>外储 <strong className="text-emerald-400">{simResults?.coverageMeta?.reservesCoverageRatio || '23/23'}</strong></span>
         </div>
       </div>
 
@@ -1361,14 +1391,14 @@ export default function NetworkContagionSimulator({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
             {/* Cascade Chart (7 cols) */}
             <div className="lg:col-span-7 bg-slate-900/40 border border-slate-800/90 rounded-xl p-3 flex flex-col gap-2">
-              <div className="text-xs font-bold text-white flex flex-wrap items-center justify-between border-b border-slate-800 pb-2 gap-2">
+              <div className="text-xs font-bold text-white flex flex-wrap items-center justify-between border-b border-slate-800 pb-1.5 gap-2">
                 <span>{simMode === 'en_clearing' ? 'Eisenberg-Noe (2001) 清算短缺受害国级联分解 (前 10 大)' : '受冲击最深的前 10 大受害经济体级联损益'}</span>
                 {simMode === 'en_clearing' ? (
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {enSortMetric === 'incremental' ? '按冲击净增量 Δ 排序 (堆叠显示基线与增量)' : enSortMetric === 'baseline' ? '按零冲击基线排序' : '按冲击后总额排序'}
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {enSortMetric === 'incremental' ? '按冲击净增量 ΔS 排序 (堆叠一阶直接与二阶级联)' : enSortMetric === 'baseline' ? '按零冲击基线排序' : '按冲击后总额排序'}
                   </span>
                 ) : (
-                  <span className="text-[10px] text-slate-400 font-mono">Round 1 + Round 2 + Round 3</span>
+                  <span className="text-[11px] text-slate-400 font-mono">Round 1 + Round 2 + Round 3</span>
                 )}
               </div>
               <div ref={chartRef} className="w-full h-[calc(100vh-340px)] min-h-[350px] max-h-[580px]" />
@@ -1437,10 +1467,10 @@ export default function NetworkContagionSimulator({
                             setBufferMultiplier(opt.val);
                             setActivePreset('custom');
                           }}
-                          className={`py-1 px-1 text-[10px] rounded font-mono transition-all cursor-pointer border ${
+                          className={`py-1 px-1 text-[11px] rounded font-mono transition-all cursor-pointer border ${
                             bufferMultiplier === opt.val
-                              ? 'bg-purple-600 text-white font-bold border-purple-400 shadow-sm'
-                              : 'bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+                              ? 'atlas-pill-active font-bold'
+                              : 'bg-slate-800/80 text-slate-300 hover:text-white border-white/[0.08]'
                           }`}
                         >
                           {opt.label}
@@ -1472,9 +1502,9 @@ export default function NetworkContagionSimulator({
                 {simMode === 'en_clearing' ? (
                   <div>
                     <div className="flex justify-between text-slate-400 mb-1 text-[11px]">
-                      <span className="font-semibold">4. 排序口径:</span>
-                      <span className="font-mono text-sky-400 font-bold">
-                        {enSortMetric === 'incremental' ? '冲击增量 Δ' : (enSortMetric === 'baseline' ? '基线 S0' : '总额 S*')}
+                      <span className="font-semibold">4. 排序与绘图口径:</span>
+                      <span className="font-mono text-indigo-300 font-bold">
+                        {enSortMetric === 'incremental' ? '冲击增量 ΔS' : (enSortMetric === 'baseline' ? '基线 S0' : '总额 S*')}
                       </span>
                     </div>
                     <div className="grid grid-cols-3 gap-1 mt-1">
@@ -1490,10 +1520,10 @@ export default function NetworkContagionSimulator({
                             soundFx.playTick();
                             setEnSortMetric(opt.val);
                           }}
-                          className={`py-1 px-1 text-[10px] rounded font-mono transition-all cursor-pointer border ${
+                          className={`py-1 px-1 text-[11px] rounded font-mono transition-all cursor-pointer border ${
                             enSortMetric === opt.val
-                              ? 'bg-rose-600 text-white font-bold border-rose-400 shadow-sm'
-                              : 'bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+                              ? 'atlas-pill-active font-bold'
+                              : 'bg-slate-800/80 text-slate-300 hover:text-white border-white/[0.08]'
                           }`}
                         >
                           {opt.label}
@@ -1529,7 +1559,7 @@ export default function NetworkContagionSimulator({
             <div className="text-xs font-bold text-white border-b border-slate-800 pb-2 mb-2 flex flex-wrap items-center justify-between gap-1.5">
               <span>{simMode === 'en_clearing' ? '清算受创排序榜单' : '系统性行为受创排序榜单'}</span>
               {simMode === 'en_clearing' ? (
-                <div className="inline-flex rounded bg-slate-950 p-0.5 border border-slate-800 text-[10px]">
+                <div className="atlas-segmented text-[11px]">
                   <button
                     onClick={() => {
                       soundFx.playTick();
@@ -1537,7 +1567,7 @@ export default function NetworkContagionSimulator({
                     }}
                     className={`px-2 py-0.5 rounded font-mono transition-colors cursor-pointer ${
                       enSortMetric === 'incremental'
-                        ? 'bg-rose-600 text-white font-bold shadow-sm'
+                        ? 'atlas-pill-active font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1550,7 +1580,7 @@ export default function NetworkContagionSimulator({
                     }}
                     className={`px-2 py-0.5 rounded font-mono transition-colors cursor-pointer ${
                       enSortMetric === 'post_shock'
-                        ? 'bg-purple-600 text-white font-bold shadow-sm'
+                        ? 'atlas-pill-active font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1563,7 +1593,7 @@ export default function NetworkContagionSimulator({
                     }}
                     className={`px-2 py-0.5 rounded font-mono transition-colors cursor-pointer ${
                       enSortMetric === 'baseline'
-                        ? 'bg-slate-700 text-white font-bold shadow-sm'
+                        ? 'atlas-pill-active font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1571,7 +1601,7 @@ export default function NetworkContagionSimulator({
                   </button>
                 </div>
               ) : (
-                <span className="text-slate-400 text-[10px]">按综合受损总额降序</span>
+                <span className="text-slate-400 text-[11px]">按综合受损总额降序</span>
               )}
             </div>
 
@@ -1668,7 +1698,7 @@ export default function NetworkContagionSimulator({
           <div className="text-[11px] text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 mt-2 space-y-1">
             {simMode === 'en_clearing' ? (
               <div>
-                💡 <strong>Eisenberg-Noe (2001) 双基线清算模型契约说明：</strong> 本模拟器同时计算零冲击初始基线 $p^{(0)}$ 与施加冲击后的清算不动点 $p^*$。压力测试聚焦于<strong>边际增量 $\Delta s_j = s_j^* - s_j^{(0)}$</strong>，将特定震中违约的外生破坏力与静态闭合网络的内生结构缺口彻底解耦，保障压力评估的客观性与科学性。
+                💡 <strong>Eisenberg-Noe (2001) 双基线清算模型契约说明：</strong> 本模拟器同时计算零冲击初始基线 <code className="font-mono text-slate-200">p⁽⁰⁾</code> 与施加冲击后的清算不动点 <code className="font-mono text-slate-200">p*</code>。压力测试聚焦于<strong>边际增量 <code className="font-mono text-rose-300">Δsⱼ = sⱼ* − sⱼ⁽⁰⁾</code></strong>，将特定震中违约的外生破坏力与静态闭合网络的内生结构缺口彻底解耦，保障压力评估的客观性与科学性。
               </div>
             ) : (
               <div>
@@ -1716,9 +1746,9 @@ export default function NetworkContagionSimulator({
                 </div>
               </div>
 
-              <div className="bg-rose-950/30 p-3 rounded-xl border border-rose-500/50 shadow-lg relative overflow-hidden">
-                <div className="absolute top-1.5 right-2 px-1.5 py-0.5 rounded text-[9px] font-mono bg-rose-500 text-white font-bold tracking-wider">
-                  压力测试核心指标
+              <div className="bg-rose-950/30 p-3 rounded-xl border border-rose-500/40 shadow-lg relative overflow-hidden">
+                <div className="absolute top-1.5 right-2 px-1.5 py-0.5 rounded text-[11px] font-mono bg-rose-500/20 text-rose-300 border border-rose-500/40 font-semibold tracking-wider">
+                  核心指标
                 </div>
                 <div className="text-[11px] text-rose-300 uppercase tracking-wider font-mono">
                   2. 冲击净增量短缺 (Marginal Loss ΔS)

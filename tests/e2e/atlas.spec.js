@@ -405,8 +405,8 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
 
     const overlay = page.locator('[data-testid="portfolio-stress-overlay"]');
     await expect(overlay).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('我的组合压力映射 (Portfolio Stress Overlay)')).toBeVisible();
-    await expect(page.getByText('Phase 3 · v2.0.0')).toBeVisible();
+    await expect(overlay.getByText('我的组合压力映射').first()).toBeVisible();
+    await expect(overlay.getByText('v3.5.0 · 专户风控').first()).toBeVisible();
 
     // 2. Verify KPI row values
     await expect(page.getByText('组合基准资产规模')).toBeVisible();
@@ -464,20 +464,27 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const mainViewport = page.locator('#main-viewport');
     await expect(mainViewport).toBeVisible({ timeout: 10000 });
 
-    // 2. Verify Three-Stage Executive Verdict Banner
-    await expect(page.getByText('三段式研判台 (Executive Verdict)').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('宏观异动现象 (Observation)').first()).toBeVisible();
-    await expect(page.getByText('深层驱动机理 (Mechanism)').first()).toBeVisible();
-    await expect(page.getByText('研判结论与行动 (Verdict & Action)').first()).toBeVisible();
+    // 2. Verify Compact First-Screen Verdict Strip & Expandable 3-Stage Reasoning Deck
+    const verdictBanner = page.locator('[data-testid="executive-verdict-banner"]');
+    await expect(verdictBanner).toBeVisible({ timeout: 5000 });
+    await expect(verdictBanner.getByText(/实时研判/).first()).toBeVisible();
+
+    const toggleVerdictBtn = page.locator('[data-testid="toggle-verdict-details"]');
+    await expect(toggleVerdictBtn).toBeVisible();
+    await toggleVerdictBtn.click();
+
+    await expect(verdictBanner.getByText(/宏观异动现象/).first()).toBeVisible();
+    await expect(verdictBanner.getByText(/深层驱动机理/).first()).toBeVisible();
+    await expect(verdictBanner.getByText(/研判结论与行动/).first()).toBeVisible();
 
     // 3. Test Causal Next-Step Bridge CTA Button
-    const shadowNextBtn = page.getByRole('button', { name: /穿透离岸影子通道/i }).first();
+    const shadowNextBtn = verdictBanner.getByRole('button', { name: /穿透离岸影子通道/i }).first();
     await expect(shadowNextBtn).toBeVisible();
     await shadowNextBtn.click();
 
     // Verify Tab jumped to Shadow Banking
     await expect(page.getByText('离岸影子银行与非银机构表外负债透视').first()).toBeVisible({ timeout: 6000 });
-    await expect(page.getByText('三段式研判台 (Executive Verdict) · 影子银行与非银机构透视').first()).toBeVisible();
+    await expect(verdictBanner.getByText(/实时研判 · 影子银行与非银机构透视/).first()).toBeVisible();
 
     // 4. Test Header Mode Toggle (Focus Mode vs Pro Mode)
     const modeToggle = page.locator('[data-testid="header-view-mode-toggle"]');
@@ -524,13 +531,13 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(exitBtn).toBeVisible();
     await exitBtn.click();
 
-    // 6. Verify Changelog Modal Displays v3.0.0 Current
+    // 6. Verify Changelog Modal Displays v3.5.0 Current
     const changelogBtn = page.getByRole('button', { name: /v[23]\.[05]\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
-    await expect(page.getByText('v3.0.0 Current').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/全链路动态感知与闭环仿真版/).first()).toBeVisible();
+    await expect(page.getByText('v3.5.0 Current').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/机构级静奢投研终端版/).first()).toBeVisible();
   });
 
   test('13. Phase 5 v3.0.0: Automated Playbook State Choreography, Live Contagion-to-Portfolio Bridge & Active Hedge Overlay', async ({ page }) => {
@@ -599,6 +606,89 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
 
     // Verify saved capital reflects active hedges
     await expect(page.getByText(/保全 \+\$/i).first()).toBeVisible();
+  });
+
+  test('14. Phase 6 v3.5.0: Quiet-Luxury Shell, Typography Floor, Single-Source Verdict Parity & Light Theme', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 850 });
+    await page.goto('/?tab=map&q=2026Q1');
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    // 1. Compact 2-Row Header Height (<= 88px) & Zero Horizontal Overflow
+    const shellMetrics = await page.evaluate(() => {
+      const header = document.querySelector('header');
+      const rect = header ? header.getBoundingClientRect() : { height: 999 };
+      return {
+        headerHeight: Math.round(rect.height),
+        overflowX: document.documentElement.scrollWidth - window.innerWidth
+      };
+    });
+    expect(shellMetrics.headerHeight).toBeLessThanOrEqual(88);
+    expect(shellMetrics.overflowX).toBeLessThanOrEqual(1);
+
+    // 2. First-Screen Top Verdict Strip Visibility Above the Fold
+    const verdictBanner = page.locator('[data-testid="executive-verdict-banner"]');
+    await expect(verdictBanner).toBeVisible();
+    const verdictBox = await verdictBanner.boundingBox();
+    expect(verdictBox).not.toBeNull();
+    expect(verdictBox.y).toBeLessThanOrEqual(260);
+
+    // 3. Structured Toolbox Popover & Research Paper Light Theme Toggle
+    const toolboxBtn = page.locator('[data-testid="header-toolbox-btn"]');
+    await expect(toolboxBtn).toBeVisible();
+    await toolboxBtn.click();
+
+    const toolboxPopover = page.locator('[data-testid="header-toolbox-popover"]');
+    await expect(toolboxPopover).toBeVisible();
+
+    const toolboxThemeToggle = page.locator('[data-testid="toolbox-theme-toggle"]');
+    await expect(toolboxThemeToggle).toBeVisible();
+    await toolboxThemeToggle.click();
+
+    const isLight = await page.evaluate(() => document.body.classList.contains('theme-light'));
+    expect(isLight).toBe(true);
+
+    // Toggle back to Quiet-Luxury Dark Theme via header quick button
+    await page.locator('[data-testid="header-theme-toggle"]').click();
+    const isDarkBack = await page.evaluate(() => !document.body.classList.contains('theme-light'));
+    expect(isDarkBack).toBe(true);
+
+    // 4. Single-Source-of-Truth Verdict Parity & >=11px Typography Floor on Portfolio View
+    await page.goto('/?tab=portfolio&q=2026Q1');
+    await expect(page.locator('[data-testid="portfolio-stress-overlay"]')).toBeVisible({ timeout: 10000 });
+
+    // Wait briefly for initial render / animated KPI settlement
+    await page.waitForTimeout(350);
+
+    const kpiLossText = (await page.locator('[data-testid="portfolio-kpi-total-loss"]').innerText()).trim();
+    const headlineText = (await page.locator('[data-testid="verdict-live-headline"]').innerText()).trim();
+    expect(kpiLossText).toBe('-$47.7M');
+    expect(headlineText).toContain(kpiLossText);
+
+    // Verify >=11px minimum font floor across visible text nodes inside #main-viewport
+    const sub11Nodes = await page.evaluate(() => {
+      const root = document.getElementById('main-viewport');
+      if (!root) return [];
+      const violations = [];
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        const text = node.textContent.trim();
+        if (!text) continue;
+        const el = node.parentElement;
+        if (!el || el.closest('svg, canvas')) continue;
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) continue;
+        const fontSize = parseFloat(style.fontSize);
+        if (fontSize < 10.9) {
+          violations.push({ text: text.slice(0, 30), fontSize });
+        }
+      }
+      return violations;
+    });
+    expect(sub11Nodes).toEqual([]);
   });
 
 });

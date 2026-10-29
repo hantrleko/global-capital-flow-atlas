@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import {
-  Briefcase, TrendingDown, ShieldAlert, Sparkles, Sliders,
-  ArrowRight, FileText, Download, Copy, Check, RotateCcw,
-  Plus, Trash2, PieChart, AlertCircle, Info, ChevronRight,
-  Layers, DollarSign, Activity, ShieldCheck
+  Briefcase, TrendingDown, ShieldAlert, Sparkles,
+  Copy, Check, Plus, Trash2, ChevronRight, ShieldCheck
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
+import { useAnimatedNumber } from '../utils/useAnimatedValue';
 import {
   PORTFOLIO_PRESETS,
   MACRO_STRESS_SCENARIOS,
@@ -20,7 +19,8 @@ export default function PortfolioStressOverlay({
   selectedCurrency = 'USD',
   onOpenChartCard,
   onOpenContagion,
-  liveClearingShockMap = null
+  liveClearingShockMap = null,
+  onPortfolioResultChange
 }) {
   const [selectedPresetId, setSelectedPresetId] = useState('global_macro_balanced');
   const [selectedScenarioId, setSelectedScenarioId] = useState(() => {
@@ -29,6 +29,7 @@ export default function PortfolioStressOverlay({
   const [stressMultiplier, setStressMultiplier] = useState(1.0);
   const [enableLookThrough, setEnableLookThrough] = useState(true);
   const [activeHedges, setActiveHedges] = useState(['cds_hedge']);
+  const [chartMode, setChartMode] = useState('loss_delta'); // 'loss_delta' | 'full_aum'
   const [copiedMemo, setCopiedMemo] = useState(false);
 
   // Custom portfolio state
@@ -39,7 +40,7 @@ export default function PortfolioStressOverlay({
     { id: 'c-4', name: '土耳其美元外债 (Turkey External Debt)', country: 'TR', assetClass: 'sovereign_debt', weight: 0.15, amountMn: 75.0 },
     { id: 'c-5', name: '开曼群岛离岸资产 (Cayman SPV / Fund)', country: 'KY', assetClass: 'equities', weight: 0.10, amountMn: 50.0 }
   ]);
-  const [customAum, setCustomAum] = useState(500.0);
+  const [customAum] = useState(500.0);
 
   const chartContainerRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -70,6 +71,33 @@ export default function PortfolioStressOverlay({
     });
   }, [activePortfolio, selectedScenarioId, liveClearingShockMap, stressMultiplier, enableLookThrough, activeHedges]);
 
+  // Synchronize live portfolio stress result to parent ExecutiveVerdictBanner (Single Source of Truth)
+  useEffect(() => {
+    if (stressResult && onPortfolioResultChange) {
+      onPortfolioResultChange(stressResult);
+    }
+  }, [stressResult, onPortfolioResultChange]);
+
+  // Animated KPI readouts (synchronous initial value, smooth 260ms tween on subsequent changes)
+  const animTotalLoss = useAnimatedNumber(stressResult.totalLossMn, 260);
+  const animLossPct = useAnimatedNumber(stressResult.portfolioLossPct, 260);
+  const animStressedAum = useAnimatedNumber(stressResult.stressedAumMn, 260);
+  const animVaR99 = useAnimatedNumber(stressResult.stressVaR99Mn, 260);
+
+  const cleanZhName = (raw = '') => raw.split(' (')[0].trim();
+  const [isLightTheme, setIsLightTheme] = useState(() =>
+    typeof document !== 'undefined' && document.body.classList.contains('theme-light')
+  );
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const syncTheme = () => setIsLightTheme(document.body.classList.contains('theme-light'));
+    syncTheme();
+    const obs = new MutationObserver(syncTheme);
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+
   // Render ECharts Loss Attribution Horizontal Bar Chart
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -79,92 +107,123 @@ export default function PortfolioStressOverlay({
     }
     const chart = chartInstanceRef.current;
 
-    const victims = [...stressResult.positionResults].reverse(); // bottom-up
-    const categories = victims.map(v => v.name.length > 18 ? v.name.slice(0, 16) + '...' : v.name);
+    const victims = [...stressResult.positionResults].reverse(); // bottom-up so #1 victim is at top
+    const categories = victims.map(v => {
+      const shortName = cleanZhName(v.name);
+      return shortName.length > 16 ? `${shortName.slice(0, 15)}…` : `${shortName} (${v.country})`;
+    });
     const directLosses = victims.map(v => v.firstOrderLossMn);
     const secondOrderLosses = victims.map(v => v.secondOrderLossMn);
     const remainingValues = victims.map(v => v.stressedValueMn);
+
+    const isLossDelta = chartMode === 'loss_delta';
+
+    const series = isLossDelta
+      ? [
+          {
+            name: '一阶直接损失',
+            type: 'bar',
+            stack: 'loss',
+            barMaxWidth: 22,
+            itemStyle: { color: '#fb7185' },
+            data: directLosses
+          },
+          {
+            name: '二阶网络传染',
+            type: 'bar',
+            stack: 'loss',
+            barMaxWidth: 22,
+            itemStyle: { color: '#818cf8', borderRadius: [0, 4, 4, 0] },
+            data: secondOrderLosses
+          }
+        ]
+      : [
+          {
+            name: '压力后余值',
+            type: 'bar',
+            stack: 'total',
+            barMaxWidth: 22,
+            itemStyle: { color: '#1e293b' },
+            data: remainingValues
+          },
+          {
+            name: '一阶直接损失',
+            type: 'bar',
+            stack: 'total',
+            barMaxWidth: 22,
+            itemStyle: { color: '#fb7185' },
+            data: directLosses
+          },
+          {
+            name: '二阶网络传染',
+            type: 'bar',
+            stack: 'total',
+            barMaxWidth: 22,
+            itemStyle: { color: '#818cf8', borderRadius: [0, 4, 4, 0] },
+            data: secondOrderLosses
+          }
+        ];
 
     const option = {
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: '#090d16',
-        borderColor: '#334155',
-        textStyle: { color: '#e2e8f0', fontSize: 11 },
+        backgroundColor: 'rgba(13, 19, 33, 0.96)',
+        borderColor: 'rgba(255, 255, 255, 0.12)',
+        textStyle: { color: '#e2e8f0', fontSize: 12 },
         formatter: (params) => {
           const idx = params[0].dataIndex;
           const pos = victims[idx];
           return `
-            <div class="font-mono text-xs p-1">
-              <div class="font-bold text-white mb-1">${pos.name} (${pos.country})</div>
-              <div>原始持仓: $${pos.amountMn}M</div>
-              <div class="text-rose-400">直接冲击损失: -$${pos.firstOrderLossMn}M</div>
-              <div class="text-purple-400">二阶传染损失: -$${pos.secondOrderLossMn}M</div>
-              <div class="text-amber-400 font-bold border-t border-slate-700 mt-1 pt-1">
-                总减记: -$${pos.lossMn}M (-${pos.rawLossPct}%)
+            <div class="font-sans text-xs p-1 space-y-1">
+              <div class="font-bold text-white border-b border-white/10 pb-1">${pos.name} (${pos.country})</div>
+              <div class="flex justify-between gap-4"><span>原始持仓:</span><b class="font-mono">$${pos.amountMn}M</b></div>
+              <div class="flex justify-between gap-4 text-rose-400"><span>一阶直接损失:</span><b class="font-mono">-$${pos.firstOrderLossMn}M</b></div>
+              <div class="flex justify-between gap-4 text-indigo-300"><span>二阶网络传染:</span><b class="font-mono">-$${pos.secondOrderLossMn}M</b></div>
+              <div class="flex justify-between gap-4 text-amber-300 font-bold border-t border-slate-700 pt-1">
+                <span>总压力减记:</span><b class="font-mono">-$${pos.lossMn}M (-${pos.rawLossPct}%)</b>
               </div>
-              <div class="text-emerald-400">压力后余值: $${pos.stressedValueMn}M</div>
+              <div class="flex justify-between gap-4 text-emerald-400"><span>压力后余值:</span><b class="font-mono">$${pos.stressedValueMn}M</b></div>
             </div>
           `;
         }
       },
       legend: {
-        data: ['压力后余值', '一阶直接损失', '二阶网络传染损失'],
-        textStyle: { color: '#94a3b8', fontSize: 11 },
-        top: 0,
-        right: 10
+        data: isLossDelta
+          ? ['一阶直接损失', '二阶网络传染']
+          : ['压力后余值', '一阶直接损失', '二阶网络传染'],
+        textStyle: { color: isLightTheme ? '#475569' : '#94a3b8', fontSize: 11 },
+        top: 2,
+        right: 8
       },
       grid: {
-        top: 36,
-        left: 10,
-        right: 40,
-        bottom: 15,
+        top: 34,
+        left: 8,
+        right: 28,
+        bottom: 10,
         containLabel: true
       },
       xAxis: {
         type: 'value',
-        axisLine: { lineStyle: { color: '#334155' } },
-        splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } },
+        axisLine: { lineStyle: { color: isLightTheme ? '#cbd5e1' : '#334155' } },
+        splitLine: { lineStyle: { color: isLightTheme ? '#e2e8f0' : '#1e293b', type: 'dashed' } },
         axisLabel: {
-          color: '#64748b',
-          fontSize: 10,
-          formatter: '${value}M'
+          color: isLightTheme ? '#475569' : '#94a3b8',
+          fontSize: 11,
+          formatter: isLossDelta ? '-${value}M' : '${value}M'
         }
       },
       yAxis: {
         type: 'category',
         data: categories,
-        axisLine: { lineStyle: { color: '#334155' } },
-        axisLabel: { color: '#cbd5e1', fontSize: 11 }
+        axisLine: { lineStyle: { color: isLightTheme ? '#cbd5e1' : '#334155' } },
+        axisLabel: { color: isLightTheme ? '#1e293b' : '#cbd5e1', fontSize: 11 }
       },
-      series: [
-        {
-          name: '压力后余值',
-          type: 'bar',
-          stack: 'total',
-          itemStyle: { color: '#1e293b' },
-          data: remainingValues
-        },
-        {
-          name: '一阶直接损失',
-          type: 'bar',
-          stack: 'total',
-          itemStyle: { color: '#f43f5e' },
-          data: directLosses
-        },
-        {
-          name: '二阶网络传染损失',
-          type: 'bar',
-          stack: 'total',
-          itemStyle: { color: '#a855f7' },
-          data: secondOrderLosses
-        }
-      ]
+      series
     };
 
-    chart.setOption(option);
+    chart.setOption(option, true);
 
     const handleResize = () => chart.resize();
     window.addEventListener('resize', handleResize);
@@ -172,19 +231,20 @@ export default function PortfolioStressOverlay({
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [stressResult]);
+  }, [stressResult, chartMode, isLightTheme]);
 
   // Copy Risk Memo
   const handleCopyRiskMemo = () => {
     soundFx.playChime();
     const memo = `### EUGENE FINANCE · 机构组合压力映射风控简报 (Portfolio Stress Overlay)
-- **基准组合**: ${stressResult.scenarioName} | **报告期**: ${selectedQuarter}
+- **基准组合**: ${activePortfolio.name} | **报告期**: ${selectedQuarter}
 - **组合基础资产规模 (Base AUM)**: $${stressResult.baseAumUsdMn}M
 - **宏观压力情景**: ${stressResult.scenarioName} (倍数: ${stressMultiplier}x)
 - **预期资产净减记 (Total Stress Loss)**: -$${stressResult.totalLossMn}M (-${stressResult.portfolioLossPct}%)
 - **直接主权减记 (First-Order)**: -$${stressResult.firstOrderLossMn}M
 - **二阶级联传染损失 (Second-Order Domino)**: -$${stressResult.secondOrderLossMn}M
 - **极值风险价值 (99% 1-Month Stress VaR)**: -$${stressResult.stressVaR99Mn}M
+- **主动对冲残余减记**: -$${stressResult.hedgedLossMn}M (净挽回资本: +$${stressResult.netSavedMn}M)
 - **受损敞口前三位**:
 ${stressResult.topVictims.map((v, i) => `  ${i + 1}. ${v.name} (${v.country}): 减记 -$${v.lossMn}M (-${v.rawLossPct}%, 贡献 ${v.lossContributionPct}%)`).join('\n')}
 - **对冲与资本防线建议**:
@@ -196,32 +256,38 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
     setTimeout(() => setCopiedMemo(false), 2500);
   };
 
-  return (
-    <div className="space-y-4 text-slate-200 animate-fade-in" data-testid="portfolio-stress-overlay">
-      
-      {/* 1. Header Banner & Presets Selector */}
-      <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 bg-slate-950/80 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+  const grossRecoveredMn = Math.max(0, Math.round((stressResult.unhedgedLossMn - stressResult.hedgedLossMn) * 10) / 10);
+  const residualRatioPct = stressResult.unhedgedLossMn > 0
+    ? Math.min(100, Math.round(((stressResult.hedgedLossMn + stressResult.hedgeCostMn) / stressResult.unhedgedLossMn) * 100))
+    : 0;
+  const savedRatioPct = Math.max(0, 100 - residualRatioPct);
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+  return (
+    <div className="space-y-3.5 text-slate-200 animate-fade-in" data-testid="portfolio-stress-overlay">
+      {/* 1. Quiet-Luxury Header Card & Portfolio Presets */}
+      <div className="rounded-2xl p-4 bg-[#0d1321]/95 border border-white/[0.08] shadow-xl">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-400/40 flex items-center justify-center text-purple-400 shrink-0 shadow-[0_0_15px_rgba(168,85,247,0.25)]">
-              <Briefcase className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-[#131b2e] border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
+              <Briefcase className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                  我的组合压力映射 (Portfolio Stress Overlay)
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2
+                  className="text-base sm:text-lg font-bold text-white tracking-tight"
+                  title="Portfolio Stress Overlay · 机构专户宏观压力穿透与风控仪表盘"
+                >
+                  我的组合压力映射
                 </h2>
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                  Phase 3 · v2.0.0
+                <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-400/30">
+                  v3.5.0 · 专户风控
                 </span>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                  机构定制风控
+                  BIS CBS 穿透映射
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed">
-                将国际清算银行 (BIS) 公共信贷网络与 Eisenberg-Noe 级联清算模型直接穿透映射至用户机构投资账户，把全球宏观波动转化为真实账户资产减记、二阶多米诺传染与对冲防线方案。
+                将 BIS 跨国银行信贷网络与 Eisenberg-Noe 级联清算向量直接映射至机构专户持仓，拆解一阶主权减记、二阶多米诺传染与主动对冲净保全效应。
               </p>
             </div>
           </div>
@@ -230,7 +296,7 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
             <button
               onClick={handleCopyRiskMemo}
               data-testid="copy-risk-memo-btn"
-              className="h-8 px-3 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              className="h-8 px-3 rounded-lg border border-white/[0.1] bg-[#131b2e] hover:bg-[#182238] text-slate-200 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
               title="复制机构级风控审计备忘录 (Markdown)"
             >
               {copiedMemo ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
@@ -240,10 +306,10 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
             {onOpenChartCard && (
               <button
                 onClick={onOpenChartCard}
-                className="h-8 px-3 rounded-lg border border-purple-500/40 bg-purple-950/40 hover:bg-purple-900/50 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                title="导出投行级组合压力卡片"
+                className="h-8 px-3 rounded-lg border border-indigo-400/35 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                title="导出投行级组合压力卡片 (Publication-Ready Chart Card)"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
                 <span>导出研报卡片</span>
               </button>
             )}
@@ -251,9 +317,9 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
         </div>
 
         {/* Portfolio Preset Switcher Pills */}
-        <div className="mt-4 pt-3.5 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto scrollbar-none text-xs">
-          <span className="text-[11px] font-mono text-slate-400 shrink-0 flex items-center gap-1">
-            <Briefcase className="w-3 h-3 text-purple-400" />
+        <div className="mt-3.5 pt-3 border-t border-white/[0.06] flex items-center gap-2 overflow-x-auto scrollbar-none text-xs">
+          <span className="text-[11px] font-medium text-slate-400 shrink-0 flex items-center gap-1">
+            <Briefcase className="w-3 h-3 text-indigo-400" />
             <span>账户配置:</span>
           </span>
           {PORTFOLIO_PRESETS.map(preset => (
@@ -264,14 +330,15 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                 setSelectedPresetId(preset.id);
               }}
               data-testid={`preset-${preset.id}`}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+              title={preset.name}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border ${
                 selectedPresetId === preset.id
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800'
+                  ? 'atlas-pill-active'
+                  : 'bg-[#131b2e]/70 text-slate-400 hover:text-white border-white/[0.06]'
               }`}
             >
-              <span>{preset.name.split(' (')[0]}</span>
-              <span className="text-[10px] font-mono opacity-80">(${preset.baseAumUsdMn}M)</span>
+              <span>{cleanZhName(preset.name)}</span>
+              <span className="text-[11px] font-mono opacity-85 tabular-nums">(${preset.baseAumUsdMn}M)</span>
             </button>
           ))}
           <button
@@ -280,46 +347,50 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
               setSelectedPresetId('custom');
             }}
             data-testid="preset-custom"
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border ${
               selectedPresetId === 'custom'
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800'
+                ? 'atlas-pill-active'
+                : 'bg-[#131b2e]/70 text-slate-400 hover:text-white border-white/[0.06]'
             }`}
           >
-            <span>⚙️ 自定义组合</span>
-            <span className="text-[10px] font-mono opacity-80">(${customAum}M)</span>
+            <span>自定义组合</span>
+            <span className="text-[11px] font-mono opacity-85 tabular-nums">(${customAum}M)</span>
           </button>
         </div>
       </div>
 
       {/* 2. Top Executive KPI Bar (5 Core Portfolio Risk Metrics) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 tabular-nums">
         {/* Base AUM */}
-        <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-[11px] font-mono text-slate-400">组合基准资产规模</span>
-          <div className="text-xl font-black font-mono text-white mt-1">
+        <div className="p-3.5 rounded-xl bg-[#0d1321]/95 border border-white/[0.08] flex flex-col justify-between">
+          <span className="text-xs font-medium text-slate-400" title="Base Portfolio Assets Under Management">
+            组合基准资产规模
+          </span>
+          <div className="text-xl font-bold font-mono text-white mt-1">
             ${stressResult.baseAumUsdMn}M
           </div>
-          <span className="text-[10px] text-slate-500 font-mono mt-1">
+          <span className="text-[11px] text-slate-400 mt-1">
             {stressResult.positionsCount} 项持仓标的
           </span>
         </div>
 
         {/* Total Stress Loss */}
-        <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/40 shadow-sm flex flex-col justify-between">
+        <div className="p-3.5 rounded-xl bg-rose-950/25 border border-rose-500/35 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono text-rose-300 font-semibold">预期压力净减记</span>
+            <span className="text-xs font-semibold text-rose-300" title="Expected Unhedged Stress Impairment">
+              预期压力净减记
+            </span>
             <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
           </div>
-          <div className="text-xl font-black font-mono text-rose-400 mt-1">
-            -${stressResult.totalLossMn}M
+          <div className="text-xl font-bold font-mono text-rose-400 mt-1" data-testid="portfolio-kpi-total-loss">
+            -${Number(animTotalLoss).toFixed(1).replace(/\.0$/, '')}M
           </div>
           <div className="flex items-center justify-between gap-1 mt-1">
-            <span className="text-[10px] font-mono font-bold text-rose-300">
-              回撤: -{stressResult.portfolioLossPct}%
+            <span className="text-[11px] font-mono font-semibold text-rose-300">
+              回撤 -{Number(animLossPct).toFixed(1)}%
             </span>
             {stressResult.netSavedMn > 0 && (
-              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 挽回 +${stressResult.netSavedMn}M
               </span>
             )}
@@ -327,55 +398,60 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
         </div>
 
         {/* First-Order vs Second-Order */}
-        <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-[11px] font-mono text-slate-400">直接 vs 级联传染损失</span>
-          <div className="text-sm font-bold font-mono text-white mt-1 flex items-baseline justify-between">
-            <span className="text-rose-400">直接: ${stressResult.firstOrderLossMn}M</span>
-            <span className="text-purple-400">间接: ${stressResult.secondOrderLossMn}M</span>
+        <div className="p-3.5 rounded-xl bg-[#0d1321]/95 border border-white/[0.08] flex flex-col justify-between">
+          <span className="text-xs font-medium text-slate-400" title="First-Order Direct vs Second-Order Network Domino Loss">
+            直接 vs 级联传染损失
+          </span>
+          <div className="text-xs font-bold font-mono text-white mt-1.5 flex items-baseline justify-between gap-1">
+            <span className="text-rose-400">一阶 -${stressResult.firstOrderLossMn}M</span>
+            <span className="text-indigo-300">二阶 -${stressResult.secondOrderLossMn}M</span>
           </div>
-          <div className="w-full h-1.5 rounded-full bg-slate-800 mt-1.5 overflow-hidden flex">
-            <div 
-              className="h-full bg-rose-500" 
-              style={{ width: `${Math.round((stressResult.firstOrderLossMn / Math.max(0.1, stressResult.totalLossMn)) * 100)}%` }} 
+          <div className="w-full h-1.5 rounded-full bg-slate-800 mt-2 overflow-hidden flex">
+            <div
+              className="h-full bg-rose-400"
+              style={{ width: `${Math.round((stressResult.firstOrderLossMn / Math.max(0.1, stressResult.totalLossMn)) * 100)}%` }}
             />
-            <div 
-              className="h-full bg-purple-500" 
-              style={{ width: `${Math.round((stressResult.secondOrderLossMn / Math.max(0.1, stressResult.totalLossMn)) * 100)}%` }} 
+            <div
+              className="h-full bg-indigo-400"
+              style={{ width: `${Math.round((stressResult.secondOrderLossMn / Math.max(0.1, stressResult.totalLossMn)) * 100)}%` }}
             />
           </div>
         </div>
 
         {/* Stressed AUM */}
-        <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-[11px] font-mono text-slate-400">压力后资产净值 (Stressed AUM)</span>
-          <div className="text-xl font-black font-mono text-sky-400 mt-1">
-            ${stressResult.stressedAumMn}M
+        <div className="p-3.5 rounded-xl bg-[#0d1321]/95 border border-white/[0.08] flex flex-col justify-between">
+          <span className="text-xs font-medium text-slate-400" title="Post-Stress Remaining Net Asset Value">
+            压力后资产净值
+          </span>
+          <div className="text-xl font-bold font-mono text-sky-300 mt-1">
+            ${Number(animStressedAum).toFixed(1)}M
           </div>
-          <span className="text-[10px] text-slate-400 font-mono mt-1">
-            资本留存率: {Math.round((stressResult.stressedAumMn / Math.max(1, stressResult.baseAumUsdMn)) * 1000) / 10}%
+          <span className="text-[11px] text-slate-400 font-mono mt-1">
+            资本留存率 {Math.round((stressResult.stressedAumMn / Math.max(1, stressResult.baseAumUsdMn)) * 1000) / 10}%
           </span>
         </div>
 
         {/* Stress VaR 99% */}
-        <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/40 shadow-sm flex flex-col justify-between col-span-2 sm:col-span-1">
+        <div className="p-3.5 rounded-xl bg-[#131b2e]/90 border border-indigo-400/30 flex flex-col justify-between col-span-2 sm:col-span-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono text-purple-300 font-semibold">99% 压力 VaR (1M)</span>
-            <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-xs font-semibold text-indigo-200" title="99% 1-Month Stress Value-at-Risk (Basel III 1.35x)">
+              99% 压力 VaR (1M)
+            </span>
+            <ShieldAlert className="w-3.5 h-3.5 text-indigo-300" />
           </div>
-          <div className="text-xl font-black font-mono text-purple-300 mt-1">
-            -${stressResult.stressVaR99Mn}M
+          <div className="text-xl font-bold font-mono text-indigo-200 mt-1">
+            -${Number(animVaR99).toFixed(1)}M
           </div>
-          <span className="text-[10px] text-purple-400 font-mono mt-1">
-            巴塞尔 III 压力覆盖倍数 1.35x
+          <span className="text-[11px] text-slate-400 font-mono mt-1">
+            巴塞尔 III 压力乘数 1.35x
           </span>
         </div>
       </div>
 
       {/* 3. Interactive Scenario & Sensitivity Control Bar */}
-      <div className="glass-panel rounded-xl p-3.5 border border-slate-800 bg-slate-900/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-        {/* Scenario Selector */}
+      <div className="rounded-xl p-3 bg-[#0d1321]/95 border border-white/[0.08] flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-mono text-slate-400 font-bold shrink-0">
+          <span className="text-[11px] font-semibold text-slate-400 shrink-0">
             宏观冲击情景:
           </span>
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -386,10 +462,10 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                   setSelectedScenarioId('live_custom_contagion');
                 }}
                 data-testid="scenario-live_custom_contagion"
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 border ${
                   selectedScenarioId === 'live_custom_contagion'
-                    ? 'bg-amber-500 text-slate-950 shadow-md animate-pulse'
-                    : 'bg-amber-950/60 text-amber-300 hover:text-white border border-amber-500/50'
+                    ? 'bg-amber-500/20 text-amber-200 border-amber-400/60'
+                    : 'bg-[#131b2e] text-amber-300 hover:text-white border-amber-500/30'
                 }`}
                 title="已同步接收网络传染模拟器的 Eisenberg-Noe 实时清算损失率"
               >
@@ -404,36 +480,35 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                   setSelectedScenarioId(sc.id);
                 }}
                 data-testid={`scenario-${sc.id}`}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                title={sc.desc}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer border ${
                   selectedScenarioId === sc.id
-                    ? 'bg-rose-600 text-white shadow-sm font-semibold'
-                    : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                    ? 'atlas-pill-active font-semibold'
+                    : 'bg-[#131b2e]/70 text-slate-400 hover:text-white border-white/[0.06]'
                 }`}
               >
-                {sc.name.split(' (')[0]}
+                {cleanZhName(sc.name)}
               </button>
             ))}
           </div>
         </div>
 
         {/* Controls: Multiplier & Look-Through */}
-        <div className="flex items-center gap-3 ml-auto">
-          {/* Stress Multiplier */}
-          <div className="flex items-center gap-2 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
-            <span className="text-[11px] font-mono text-slate-400">压力倍数:</span>
-            <input 
+        <div className="flex items-center gap-2.5 ml-auto">
+          <div className="flex items-center gap-2 bg-[#131b2e] px-2.5 py-1 rounded-lg border border-white/[0.08] tabular-nums">
+            <span className="text-[11px] text-slate-400">冲击烈度:</span>
+            <input
               type="range"
               min="0.5"
               max="2.5"
               step="0.1"
               value={stressMultiplier}
               onChange={(e) => setStressMultiplier(parseFloat(e.target.value))}
-              className="w-20 accent-purple-500 cursor-pointer"
+              className="w-20 accent-indigo-400 cursor-pointer"
             />
-            <span className="font-mono font-bold text-purple-300 w-8">{stressMultiplier}x</span>
+            <span className="font-mono font-bold text-indigo-300 w-8 text-right">{stressMultiplier.toFixed(1)}x</span>
           </div>
 
-          {/* Look-Through OFC Toggle */}
           <button
             onClick={() => {
               soundFx.playTick();
@@ -442,226 +517,256 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
             data-testid="toggle-portfolio-lookthrough"
             className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
               enableLookThrough
-                ? 'bg-amber-950/60 border-amber-500/50 text-amber-300'
-                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                ? 'atlas-pill-active'
+                : 'bg-[#131b2e] border-white/[0.08] text-slate-400 hover:text-white'
             }`}
             title="一键穿透开曼/香港等离岸壳实体，还原至母国真实风险承担者计算损失"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>{enableLookThrough ? '离岸穿透: 已开启' : '离岸穿透: 注册地'}</span>
+            <span>{enableLookThrough ? '离岸穿透: 开启' : '离岸穿透: 注册地'}</span>
           </button>
         </div>
       </div>
 
-      {/* 4. Main Analytics: ECharts Chart & Hedging Advice */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Chart: Loss Attribution Waterfall (2 Cols) */}
-        <div className="lg:col-span-2 glass-panel rounded-xl p-4 border border-slate-800 bg-slate-900/60 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
+      {/* 4. Main Analytics: Signal-First Loss Attribution Chart & Active Hedge Cockpit */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+        {/* Left 2 Cols: Loss Attribution Chart (Zero void, ranked monotonically by loss delta) */}
+        <div className="lg:col-span-2 rounded-xl p-4 bg-[#0d1321]/95 border border-white/[0.08] flex flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <span>持仓标的压力减记拆解 (Portfolio Loss Attribution by Asset)</span>
+              <h3
+                className="text-sm font-bold text-white flex items-center gap-2"
+                title="Portfolio Loss Attribution by Asset"
+              >
+                <span>持仓标的压力减记拆解</span>
               </h3>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                一阶直接主权外债减记（红）与二阶网络级联多米诺传染损失（紫）
+                {chartMode === 'loss_delta'
+                  ? '按受损金额降序排列：一阶直接主权冲击（玫瑰红）+ 二阶同业网络传染（靛紫）'
+                  : '展示各持仓标的压力后剩余净值与一阶/二阶减记占比对照'}
               </p>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
-              Float64 守恒
-            </span>
+
+            <div className="atlas-segmented text-[11px]">
+              <button
+                onClick={() => setChartMode('loss_delta')}
+                className={`px-2.5 py-0.5 rounded-md font-medium cursor-pointer transition-all ${
+                  chartMode === 'loss_delta' ? 'atlas-pill-active font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                减记归因 Δ
+              </button>
+              <button
+                onClick={() => setChartMode('full_aum')}
+                className={`px-2.5 py-0.5 rounded-md font-medium cursor-pointer transition-all ${
+                  chartMode === 'full_aum' ? 'atlas-pill-active font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                全量净值对照
+              </button>
+            </div>
           </div>
 
-          <div 
-            ref={chartContainerRef} 
-            className="w-full h-[320px] sm:h-[350px]"
+          <div
+            ref={chartContainerRef}
+            className="w-full flex-1 min-h-[340px]"
             data-testid="portfolio-stress-chart"
           />
         </div>
 
-        {/* Right Col: Actionable Institutional Hedging Advice & Active Hedge Cockpit */}
-        <div className="glass-panel rounded-xl p-4 border border-slate-800 bg-slate-900/60 flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold text-white">主动宏观对冲防护台 (Active Hedge Overlay)</h3>
-            </div>
-            {stressResult.netSavedMn > 0 && (
-              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/40 font-bold animate-pulse">
-                保全 +${stressResult.netSavedMn}M
-              </span>
-            )}
-          </div>
-
-          {/* Interactive Hedge Strategies Switches */}
-          <div className="space-y-2">
-            {[
-              { id: 'cds_hedge', title: '买入主权违约互换 (Sovereign CDS)', tag: '80% 冲销', desc: '锁定高危主权外债头寸违约减记' },
-              { id: 'derisk_ofc', title: '离岸 SPV 调降至短期美债 (T-Bills)', tag: '50% 避险', desc: '开曼/离岸 PE 敞口削减 50% 转入 0-Beta HQLA' },
-              { id: 'swap_basis_collar', title: '跨货币互换基差套保 (Basis Collar)', tag: '70% 减震', desc: '对冲外汇掉期表外保证金追缴' }
-            ].map(h => {
-              const isChecked = activeHedges.includes(h.id);
-              return (
-                <label
-                  key={h.id}
-                  data-testid={`hedge-toggle-${h.id}`}
-                  className={`p-2 rounded-lg border flex items-start gap-2.5 cursor-pointer transition-all ${
-                    isChecked
-                      ? 'bg-emerald-950/30 border-emerald-500/50 text-white'
-                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                  }`}
+        {/* Right Col: Active Hedge Cockpit with Unhedged ➔ Hedged Waterfall Comparison */}
+        <div className="rounded-xl p-4 bg-[#0d1321]/95 border border-white/[0.08] flex flex-col justify-between space-y-3">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <h3
+                  className="text-sm font-bold text-white"
+                  title="Active Institutional Hedge Overlay"
                 >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => {
-                      soundFx.playTick();
-                      setActiveHedges(prev =>
-                        prev.includes(h.id) ? prev.filter(x => x !== h.id) : [...prev, h.id]
-                      );
-                    }}
-                    className="mt-0.5 accent-emerald-500 cursor-pointer"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className={isChecked ? 'text-emerald-300' : 'text-slate-300'}>{h.title}</span>
-                      <span className="text-[9px] font-mono px-1 rounded bg-slate-800 text-emerald-400 border border-emerald-500/30">{h.tag}</span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{h.desc}</p>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-
-          {/* Hedge Capital Preserved Bar */}
-          {stressResult.netSavedMn > 0 && (
-            <div className="p-2.5 rounded-lg bg-emerald-950/50 border border-emerald-500/40 text-xs font-mono flex items-center justify-between">
-              <span className="text-emerald-300 font-bold">对冲净挽回资本:</span>
-              <span className="text-emerald-400 font-black text-sm">+{selectedCurrency === 'USD' ? '$' : ''}{stressResult.netSavedMn}M</span>
-            </div>
-          )}
-
-          {/* AI Hedging Advice List */}
-          <div className="space-y-2 pt-1 border-t border-slate-800">
-            <span className="text-[11px] font-mono text-slate-400 font-semibold">AI 宏观研判备忘:</span>
-            {stressResult.hedgingAdvice.slice(0, 2).map((adv, idx) => (
-              <div 
-                key={idx} 
-                className="p-2 rounded-lg bg-slate-950/80 border border-slate-800/80 space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-200">{adv.title}</span>
-                  <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold ${
-                    adv.priority === 'CRITICAL' 
-                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' 
-                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  }`}>
-                    {adv.priority}
-                  </span>
-                </div>
-                <p className="text-[10px] leading-relaxed text-slate-400">
-                  {adv.desc}
-                </p>
+                  主动宏观对冲防护台
+                </h3>
               </div>
-            ))}
+              {stressResult.netSavedMn > 0 && (
+                <span className="text-[11px] font-mono text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/35 font-semibold tabular-nums">
+                  保全 +${stressResult.netSavedMn}M
+                </span>
+              )}
+            </div>
+
+            {/* Unhedged ➔ Hedged Visual Waterfall Comparison */}
+            <div className="p-2.5 rounded-lg bg-[#131b2e]/80 border border-white/[0.07] space-y-2 text-[11px] tabular-nums">
+              <div className="flex items-center justify-between text-slate-300">
+                <span>未对冲原始减记: <strong className="font-mono text-rose-400">-${stressResult.unhedgedLossMn}M</strong></span>
+                <span>对冲后残余: <strong className="font-mono text-white">-${stressResult.hedgedLossMn}M</strong></span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+                <div
+                  className="h-full bg-rose-400 transition-all duration-300"
+                  style={{ width: `${residualRatioPct}%` }}
+                  title={`残余减记与对冲成本占比: ${residualRatioPct}%`}
+                />
+                <div
+                  className="h-full bg-emerald-400 transition-all duration-300"
+                  style={{ width: `${savedRatioPct}%` }}
+                  title={`主动对冲净保全比例: ${savedRatioPct}%`}
+                />
+              </div>
+              <div className="flex items-center justify-between text-slate-400 font-mono">
+                <span>毛冲销: <span className="text-emerald-400">+${grossRecoveredMn}M</span></span>
+                <span>成本: <span className="text-amber-300">-${stressResult.hedgeCostMn}M</span></span>
+                <span>净挽回: <strong className="text-emerald-300">+${stressResult.netSavedMn}M</strong></span>
+              </div>
+            </div>
+
+            {/* Interactive Hedge Strategies Switches */}
+            <div className="space-y-2">
+              {[
+                { id: 'cds_hedge', title: '买入主权违约互换 (CDS)', tag: '80% 冲销', desc: '锁定高危主权外债头寸一阶违约减记' },
+                { id: 'derisk_ofc', title: '离岸 SPV 调降至短期美债', tag: '50% 避险', desc: '开曼/离岸 PE 敞口削减 50% 转入 0-Beta 美债' },
+                { id: 'swap_basis_collar', title: '跨货币互换基差套保', tag: '70% 减震', desc: '对冲 FX Swaps 表外美元保证金追缴冲击' }
+              ].map(h => {
+                const isChecked = activeHedges.includes(h.id);
+                return (
+                  <label
+                    key={h.id}
+                    data-testid={`hedge-toggle-${h.id}`}
+                    className={`p-2.5 rounded-lg border flex items-start gap-2.5 cursor-pointer transition-all ${
+                      isChecked
+                        ? 'bg-emerald-950/25 border-emerald-500/40 text-white'
+                        : 'bg-[#131b2e]/50 border-white/[0.06] text-slate-400 hover:border-white/[0.14]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => {
+                        soundFx.playTick();
+                        setActiveHedges(prev =>
+                          prev.includes(h.id) ? prev.filter(x => x !== h.id) : [...prev, h.id]
+                        );
+                      }}
+                      className="mt-0.5 accent-emerald-500 cursor-pointer"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1 text-xs font-semibold">
+                        <span className={isChecked ? 'text-emerald-200' : 'text-slate-300'}>{h.title}</span>
+                        <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-slate-800/90 text-emerald-300 border border-emerald-500/25 shrink-0">
+                          {h.tag}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{h.desc}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-            <span>最大受损标的: <strong className="text-rose-400">{stressResult.topVictims[0]?.name || 'N/A'}</strong></span>
+          <div className="pt-2.5 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-slate-400">
+            <span className="truncate mr-2">
+              首要风险源: <strong className="text-rose-300">{cleanZhName(stressResult.topVictims[0]?.name || 'N/A')}</strong>
+            </span>
             <button
               onClick={() => onOpenContagion && onOpenContagion()}
-              className="text-sky-400 hover:text-sky-300 flex items-center gap-1 cursor-pointer font-mono text-xs"
+              className="text-indigo-300 hover:text-white flex items-center gap-0.5 cursor-pointer font-medium text-xs shrink-0"
             >
-              <span>查看级联传染源</span>
-              <ChevronRight className="w-3 h-3" />
+              <span>级联传染源</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       </div>
 
       {/* 5. Detailed Positions Table & Interactive Editor */}
-      <div className="glass-panel rounded-xl p-4 border border-slate-800 bg-slate-900/60 space-y-3">
+      <div className="rounded-xl p-4 bg-[#0d1321]/95 border border-white/[0.08] space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <span>持仓穿透与压力明细清单 (Position Exposures & Stress Breakdown)</span>
-              <span className="text-xs font-mono text-purple-400">({stressResult.positionResults.length} 标的)</span>
+            <h3
+              className="text-sm font-bold text-white flex items-center gap-2"
+              title="Position Exposures & Stress Breakdown"
+            >
+              <span>持仓穿透与压力明细清单</span>
+              <span className="text-xs font-mono text-indigo-300">({stressResult.positionResults.length} 项标的)</span>
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              可查看单个资产类别贝塔、母国穿透状态及直接/间接损失分摊
+              展示各持仓资产类别风险贝塔、离岸母国穿透标记与一阶/二阶损失归因
             </p>
           </div>
 
           {selectedPresetId === 'custom' && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  soundFx.playTick();
-                  const newId = `c-${Date.now()}`;
-                  setCustomPositions([
-                    ...customPositions,
-                    { id: newId, name: '新外债/股权标的', country: 'US', assetClass: 'corporate_credit', weight: 0.1, amountMn: 50.0 }
-                  ]);
-                }}
-                className="h-7 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center gap-1 cursor-pointer shadow-sm"
-              >
-                <Plus className="w-3 h-3" />
-                <span>添加持仓标的</span>
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                const newId = `c-${Date.now()}`;
+                setCustomPositions([
+                  ...customPositions,
+                  { id: newId, name: '新增跨国信贷标的', country: 'US', assetClass: 'corporate_credit', weight: 0.1, amountMn: 50.0 }
+                ]);
+              }}
+              className="h-7 px-2.5 rounded-lg atlas-pill-active text-xs font-semibold flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>添加持仓标的</span>
+            </button>
           )}
         </div>
 
-        {/* Scrollable Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
+          <table className="w-full text-left text-xs font-sans">
             <thead>
-              <tr className="border-b border-slate-800 text-[11px] text-slate-400 uppercase bg-slate-950/40">
-                <th className="py-2.5 px-3">标的名称与代码</th>
-                <th className="py-2.5 px-2">主权地区</th>
-                <th className="py-2.5 px-2">资产类别</th>
-                <th className="py-2.5 px-2 text-right">初始敞口</th>
-                <th className="py-2.5 px-2 text-right">直接损失 (1阶)</th>
-                <th className="py-2.5 px-2 text-right">级联损失 (2阶)</th>
-                <th className="py-2.5 px-2 text-right">总减记额</th>
-                <th className="py-2.5 px-2 text-right">减记幅度</th>
-                <th className="py-2.5 px-3 text-right">压力后余值</th>
-                <th className="py-2.5 px-2 text-center">风险评级</th>
-                {selectedPresetId === 'custom' && <th className="py-2.5 px-2 text-center">操作</th>}
+              <tr className="border-b border-white/[0.08] text-[11px] text-slate-400 bg-[#070a12]/60">
+                <th className="py-2.5 px-3 font-medium">持仓标的</th>
+                <th className="py-2.5 px-2 font-medium">管辖区</th>
+                <th className="py-2.5 px-2 font-medium">资产类别</th>
+                <th className="py-2.5 px-2 text-right font-medium">初始敞口</th>
+                <th className="py-2.5 px-2 text-right font-medium">一阶直接损失</th>
+                <th className="py-2.5 px-2 text-right font-medium">二阶级联传染</th>
+                <th className="py-2.5 px-2 text-right font-medium">总减记额</th>
+                <th className="py-2.5 px-2 text-right font-medium">减记幅度</th>
+                <th className="py-2.5 px-3 text-right font-medium">压力后余值</th>
+                <th className="py-2.5 px-2 text-center font-medium">风险等级</th>
+                {selectedPresetId === 'custom' && <th className="py-2.5 px-2 text-center font-medium">操作</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-200">
+            <tbody className="divide-y divide-white/[0.05] text-slate-200 tabular-nums">
               {stressResult.positionResults.map((pos) => {
                 const assetLabel = ASSET_CLASS_PROFILES[pos.assetClass]?.name_zh.split(' (')[0] || pos.assetClass;
+                const riskLabelMap = { HIGH: '高危', MEDIUM: '关注', LOW: '稳健' };
                 return (
-                  <tr key={pos.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-2.5 px-3 font-sans font-medium text-white flex items-center gap-1.5">
-                      <span>{pos.name}</span>
+                  <tr key={pos.id} className="hover:bg-white/[0.03] transition-colors">
+                    <td className="py-2.5 px-3 font-medium text-white flex items-center gap-1.5" title={pos.name}>
+                      <span>{cleanZhName(pos.name)}</span>
                       {pos.isLookedThrough && (
-                        <span className="text-[9px] font-mono px-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
                           已穿透
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 px-2">
-                      <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700/80 text-sky-300 font-bold">
+                    <td className="py-2.5 px-2 font-mono">
+                      <span className="px-1.5 py-0.5 rounded bg-[#131b2e] border border-white/[0.08] text-indigo-300 font-semibold">
                         {pos.country}
                       </span>
                     </td>
-                    <td className="py-2.5 px-2 font-sans text-slate-300">{assetLabel}</td>
-                    <td className="py-2.5 px-2 text-right font-bold">${pos.amountMn}M</td>
-                    <td className="py-2.5 px-2 text-right text-rose-400">-${pos.firstOrderLossMn}M</td>
-                    <td className="py-2.5 px-2 text-right text-purple-400">-${pos.secondOrderLossMn}M</td>
-                    <td className="py-2.5 px-2 text-right font-bold text-rose-400">-${pos.lossMn}M</td>
-                    <td className="py-2.5 px-2 text-right text-amber-400 font-bold">-{pos.rawLossPct}%</td>
-                    <td className="py-2.5 px-3 text-right text-emerald-400 font-bold">${pos.stressedValueMn}M</td>
+                    <td className="py-2.5 px-2 text-slate-300">{assetLabel}</td>
+                    <td className="py-2.5 px-2 text-right font-mono font-semibold">${pos.amountMn}M</td>
+                    <td className="py-2.5 px-2 text-right font-mono text-rose-400">-${pos.firstOrderLossMn}M</td>
+                    <td className="py-2.5 px-2 text-right font-mono text-indigo-300">-${pos.secondOrderLossMn}M</td>
+                    <td className="py-2.5 px-2 text-right font-mono font-bold text-rose-400">-${pos.lossMn}M</td>
+                    <td className="py-2.5 px-2 text-right font-mono text-amber-300 font-semibold">-{pos.rawLossPct}%</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-emerald-400 font-semibold">${pos.stressedValueMn}M</td>
                     <td className="py-2.5 px-2 text-center">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                        pos.riskTier === 'HIGH' 
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' 
-                          : (pos.riskTier === 'MEDIUM' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40')
-                      }`}>
-                        {pos.riskTier}
+                      <span
+                        title={pos.riskTier}
+                        className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
+                          pos.riskTier === 'HIGH'
+                            ? 'bg-rose-500/15 text-rose-300 border border-rose-500/35'
+                            : pos.riskTier === 'MEDIUM'
+                              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/35'
+                              : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/35'
+                        }`}
+                      >
+                        {riskLabelMap[pos.riskTier] || pos.riskTier}
                       </span>
                     </td>
                     {selectedPresetId === 'custom' && (
@@ -671,7 +776,7 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                             soundFx.playTick();
                             setCustomPositions(customPositions.filter(p => p.id !== pos.id));
                           }}
-                          className="text-slate-500 hover:text-rose-400 transition-colors p-1"
+                          className="text-slate-500 hover:text-rose-400 transition-colors p-1 cursor-pointer"
                           title="删除持仓"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -685,7 +790,6 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
           </table>
         </div>
       </div>
-
     </div>
   );
 }

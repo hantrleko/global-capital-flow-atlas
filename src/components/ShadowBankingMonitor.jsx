@@ -62,7 +62,7 @@ export default function ShadowBankingMonitor({
     });
 
     const option = {
-      backgroundColor: '#080c14',
+      backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
@@ -163,7 +163,7 @@ export default function ShadowBankingMonitor({
     const govtVal = kySector.official_govt || 2;
 
     const option = {
-      backgroundColor: '#080c14',
+      backgroundColor: 'transparent',
       tooltip: {
         trigger: 'item',
         backgroundColor: '#0f172a',
@@ -237,7 +237,7 @@ export default function ShadowBankingMonitor({
       <div className="bg-slate-900/40 border border-slate-800/90 rounded-xl p-4">
         <div className="text-xs font-bold text-white flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
           <span>主要离岸中枢表内官方统计 vs 掉期衍生品表外隐性负债对照</span>
-          <span className="text-slate-400 text-[10px] font-mono">BIS Quarterly Review (Borio et al.)</span>
+          <span className="text-slate-400 text-[11px] font-mono">BIS Quarterly Review (Borio et al.)</span>
         </div>
         <div ref={chartRef} className="w-full h-[320px]" />
       </div>

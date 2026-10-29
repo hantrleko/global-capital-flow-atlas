@@ -37,7 +37,7 @@ export default function MethodologyFootnote({
         )}
 
         {isSimulation && (
-          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30">
+          <span className="px-1.5 py-0.5 rounded text-[11px] bg-amber-500/15 text-amber-300 border border-amber-500/30">
             示意性模拟推演 (Stylized Simulation)
           </span>
         )}

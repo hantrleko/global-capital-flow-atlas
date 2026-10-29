@@ -9,10 +9,12 @@ export default {
     extend: {
       colors: {
         finance: {
-          bg: '#0a0e17',
-          card: '#111827',
-          cardBorder: '#1f2937',
-          accent: '#3b82f6',
+          bg: '#070a12',
+          card: '#0d1321',
+          subtle: '#131b2e',
+          floating: '#182238',
+          cardBorder: '#1e293b',
+          accent: '#6366f1',
           teal: '#06b6d4',
           amber: '#f59e0b',
           rose: '#f43f5e',
@@ -21,8 +23,8 @@ export default {
         }
       },
       fontFamily: {
-        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace'],
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
+        mono: ['"JetBrains Mono"', '"Fira Code"', 'Consolas', 'ui-monospace', 'monospace'],
+        sans: ['Inter', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei UI"', 'system-ui', '-apple-system', 'sans-serif']
       }
     },
   },

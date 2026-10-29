@@ -155,8 +155,10 @@ export default function App() {
   const [currentInvestigationStepIndex, setCurrentInvestigationStepIndex] = useState(0);
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
 
-  // Phase 5 v3.0: Cross-Engine Bridges & State Choreography
+  // Phase 5 v3.0 & v3.5: Cross-Engine Bridges, Live Verdict Sync & State Choreography
   const [liveClearingShockMap, setLiveClearingShockMap] = useState(null);
+  const [liveClearingResult, setLiveClearingResult] = useState(null);
+  const [livePortfolioResult, setLivePortfolioResult] = useState(null);
   const [externalMapConfig, setExternalMapConfig] = useState(null);
 
   const applyInvestigationStatePayload = (payload) => {
@@ -359,8 +361,10 @@ export default function App() {
     selectedQuarter,
     selectedCountry,
     selectedCurrency,
+    clearingResult: liveClearingResult,
+    portfolioResult: livePortfolioResult,
     lookThroughEnabled: externalMapConfig?.accountingBasis === 'ultimate_risk'
-  }), [activeDataset, selectedQuarter, selectedCountry, selectedCurrency, externalMapConfig]);
+  }), [activeDataset, selectedQuarter, selectedCountry, selectedCurrency, liveClearingResult, livePortfolioResult, externalMapConfig]);
 
   const toggleSound = () => {
     const next = soundFx.toggleMute();
@@ -572,7 +576,7 @@ export default function App() {
       <main
         id="main-viewport"
         tabIndex={-1}
-        className="flex-1 max-w-[1780px] w-full mx-auto px-3 sm:px-5 py-1.5 space-y-2 scroll-mt-28 outline-none"
+        className="flex-1 max-w-[1780px] w-full mx-auto px-3 sm:px-5 py-1.5 space-y-1.5 scroll-mt-24 outline-none"
       >
         {/* 3 Compact Executive KPIs: 全球信贷总额 · 美元计价份额与紧缩 · 核心走廊与枢纽 */}
         <ExecutiveKpiRow
@@ -612,6 +616,13 @@ export default function App() {
             }}
           />
         )}
+
+        {/* v3.5 First-Screen Top Dynamic Verdict Strip (Compact ~38px bar, expands into 3-stage reasoning deck) */}
+        <ExecutiveVerdictBanner
+          activeTab={activeTab}
+          onSelectTab={handleSelectTab}
+          context={liveVerdictContext}
+        />
 
         <ErrorBoundary fallbackTitle="当前主视图分析模块">
           <Suspense fallback={<LoadingFallback />}>
@@ -696,6 +707,7 @@ export default function App() {
               onOpenAppendix={() => setIsAppendixOpen(true)}
               onOpenChartCard={() => setIsChartCardOpen(true)}
               onMapToPortfolio={handleMapContagionToPortfolio}
+              onClearingResultChange={setLiveClearingResult}
             />
           )}
 
@@ -707,6 +719,7 @@ export default function App() {
               onOpenChartCard={() => setIsChartCardOpen(true)}
               onOpenContagion={() => handleSelectTab('contagion')}
               liveClearingShockMap={liveClearingShockMap}
+              onPortfolioResultChange={setLivePortfolioResult}
             />
           )}
 
@@ -802,13 +815,6 @@ export default function App() {
           )}
         </Suspense>
         </ErrorBoundary>
-
-        {/* v3.0 Live Executive Verdict Banner: 实时动态现象 ➔ 机理 ➔ 行动结论与因果下一跳 (位于主图下方，保护首屏折叠线) */}
-        <ExecutiveVerdictBanner
-          activeTab={activeTab}
-          onSelectTab={handleSelectTab}
-          context={liveVerdictContext}
-        />
 
         {/* Collapsible Deep Intelligence Briefing: 宏观态势速览与研判依据 (位于主图下方，不抢占首屏) */}
         <MacroIntelligenceBriefing
@@ -1058,7 +1064,7 @@ export default function App() {
           {/* User Requested Data Statement with Methodology Link & Dynamic Provenance */}
           <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-slate-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800/60">
             <span className={`inline-block w-1.5 h-1.5 rounded-full ${quarterStatusLabel.dotColor} animate-pulse`} />
-            <span className={`px-1.5 py-0.5 rounded border text-[10px] ${quarterStatusLabel.badgeColor}`}>
+            <span className={`px-1.5 py-0.5 rounded border text-[11px] ${quarterStatusLabel.badgeColor}`}>
               {quarterStatusLabel.badge}
             </span>
             <span>
@@ -1078,8 +1084,8 @@ export default function App() {
               className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer transition-colors bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30"
               title="查看平台版本迭代记录与演进架构"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>v3.0.0 日志</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>v3.5.0 日志</span>
             </button>
             <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>

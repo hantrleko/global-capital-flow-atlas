@@ -323,12 +323,12 @@ export default function BilateralRoutingMatrix({
 
         {/* View Switchers */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-xs">
+          <div className="atlas-segmented text-xs">
             <button
               onClick={() => setSubView('sankey')}
               className={`h-7 px-2.5 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
                 subView === 'sankey'
-                  ? 'bg-amber-600 text-white font-semibold shadow-sm'
+                  ? 'atlas-pill-active font-semibold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -339,7 +339,7 @@ export default function BilateralRoutingMatrix({
               onClick={() => setSubView('heatmap')}
               className={`h-7 px-2.5 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
                 subView === 'heatmap'
-                  ? 'bg-amber-600 text-white font-semibold shadow-sm'
+                  ? 'atlas-pill-active font-semibold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >

@@ -56,8 +56,22 @@ export default function CapitalFlowMap({
   const [accountingBasis, setAccountingBasis] = useState('residence'); // 'residence' | 'ultimate_risk'
   const [selectedSector, setSelectedSector] = useState('all'); // 'all' | 'banks' | 'nbfi' | 'sovereign' | 'non_financial'
   const [selectedInstrument, setSelectedInstrument] = useState('all'); // 'all' | 'loans' | 'securities' | 'derivatives'
+  const [isDossierCollapsed, setIsDossierCollapsed] = useState(false);
+  const [isSpotlightPulse, setIsSpotlightPulse] = useState(false);
+  const [isLightTheme, setIsLightTheme] = useState(() =>
+    typeof document !== 'undefined' && document.body.classList.contains('theme-light')
+  );
 
-  // Sync external configuration from guided playbooks
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const syncTheme = () => setIsLightTheme(document.body.classList.contains('theme-light'));
+    syncTheme();
+    const obs = new MutationObserver(syncTheme);
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+
+  // Sync external configuration from guided playbooks with spotlight visual feedback
   useEffect(() => {
     if (externalMapConfig) {
       if (externalMapConfig.accountingBasis) {
@@ -69,8 +83,19 @@ export default function CapitalFlowMap({
       if (externalMapConfig.selectedInstrument) {
         setSelectedInstrument(externalMapConfig.selectedInstrument);
       }
+      setIsSpotlightPulse(true);
+      const timer = setTimeout(() => setIsSpotlightPulse(false), 1800);
+      return () => clearTimeout(timer);
     }
   }, [externalMapConfig]);
+
+  // Resize map canvas smoothly when right dossier collapses or expands
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      chartInstance.current?.resize();
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [isDossierCollapsed]);
 
   const countries = dataset.countries || [];
   const countryMap = useMemo(() => Object.fromEntries(countries.map(c => [c.code, c])), [countries]);
@@ -451,8 +476,8 @@ export default function CapitalFlowMap({
           formatter: (accountingBasis === 'ultimate_risk' && isOffshoreConduit(c.code)) ? '{b} (已穿透)' : '{b}',
           fontSize: 11,
           fontWeight: isSelected ? 'bold' : 'normal',
-          color: isSelected ? '#ffffff' : '#e2e8f0',
-          textBorderColor: '#060a12',
+          color: isLightTheme ? '#0f172a' : (isSelected ? '#ffffff' : '#e2e8f0'),
+          textBorderColor: isLightTheme ? '#ffffff' : '#060a12',
           textBorderWidth: 3,
           fontFamily: 'system-ui, -apple-system, sans-serif'
         },
@@ -477,10 +502,10 @@ export default function CapitalFlowMap({
       }
     });
 
-    // Viewport presets: centered and scaled to eliminate empty voids with mobile responsiveness
+    // Viewport presets: centered and scaled to eliminate empty polar voids with mobile responsiveness
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    let geoCenter = isMobile ? [15, 25] : [15, 20];
-    let geoZoom = isMobile ? 1.05 : 1.30;
+    let geoCenter = isMobile ? [15, 25] : [14, 22];
+    let geoZoom = isMobile ? 1.12 : 1.36;
     if (geoPreset === 'asia') {
       geoCenter = [105, 22];
       geoZoom = isMobile ? 1.8 : 2.4;
@@ -637,15 +662,15 @@ export default function CapitalFlowMap({
         center: geoCenter,
         aspectScale: isMobile ? 0.78 : 0.84,
         itemStyle: {
-          // Velvet luxury dark landmass with subtle border definition
-          areaColor: '#0c1322',
-          borderColor: '#1e293b',
-          borderWidth: 0.8
+          // Quiet-luxury dark landmass or Economist/FT paper landmass in light theme
+          areaColor: isLightTheme ? '#dde5ef' : '#0c1322',
+          borderColor: isLightTheme ? '#ffffff' : '#1e293b',
+          borderWidth: isLightTheme ? 0.9 : 0.8
         },
         emphasis: {
           itemStyle: {
-            areaColor: '#121b2f',
-            borderColor: '#38bdf8',
+            areaColor: isLightTheme ? '#cbd5e1' : '#121b2f',
+            borderColor: isLightTheme ? '#4f46e5' : '#38bdf8',
             borderWidth: 1.2
           },
           label: { show: false }
@@ -663,9 +688,14 @@ export default function CapitalFlowMap({
             focus: 'self',
             lineStyle: {
               width: 3.2,
-              opacity: 0.95,
+              opacity: 0.96,
               shadowBlur: 12,
               shadowColor: '#38bdf8'
+            }
+          },
+          blur: {
+            lineStyle: {
+              opacity: 0.08
             }
           },
           data: linesData
@@ -705,7 +735,7 @@ export default function CapitalFlowMap({
             symbolSize: flowMode === 'flows' ? 3.4 : 3.0,
             color: flowMode === 'flows'
               ? (p) => (p && p.data && p.data.isExpansion ? '#34d399' : '#fb7185')
-              : 'rgba(255, 255, 255, 0.92)'
+              : (isLightTheme ? 'rgba(79, 70, 229, 0.85)' : 'rgba(255, 255, 255, 0.92)')
           },
           lineStyle: {
             width: 0,
@@ -734,7 +764,7 @@ export default function CapitalFlowMap({
       notMerge: true,
       lazyUpdate: true
     });
-  }, [selectedQuarter, selectedCountry, corridorDensity, metricView, mapLoaded, focusCountry, geoPreset, showLabels, flowMode, linksWithFlow, dataset?.datasetRevision]);
+  }, [selectedQuarter, selectedCountry, corridorDensity, metricView, mapLoaded, focusCountry, geoPreset, showLabels, flowMode, linksWithFlow, dataset?.datasetRevision, isLightTheme]);
 
   // Full 28-Quarter Macro Historical Scrubber Chart (2018Q1 - 2024Q4)
   useEffect(() => {
@@ -1065,21 +1095,21 @@ export default function CapitalFlowMap({
 
   return (
     <div className="space-y-2 scroll-mt-24">
-      {/* Top Refined Glass Control Header */}
-      <div className="glass-panel rounded-xl px-3 py-1.5 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      {/* Top Refined Glass Control Header (Zero-Wrap Single Row on Desktop) */}
+      <div className="glass-panel rounded-xl px-3 py-1.5 flex flex-wrap lg:flex-nowrap items-center justify-between gap-2 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2 shrink-0">
           <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-400/25 flex items-center justify-center text-sky-400 shrink-0">
-            <Radio className="w-3.5 h-3.5 animate-pulse text-sky-400" />
+            <Radio className="w-3.5 h-3.5 text-sky-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-bold text-white tracking-wide">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-white tracking-wide whitespace-nowrap">
                 全球双边跨国信贷流向图谱
               </h2>
               {onOpenAppendix && (
                 <button
                   onClick={onOpenAppendix}
-                  className="text-[11px] text-sky-400 hover:text-sky-300 font-mono flex items-center gap-0.5 cursor-pointer ml-1"
+                  className="text-[11px] text-sky-400 hover:text-sky-300 font-mono flex items-center gap-0.5 cursor-pointer ml-1 whitespace-nowrap"
                 >
                   <span>方法论</span>
                   <ArrowUpRight className="w-3 h-3" />
@@ -1097,17 +1127,17 @@ export default function CapitalFlowMap({
         </div>
 
         {/* Refined Functional Controls */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap lg:flex-nowrap shrink-0">
           {/* Phase 2: Accounting Basis (Residence vs Look-Through Ultimate Risk) */}
-          <div className="flex items-center bg-slate-900/90 border border-purple-500/50 rounded-lg p-0.5 text-[11px] shadow-sm">
+          <div className={`atlas-segmented text-[11px] ${isSpotlightPulse ? 'animate-spotlight' : ''}`}>
             <button
               onClick={() => {
                 soundFx.playTick();
                 setAccountingBasis('residence');
               }}
-              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
+              className={`h-6 px-2.5 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
                 accountingBasis === 'residence'
-                  ? 'bg-slate-700 text-white shadow-sm'
+                  ? 'atlas-pill-active'
                   : 'text-slate-400 hover:text-white'
               }`}
               title="BIS LBS 居住地即期债务人口径 (Immediate Counterparty Basis · 资金流向注册地如开曼/香港/卢森堡)"
@@ -1120,10 +1150,10 @@ export default function CapitalFlowMap({
                 setAccountingBasis('ultimate_risk');
               }}
               data-testid="toggle-look-through-ofcs"
-              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
+              className={`h-6 px-2.5 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
                 accountingBasis === 'ultimate_risk'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_0_12px_rgba(168,85,247,0.4)]'
-                  : 'text-purple-300 hover:text-white hover:bg-purple-950/40'
+                  ? 'atlas-pill-active'
+                  : 'text-slate-300 hover:text-white'
               }`}
               title="BIS CBS 最终风险穿透口径 (Look-Through OFCs · 穿透开曼/卢森堡/香港等壳架构，还原至母国真实风险承担者)"
             >
@@ -1172,15 +1202,15 @@ export default function CapitalFlowMap({
           </div>
 
           {/* Mode Switcher */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-[11px] shadow-sm">
+          <div className="atlas-segmented text-[11px]">
             <button
               onClick={() => {
                 soundFx.playTick();
                 setFlowMode('positions');
               }}
-              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
+              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                 flowMode === 'positions'
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'atlas-pill-active'
                   : 'text-slate-400 hover:text-white'
               }`}
               title="BIS LBS 期末未偿信贷存量 (Amounts Outstanding)"
@@ -1193,9 +1223,9 @@ export default function CapitalFlowMap({
                 soundFx.playChime();
                 setFlowMode('flows');
               }}
-              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
+              className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                 flowMode === 'flows'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm'
+                  ? 'atlas-pill-active'
                   : 'text-slate-400 hover:text-white'
               }`}
               title="相邻季度双边存量净增量 (绿色为走廊信贷扩张，红色为资金撤出回流)"
@@ -1206,7 +1236,7 @@ export default function CapitalFlowMap({
           </div>
 
           {/* 2D / 3D Switcher */}
-          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-[11px] shadow-sm">
+          <div className="atlas-segmented text-[11px]">
             <button
               onClick={() => {
                 soundFx.playTick();
@@ -1214,7 +1244,7 @@ export default function CapitalFlowMap({
               }}
               className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
                 mapProjection === '2d'
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'atlas-pill-active'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -1227,7 +1257,7 @@ export default function CapitalFlowMap({
               }}
               className={`h-6 px-2 rounded-md transition-all text-[11px] font-semibold cursor-pointer flex items-center gap-1 ${
                 mapProjection === '3d'
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'atlas-pill-active'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -1236,7 +1266,7 @@ export default function CapitalFlowMap({
           </div>
 
           {/* Corridor Density Curation Toggle */}
-          <div className="hidden sm:flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-xs">
+          <div className="hidden 2xl:flex atlas-segmented text-[11px]">
             {[
               { id: 'backbone', label: '骨干网络' },
               { id: 'usd_dominant', label: '美元走廊' },
@@ -1245,9 +1275,9 @@ export default function CapitalFlowMap({
               <button
                 key={d.id}
                 onClick={() => setCorridorDensity(d.id)}
-                className={`h-7 px-2 rounded-md transition-all text-xs font-medium cursor-pointer ${
+                className={`h-6 px-2 rounded-md transition-all text-[11px] font-medium cursor-pointer whitespace-nowrap ${
                   corridorDensity === d.id
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? 'atlas-pill-active font-semibold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1257,12 +1287,12 @@ export default function CapitalFlowMap({
           </div>
 
           {/* Focus Country Isolation */}
-          <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/60 rounded-lg px-2 py-1 text-xs">
+          <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/60 rounded-lg px-2 py-0.5 text-[11px] shrink-0">
             <Target className="w-3 h-3 text-sky-400" />
             <select
               value={focusCountry}
               onChange={(e) => setFocusCountry(e.target.value)}
-              className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-xs"
+              className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-[11px]"
             >
               <option value="ALL">🌐 全局视角</option>
               {countries.map(c => (
@@ -1274,7 +1304,7 @@ export default function CapitalFlowMap({
           </div>
 
           {/* Node Size Metric Switcher */}
-          <div className="hidden lg:flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 text-xs">
+          <div className="hidden 2xl:flex atlas-segmented text-[11px]">
             {[
               { id: 'claims', label: '总债权' },
               { id: 'liab', label: '总负债' },
@@ -1283,9 +1313,9 @@ export default function CapitalFlowMap({
               <button
                 key={m.id}
                 onClick={() => setMetricView(m.id)}
-                className={`h-7 px-2 rounded-md transition-all text-xs font-medium cursor-pointer ${
+                className={`h-6 px-2 rounded-md transition-all text-[11px] font-medium cursor-pointer whitespace-nowrap ${
                   metricView === m.id
-                    ? 'bg-sky-600 text-white shadow-sm'
+                    ? 'atlas-pill-active font-semibold'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1297,7 +1327,7 @@ export default function CapitalFlowMap({
           {/* Toggle Labels */}
           <button
             onClick={() => setShowLabels(!showLabels)}
-            className={`h-7 px-2 rounded-lg border text-xs transition-colors cursor-pointer hidden sm:flex items-center ${
+            className={`h-7 px-2 rounded-lg border text-[11px] transition-colors cursor-pointer hidden xl:flex items-center whitespace-nowrap ${
               showLabels
                 ? 'bg-slate-800 border-slate-600 text-white'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
@@ -1337,27 +1367,37 @@ export default function CapitalFlowMap({
       {accountingBasis === 'ultimate_risk' && (
         <div 
           data-testid="look-through-active-banner"
-          className="flex items-center justify-between gap-3 p-2.5 px-3.5 bg-gradient-to-r from-purple-950/90 via-slate-900/90 to-indigo-950/90 border border-purple-500/50 rounded-xl text-xs text-purple-200 shadow-[0_0_20px_rgba(168,85,247,0.2)] animate-fade-in"
+          className={`flex items-center justify-between gap-3 p-2.5 px-3.5 bg-[#131b2e]/95 border border-indigo-400/35 rounded-xl text-xs text-slate-200 shadow-md animate-fade-in ${isSpotlightPulse ? 'animate-spotlight' : ''}`}
         >
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
+            <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
             <span>
-              <strong>已开启离岸中心穿透还原 (Look-Through OFCs · CBS Table B)</strong>：已将开曼群岛 (KY)、卢森堡 (LU)、中国香港 (HK) 等 <strong>${lookThroughResult?.totalBypassedBn ?? '6840'}B</strong> 离岸通道资金按母国国籍穿透并入母公司最终风险敞口（以美中德英日为主），虚化离岸中转重影。
+              <strong className="text-indigo-200">已开启离岸中心穿透还原 (Look-Through OFCs · CBS Table B)</strong>：已将开曼群岛 (KY)、卢森堡 (LU)、中国香港 (HK) 等 <strong>${lookThroughResult?.totalBypassedBn ?? '6840'}B</strong> 离岸通道资金按母国国籍穿透并入母公司最终风险敞口（以美中德英日为主），虚化离岸中转重影。
             </span>
           </div>
           <button
             onClick={() => setAccountingBasis('residence')}
-            className="text-[11px] underline text-purple-300 hover:text-white shrink-0 cursor-pointer"
+            className="text-[11px] underline text-indigo-300 hover:text-white shrink-0 cursor-pointer"
           >
             还原至居住地 (LBS)
           </button>
         </div>
       )}
 
-      {/* Pro-Analytics Desk (Map + Real-Time Intelligence Dossier) */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+      {/* Pro-Analytics Desk (Map + Collapsible Real-Time Intelligence Dossier) */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-3.5">
         {/* Main Map Canvas Column with Viewport-Adaptive Responsive Height */}
-        <div className="xl:col-span-8 2xl:col-span-9 glass-panel rounded-2xl relative overflow-hidden shadow-2xl border border-white/[0.06] min-h-[350px] flex flex-col">
+        <div className={`${isDossierCollapsed ? 'xl:col-span-12' : 'xl:col-span-8 2xl:col-span-9'} glass-panel rounded-2xl relative overflow-hidden shadow-2xl border border-white/[0.06] min-h-[350px] flex flex-col transition-all duration-200`}>
+          {/* Desktop Expand Dossier Button when Collapsed */}
+          {isDossierCollapsed && (
+            <button
+              onClick={() => setIsDossierCollapsed(false)}
+              className="hidden xl:flex absolute top-4 right-4 z-20 px-3 py-1.5 rounded-lg bg-[#0d1321]/90 hover:bg-[#131b2e] border border-white/[0.12] text-slate-200 hover:text-white text-xs font-medium items-center gap-1.5 shadow-lg backdrop-blur-md cursor-pointer"
+              title="展开右侧核心信贷动脉与净头寸榜单"
+            >
+              <span>◂ 展开动脉榜单</span>
+            </button>
+          )}
           {mapProjection === '3d' ? (
             <GlobalFlowGlobe3D
               countries={countries}
@@ -1522,30 +1562,31 @@ export default function CapitalFlowMap({
           )}
 
           {/* Floating Minimalist Legend (Bottom-Right) */}
-          <div className="absolute bottom-5 right-5 z-20 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-xl p-3 text-xs shadow-xl space-y-1.5 hidden md:block">
-            <div className="text-[10px] font-mono uppercase text-slate-400 mb-1 tracking-wider border-b border-white/5 pb-1">
-              图谱符号体系 (Symbology)
+          <div className="absolute bottom-5 right-5 z-20 bg-[#0d1321]/90 backdrop-blur-md border border-white/10 rounded-xl p-3 text-xs shadow-xl space-y-1.5 hidden md:block">
+            <div className="text-[11px] font-mono text-slate-400 mb-1 tracking-wide border-b border-white/5 pb-1" title="Symbology">
+              图谱符号体系
             </div>
             <div className="flex items-center gap-2 text-[11px]">
               <span className="w-2.5 h-2.5 rounded-full border border-sky-400 bg-sky-400/20" />
-              <span className="text-slate-300">储备货币核心 (Global Core)</span>
+              <span className="text-slate-300" title="Global Core">储备货币核心</span>
             </div>
             <div className="flex items-center gap-2 text-[11px]">
               <span className="w-2.5 h-2.5 rounded-full border border-amber-400 bg-amber-400/20" />
-              <span className="text-slate-300">离岸转口中介 (Offshore Conduit)</span>
+              <span className="text-slate-300" title="Offshore Conduit">离岸转口中介</span>
             </div>
             <div className="flex items-center gap-2 text-[11px]">
               <span className="w-2.5 h-2.5 rounded-full border border-emerald-400 bg-emerald-400/20" />
-              <span className="text-slate-300">对外净债权国 (Net Creditor &gt; $250B)</span>
+              <span className="text-slate-300" title="Net Creditor > $250B">对外净债权国 (&gt; $250B)</span>
             </div>
             <div className="flex items-center gap-2 text-[11px]">
               <span className="w-2.5 h-2.5 rounded-full border border-rose-400 bg-rose-400/20" />
-              <span className="text-slate-300">对外净负债国 (Net Debtor &lt; -$250B)</span>
+              <span className="text-slate-300" title="Net Debtor < -$250B">对外净负债国 (&lt; -$250B)</span>
             </div>
           </div>
         </div>
 
         {/* Right Intelligence Dossier Column */}
+        {!isDossierCollapsed && (
         <div className="xl:col-span-4 2xl:col-span-3 flex flex-col gap-3.5">
           {/* Card 1: Top 5 Bilateral Arterial Corridors in Current Quarter */}
           <div className="glass-panel rounded-2xl p-4 shadow-xl border border-white/[0.06] flex-1">
@@ -1555,9 +1596,16 @@ export default function CapitalFlowMap({
                   {flowMode === 'flows' ? <Zap className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                 </span>
                 <h4 className="text-xs font-bold text-white tracking-wide">
-                  {flowMode === 'flows' ? '当季存量变动走廊 Top 5 (一阶差分)' : '当季核心信贷动脉 Top 5 (存量)'}
+                  {flowMode === 'flows' ? '当季存量变动走廊 Top 5' : '当季核心信贷动脉 Top 5'}
                 </h4>
               </div>
+              <button
+                onClick={() => setIsDossierCollapsed(true)}
+                className="hidden xl:inline-flex text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800/80 border border-white/[0.08] cursor-pointer"
+                title="收起右侧边栏以全宽展示世界地图"
+              >
+                收起 ▸
+              </button>
             </div>
 
             <div className="space-y-2">
@@ -1574,41 +1622,39 @@ export default function CapitalFlowMap({
                       usdVol: c.usd_denominated_bn
                     });
                   }}
-                  className="p-2 rounded-xl bg-slate-900/70 hover:bg-slate-800/90 border border-white/5 hover:border-sky-500/40 cursor-pointer transition-all group"
+                  className="p-2 rounded-xl bg-slate-900/70 hover:bg-slate-800/90 border border-white/5 hover:border-indigo-400/40 cursor-pointer transition-all group"
                   title="点击在地图中高亮透视此走廊"
                 >
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between text-xs tabular-nums">
                     <div className="flex items-center gap-1.5 font-medium text-slate-200 group-hover:text-white">
-                      <span className="text-[10px] font-mono font-bold text-sky-400 w-4">#{idx + 1}</span>
+                      <span className="text-[11px] font-mono font-bold text-indigo-300 w-5">#{idx + 1}</span>
                       <span>{c.fromName}</span>
                       <span className="text-slate-500">→</span>
                       <span>{c.toName}</span>
                     </div>
                     {flowMode === 'flows' ? (
                       <span className={`font-mono font-bold text-xs ${c.netChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {c.netChange > 0 ? '+' : (c.netChange < 0 ? '-' : '')}${Math.abs(c.netChange)}B <span className="text-[10px] text-slate-400 font-normal">({c.netChangePct > 0 ? '+' : ''}{c.netChangePct}%)</span>
+                        {c.netChange > 0 ? '+' : (c.netChange < 0 ? '-' : '')}${Math.abs(c.netChange)}B <span className="text-[11px] text-slate-400 font-normal">({c.netChangePct > 0 ? '+' : ''}{c.netChangePct}%)</span>
                       </span>
                     ) : (
                       <span className="font-mono font-bold text-white text-xs">
                         {c.claims_usd_bn >= 1000 ? `$${(c.claims_usd_bn / 1000).toFixed(2)}T` : `$${c.claims_usd_bn}B`}
-                        <span className="text-[10px] text-slate-400 font-normal ml-1">({Math.round(c.claims_usd_bn * 10).toLocaleString()} 亿美元)</span>
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between mt-1.5 text-[10px] text-slate-400 font-mono">
+                  <div className="flex items-center justify-between mt-1.5 text-[11px] text-slate-400 font-mono tabular-nums">
                     <span className="flex items-center gap-1">
-                      <DollarSign className="w-2.5 h-2.5 text-emerald-400" /> 
+                      <DollarSign className="w-3 h-3 text-emerald-400" /> 
                       {flowMode === 'flows' ? `存量基数: $${c.claims_usd_bn >= 1000 ? `${(c.claims_usd_bn / 1000).toFixed(2)}T` : `${c.claims_usd_bn}B`}` : `美元占比: ${c.usdShare}%`}
                     </span>
                     <span className="text-emerald-400 font-semibold">
                       ${c.usd_denominated_bn >= 1000 ? `${(c.usd_denominated_bn / 1000).toFixed(2)}T` : `${c.usd_denominated_bn}B`}
-                      <span className="text-[9px] text-slate-500 font-normal ml-0.5">({Math.round(c.usd_denominated_bn * 10).toLocaleString()} 亿)</span>
                     </span>
                   </div>
                   <div className="w-full h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
                     <div 
-                      className={`h-full ${flowMode === 'flows' ? (c.netChange >= 0 ? 'bg-emerald-400' : 'bg-rose-400') : 'bg-gradient-to-r from-sky-500 to-emerald-400'}`} 
+                      className={`h-full ${flowMode === 'flows' ? (c.netChange >= 0 ? 'bg-emerald-400' : 'bg-rose-400') : 'bg-gradient-to-r from-indigo-500 to-emerald-400'}`} 
                       style={{ width: `${Math.min(100, Math.max(15, c.usdShare))}%` }} 
                     />
                   </div>
@@ -1625,17 +1671,17 @@ export default function CapitalFlowMap({
                   <TrendingUp className="w-3.5 h-3.5" />
                 </span>
                 <h4 className="text-xs font-bold text-white tracking-wide">
-                  全球对外净头寸极化两极
+                  全球对外净头寸两极
                 </h4>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono">LBS 综合</span>
+              <span className="text-[11px] text-slate-400 font-mono">LBS 综合</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-2 gap-2 text-xs tabular-nums">
               {/* Top Creditors */}
               <div className="space-y-1.5 bg-slate-900/60 rounded-xl p-2.5 border border-emerald-500/10">
-                <div className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1 font-mono">
-                  <span>🟢 净债权巨头</span>
+                <div className="text-[11px] font-semibold text-emerald-400 tracking-wide flex items-center gap-1">
+                  <span>净债权前列</span>
                 </div>
                 {netPositions.creditors.map(c => (
                   <div key={c.code} className="flex justify-between items-center text-[11px]">
@@ -1649,8 +1695,8 @@ export default function CapitalFlowMap({
 
               {/* Top Debtors */}
               <div className="space-y-1.5 bg-slate-900/60 rounded-xl p-2.5 border border-rose-500/10">
-                <div className="text-[10px] font-semibold text-rose-400 uppercase tracking-wider flex items-center gap-1 font-mono">
-                  <span>🔴 净负债巨头</span>
+                <div className="text-[11px] font-semibold text-rose-400 tracking-wide flex items-center gap-1">
+                  <span>净负债前列</span>
                 </div>
                 {netPositions.debtors.map(c => (
                   <div key={c.code} className="flex justify-between items-center text-[11px]">
@@ -1668,12 +1714,12 @@ export default function CapitalFlowMap({
           <div className="glass-panel rounded-2xl p-3.5 shadow-xl border border-white/[0.06]">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-                <Target className="w-3 h-3 text-sky-400" /> 核心主权经济体快选:
+                <Target className="w-3 h-3 text-indigo-400" /> 核心主权经济体快选:
               </span>
               {focusCountry !== 'ALL' && (
                 <button
                   onClick={() => setFocusCountry('ALL')}
-                  className="text-[10px] text-sky-400 hover:text-white underline cursor-pointer"
+                  className="text-[11px] text-indigo-300 hover:text-white underline cursor-pointer"
                 >
                   重置全局
                 </button>
@@ -1689,18 +1735,19 @@ export default function CapitalFlowMap({
                     onClick={() => setFocusCountry(isActive ? 'ALL' : code)}
                     className={`px-2 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer flex items-center gap-1 border ${
                       isActive
-                        ? 'bg-blue-600 text-white font-bold border-blue-400 shadow-sm'
-                        : 'bg-slate-900/80 text-slate-300 border-slate-700/60 hover:border-slate-500 hover:text-white'
+                        ? 'atlas-pill-active font-bold'
+                        : 'bg-slate-900/80 text-slate-300 border-white/[0.08] hover:border-slate-500 hover:text-white'
                     }`}
                   >
                     <span>{code}</span>
-                    <span className="text-[10px] text-slate-400 font-sans">{c?.name_zh?.slice(0, 2)}</span>
+                    <span className="text-[11px] text-slate-400 font-sans">{c?.name_zh?.slice(0, 2)}</span>
                   </button>
                 );
               })}
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Integrated 36-Quarter Full Historical Scrubber & Macro Trend Panel */}
@@ -1757,7 +1804,7 @@ export default function CapitalFlowMap({
               title={`跳转至 ${ep.quarter} (${ep.tag})`}
             >
               <span className="font-semibold">{ep.label}</span>
-              <span className="text-[10px] text-sky-400/80 font-bold">({ep.quarter})</span>
+              <span className="text-[11px] text-indigo-300/90 font-bold">({ep.quarter})</span>
             </button>
           ))}
         </div>
@@ -1768,15 +1815,15 @@ export default function CapitalFlowMap({
         {/* BIS LBS Methodology Positions vs Flows Callout */}
         <div className="bg-slate-900/70 rounded-xl p-3 border border-slate-800 text-[11px] text-slate-400 space-y-1.5 font-mono">
           <div className="flex flex-wrap items-center justify-between gap-2 text-slate-300">
-            <span className="font-semibold text-white flex items-center gap-1.5">
+            <span className="font-semibold text-white flex items-center gap-1.5" title="Positions vs Flows Methodology">
               <Info className="w-3.5 h-3.5 text-sky-400" />
-              BIS LBS 存量与流量口径释义 (Positions vs Flows Methodology):
+              BIS LBS 存量与流量口径释义:
             </span>
             <span className="text-slate-500">
               参考规范: <a href="https://data.bis.org/topics/LBS" target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">BIS LBS Guidelines</a>
             </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-400 font-sans">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-400 font-sans">
             <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
               <strong className="text-sky-300 font-mono">📊 期末未偿存量 (Positions / Amounts Outstanding):</strong>
               <p className="mt-0.5 text-slate-400 leading-relaxed">

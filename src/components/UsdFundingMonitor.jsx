@@ -26,7 +26,7 @@ export default function UsdFundingMonitor({
     const chart = echarts.init(lineChartRef.current, 'dark');
 
     const option = {
-      backgroundColor: '#080c14',
+      backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
         backgroundColor: '#0f172a',
@@ -139,7 +139,7 @@ export default function UsdFundingMonitor({
     });
 
     const option = {
-      backgroundColor: '#080c14',
+      backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
@@ -218,7 +218,7 @@ export default function UsdFundingMonitor({
     });
 
     const option = {
-      backgroundColor: '#080c14',
+      backgroundColor: 'transparent',
       tooltip: {
         trigger: 'item',
         backgroundColor: '#0f172a',

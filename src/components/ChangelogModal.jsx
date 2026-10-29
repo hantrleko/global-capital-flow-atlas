@@ -9,12 +9,42 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v3.0.0',
+    version: 'v3.5.0',
     date: '2026-10-29',
     status: 'LATEST',
-    title: 'Phase 5 终极跃迁：全链路动态感知与闭环仿真版 (Live Dynamic Intelligence & Closed-Loop Simulation)',
+    title: 'Phase 6 审美与交互跃迁：机构级静奢投研终端版 (Institutional Quiet-Luxury Terminal)',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '静奢双轨',
+        title: '四级石墨静奢暗色体系与高对比投研纸本亮色主题 (4-Tier Graphite & Research Paper Themes)',
+        desc: '重构色彩语义纪律：采用深海黑曜石至石墨卡片 4 级微光层阶，严格将红/琥珀/翡翠绿保留给真实风险与损益信号（中性化普通导航选中态），同步升级满足 WCAG AA 标准的纸本亮色主题，并全面执行 ≥11px 字号底线与 tabular-nums 等宽数字对齐。'
+      },
+      {
+        tag: '零溢出顶栏',
+        title: '紧凑双栏零溢出顶栏与结构化投研工具箱 (Zero-Overflow 2-Row Shell & Structured Toolbox)',
+        desc: '将三行高密度顶栏压缩为 ~80px 紧凑双栏架构，低频工具统一收纳至「工具箱 ▾」浮层（计价币种、宏观 AI、冲击沙盒、私有数据、历史纪元、方法论附录），确保 1280px 桌面与 390px 移动视口零按钮截断。'
+      },
+      {
+        tag: '同源研判',
+        title: '首屏顶部实时同源研判条 (First-Screen Single-Source-of-Truth Verdict Strip)',
+        desc: '将结论研判台提至主工作区首屏上方，浓缩为 ~38px 单行高密度实时研判条（点击展开三段式机理卡片），并与传染清算引擎、组合压力引擎实现 100% 实时计算同源同步。'
+      },
+      {
+        tag: '图表重塑',
+        title: '信号优先的减记归因图表、走廊聚光灯与对冲瀑布对照 (Signal-First Data Visualization)',
+        desc: '级联传染与组合压力图表默认切换为「一阶直接损失 + 二阶网络传染」单调递减堆叠条形图；地图支持悬停流向聚光灯与右侧动脉榜单一键折叠扩屏；主动对冲防护台新增对冲前后净减记瀑布对照条与平滑数字插值。'
+      }
+    ]
+  },
+  {
+    version: 'v3.0.0',
+    date: '2026-10-29',
+    status: 'STABLE',
+    title: 'Phase 5 终极跃迁：全链路动态感知与闭环仿真版 (Live Dynamic Intelligence & Closed-Loop Simulation)',
+    badge: '历史稳定版',
+    badgeColor: 'border-slate-500/50 bg-slate-900/60 text-slate-300',
     highlights: [
       {
         tag: '动态研判',
@@ -294,7 +324,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v3.0.0 Current
+                  v3.5.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">

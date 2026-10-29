@@ -405,21 +405,21 @@ export default function EarlyWarningSystem({
           </div>
 
           {/* Quick Stats: Red / Amber / Green counts */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="bg-rose-950/40 border border-rose-500/40 rounded-xl px-4 py-2.5 text-center min-w-[90px]">
-              <div className="text-[10px] uppercase font-mono text-rose-300 flex items-center justify-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> 红色警报
+          <div className="flex items-center gap-3 shrink-0 tabular-nums">
+            <div className="bg-rose-950/35 border border-rose-500/30 rounded-xl px-4 py-2.5 text-center min-w-[92px]">
+              <div className="text-[11px] uppercase font-mono text-rose-300 flex items-center justify-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-400" /> 红色警报
               </div>
               <div className="text-2xl font-bold font-mono text-rose-400 mt-0.5">{redCount}</div>
             </div>
-            <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl px-4 py-2.5 text-center min-w-[90px]">
-              <div className="text-[10px] uppercase font-mono text-amber-300 flex items-center justify-center gap-1">
+            <div className="bg-amber-950/35 border border-amber-500/30 rounded-xl px-4 py-2.5 text-center min-w-[92px]">
+              <div className="text-[11px] uppercase font-mono text-amber-300 flex items-center justify-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-400" /> 黄色预警
               </div>
               <div className="text-2xl font-bold font-mono text-amber-400 mt-0.5">{amberCount}</div>
             </div>
-            <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl px-4 py-2.5 text-center min-w-[90px]">
-              <div className="text-[10px] uppercase font-mono text-emerald-300 flex items-center justify-center gap-1">
+            <div className="bg-emerald-950/35 border border-emerald-500/30 rounded-xl px-4 py-2.5 text-center min-w-[92px]">
+              <div className="text-[11px] uppercase font-mono text-emerald-300 flex items-center justify-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" /> 绿色稳健
               </div>
               <div className="text-2xl font-bold font-mono text-emerald-400 mt-0.5">{greenCount}</div>
@@ -429,7 +429,7 @@ export default function EarlyWarningSystem({
 
         {/* View Switcher Subtabs */}
         <div className="mt-6 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {[
               { id: 'matrix', label: '🚦 早期预警矩阵清单', icon: Layers },
               { id: 'history_heatmap', label: '🗓️ 28 季度全样本历史演化热力图', icon: Calendar },
@@ -442,9 +442,9 @@ export default function EarlyWarningSystem({
                   key={tab.id}
                   data-testid={`ews-subtab-${tab.id}`}
                   onClick={() => setActiveSubTab(tab.id)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                     activeSubTab === tab.id
-                      ? 'bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)]'
+                      ? 'atlas-pill-active text-white'
                       : 'bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700'
                   }`}
                 >
@@ -548,9 +548,9 @@ export default function EarlyWarningSystem({
                           <div className="flex items-center gap-2">
                             <span className="font-mono font-bold text-sky-400">{c.code}</span>
                             <span className="font-semibold text-white">{c.name_zh}</span>
-                            <span className="text-[10px] text-slate-400 hidden sm:inline">({c.name})</span>
+                            <span className="text-[11px] text-slate-400 hidden sm:inline">({c.name})</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                          <div className="text-[11px] text-slate-400 font-mono mt-0.5 tabular-nums">
                             {c.region} · GDP: ${c.gdp_usd_bn}B
                           </div>
                         </td>
@@ -558,19 +558,19 @@ export default function EarlyWarningSystem({
                         <td className="py-3 px-3 whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border ${
                             light === 'RED'
-                              ? 'bg-rose-500/15 text-rose-300 border-rose-500/35 shadow-[0_0_8px_rgba(244,63,94,0.3)]'
+                              ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
                               : light === 'AMBER'
-                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/35 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
-                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/35'
+                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
                           }`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${
-                              light === 'RED' ? 'bg-rose-400 animate-ping' : light === 'AMBER' ? 'bg-amber-400' : 'bg-emerald-400'
+                              light === 'RED' ? 'bg-rose-400' : light === 'AMBER' ? 'bg-amber-400' : 'bg-emerald-400'
                             }`} />
                             {light === 'RED' ? '红色高危' : light === 'AMBER' ? '黄色关注' : '绿色稳健'}
                           </span>
                         </td>
 
-                        <td className="py-3 px-3 text-right font-mono">
+                        <td className="py-3 px-3 text-right font-mono tabular-nums">
                           <span className={`font-bold ${
                             ews.credit_to_gdp_gap > 8.0 
                               ? 'text-rose-400' 
@@ -580,24 +580,24 @@ export default function EarlyWarningSystem({
                           }`}>
                             {ews.credit_to_gdp_gap > 0 ? `+${ews.credit_to_gdp_gap}` : ews.credit_to_gdp_gap}%
                           </span>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[11px] text-slate-400">
                             (绝对水平: {ews.credit_to_gdp_pct}%)
                           </div>
                         </td>
 
-                        <td className="py-3 px-3 text-right font-mono">
+                        <td className="py-3 px-3 text-right font-mono tabular-nums">
                           <span className={`font-bold px-2 py-0.5 rounded ${
                             ews.ccyb_buffer_pct > 1.5 
-                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' 
+                              ? 'bg-rose-500/15 text-rose-300 border border-rose-500/35' 
                               : ews.ccyb_buffer_pct > 0.0 
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
+                              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/35' 
                               : 'text-slate-400'
                           }`}>
                             {ews.ccyb_buffer_pct.toFixed(2)}%
                           </span>
                         </td>
 
-                        <td className="py-3 px-3 text-right font-mono">
+                        <td className="py-3 px-3 text-right font-mono tabular-nums">
                           <span className={`font-semibold ${
                             ews.dsr_gap > 2.5 
                               ? 'text-rose-400' 
@@ -607,16 +607,16 @@ export default function EarlyWarningSystem({
                           }`}>
                             {ews.dsr_gap > 0 ? `+${ews.dsr_gap}` : ews.dsr_gap}%
                           </span>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[11px] text-slate-400">
                             (DSR: {ews.dsr_pct}%)
                           </div>
                         </td>
 
-                        <td className="py-3 px-3 text-right font-mono">
+                        <td className="py-3 px-3 text-right font-mono tabular-nums">
                           <span className="text-white font-medium">
                             {ews.xb_borrowing_gdp_pct}%
                           </span>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[11px] text-slate-400">
                             (${c.cross_border_borrowings_bn}B)
                           </div>
                         </td>

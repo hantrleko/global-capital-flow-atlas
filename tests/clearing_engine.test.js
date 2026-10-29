@@ -971,8 +971,8 @@ function runTestSuite() {
   // =========================================================================
   console.log('\nTest 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing');
   {
-    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v3.0.0', 'Clearing version registry PRODUCT must be v3.0.0');
-    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v3.0-DynamicIntelligence'), 'Model registry must declare v3.0-DynamicIntelligence');
+    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v3.5.0', 'Clearing version registry PRODUCT must be v3.5.0');
+    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v3.5-QuietLuxury'), 'Model registry must declare v3.5-QuietLuxury');
 
     // Conduit detection
     assert(isOffshoreConduit('KY'), 'KY (Cayman Islands) must be identified as offshore conduit');
@@ -1213,6 +1213,71 @@ function runTestSuite() {
     assert(hedgedStressResult.netSavedMn > 0, 'Active hedging must deliver strictly positive net capital saved');
     assert(hedgedStressResult.hedgedStressedAumMn > hedgedStressResult.stressedAumMn, 'Hedged stressed AUM must be greater than unhedged stressed AUM');
     assert(hedgedStressResult.hedgedStressVaR99Mn < hedgedStressResult.stressVaR99Mn, 'Hedged VaR99 must be lower than unhedged VaR99');
+  }
+
+  // =========================================================================
+  // Test 37: Phase 6 Single-Source-of-Truth Live Verdict Parity (v3.5.0)
+  // =========================================================================
+  console.log('\nTest 37: Phase 6 Single-Source-of-Truth Live Verdict Parity (v3.5.0)');
+  {
+    // 1. Static fallback baseline parity with computePortfolioStressOverlay
+    const defaultPortfolio = PORTFOLIO_PRESETS[0];
+    const baselinePortfolioStress = computePortfolioStressOverlay(defaultPortfolio, {
+      scenarioId: 'tr_sovereign_crisis',
+      stressMultiplier: 1.0,
+      enableLookThrough: true,
+      activeHedges: []
+    });
+    assert(baselinePortfolioStress.totalLossMn === 47.7, `Baseline portfolio loss must equal 47.7M (got ${baselinePortfolioStress.totalLossMn})`);
+    assert(baselinePortfolioStress.stressVaR99Mn === 64.4, `Baseline VaR99 must equal 64.4M (got ${baselinePortfolioStress.stressVaR99Mn})`);
+    assert(MODULE_VERDICTS.portfolio.observation.includes('-$47.7M'), 'Static portfolio verdict baseline must align with -$47.7M');
+    assert(MODULE_VERDICTS.portfolio.observation.includes('-$64.4M'), 'Static portfolio verdict baseline must align with -$64.4M VaR');
+
+    // 2. Live Contagion Verdict Parity with native computeClearingScenario shape
+    const clearingRun = computeClearingScenario({
+      dataset,
+      quarter: '2026Q1',
+      epicenter: 'GB',
+      haircutPct: 35
+    });
+    const liveContagionVerdict = getModuleVerdict('contagion', {
+      dataset,
+      selectedQuarter: '2026Q1',
+      clearingResult: clearingRun
+    });
+    assert(liveContagionVerdict.isDynamic === true, 'Live contagion verdict must be dynamic');
+    assert(typeof liveContagionVerdict.headline === 'string' && liveContagionVerdict.headline.length > 10, 'Live contagion verdict must expose compact headline');
+    assert(
+      liveContagionVerdict.headline.includes(clearingRun.currentRun.incrementalTotalDisplay),
+      `Live contagion headline must match incrementalTotalDisplay (${clearingRun.currentRun.incrementalTotalDisplay})`
+    );
+    assert(
+      liveContagionVerdict.observation.includes(clearingRun.currentRun.incrementalTotalDisplay),
+      'Live contagion observation must match incrementalTotalDisplay'
+    );
+
+    // 3. Live Portfolio Verdict Parity (Unhedged & Hedged)
+    const livePortfolioVerdict = getModuleVerdict('portfolio', {
+      dataset,
+      selectedQuarter: '2026Q1',
+      portfolioResult: baselinePortfolioStress
+    });
+    assert(livePortfolioVerdict.headline.includes(`-$${baselinePortfolioStress.totalLossMn}M`), 'Live portfolio headline must contain exact totalLossMn');
+    assert(livePortfolioVerdict.headline.includes(`-$${baselinePortfolioStress.stressVaR99Mn}M`), 'Live portfolio headline must contain exact stressVaR99Mn');
+
+    const hedgedPortfolioStress = computePortfolioStressOverlay(defaultPortfolio, {
+      scenarioId: 'tr_sovereign_crisis',
+      stressMultiplier: 1.0,
+      enableLookThrough: true,
+      activeHedges: ['cds_hedge']
+    });
+    const hedgedVerdict = getModuleVerdict('portfolio', {
+      dataset,
+      selectedQuarter: '2026Q1',
+      portfolioResult: hedgedPortfolioStress
+    });
+    assert(hedgedVerdict.headline.includes(`-$${hedgedPortfolioStress.hedgedLossMn}M`), 'Hedged portfolio headline must reflect residual hedgedLossMn');
+    assert(hedgedVerdict.headline.includes(`+$${hedgedPortfolioStress.netSavedMn}M`), 'Hedged portfolio headline must reflect netSavedMn');
   }
 
   console.log('\n===============================================================');

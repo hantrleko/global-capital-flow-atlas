@@ -83,10 +83,11 @@ export const MODULE_VERDICTS = {
   },
   portfolio: {
     id: 'portfolio',
-    moduleTitle: '我的组合压力映射与账户风控',
-    observation: '在基准外债与离岸休克情景下，全球平衡组合预期净减记达 -$38.4M (-7.68%)，99% 压力 VaR 达 -$51.8M。',
+    moduleTitle: '组合压力映射与 VaR',
+    headline: '基准平衡组合 ($500M) 压力净减记 -$47.7M (-9.5%)，99% 压力 VaR -$64.4M',
+    observation: '在基准主权外债与同业传染情景下，全球平衡组合预期压力净减记 -$47.7M (-9.5%)，99% 压力 VaR 达 -$64.4M。',
     mechanism: '持仓中的高贝塔新兴市场主权债直接减记，而欧洲大行信用债与离岸 PE 股权则因二阶网络同业传染被动受损。',
-    verdict: '【账户防护行动】立即买入 5Y TR 主权 CDS，并将开曼离岸 PE 头寸调降 20% 切换至 3M 短期美债，可收敛 55% 极端回撤。',
+    verdict: '【账户防护行动】建议启用 5Y 主权 CDS 与离岸 SPV 调降美债策略，可显著收敛极端尾部回撤。',
     severity: 'CRITICAL',
     focusPriority: 1
   },
@@ -466,6 +467,7 @@ export function getModuleVerdict(tabId, context = {}) {
       const cInbound = links.filter(l => l.target === selectedCountry).reduce((acc, l) => acc + l.claims_usd_bn, 0);
       return {
         ...dynamicBase,
+        headline: `${selectedQuarter} · ${countryName} 对外债权 $${Math.round(cOutbound)}B / 跨境负债 $${Math.round(cInbound)}B`,
         observation: `${selectedQuarter} 视角：${countryName} 跨国对外债权为 $${Math.round(cOutbound)}B，跨境借入债务为 $${Math.round(cInbound)}B。`,
         mechanism: `${countryName} 跨国信贷高度依赖核心中枢通道，在全球流动性波动时易受对手方收缩影响。`,
         verdict: `【主权专属研判】建议核查 ${countryName} 的表外外汇掉期隐性负债与短期期限错配程度，预防展期断裂。`,
@@ -474,6 +476,7 @@ export function getModuleVerdict(tabId, context = {}) {
     }
     return {
       ...dynamicBase,
+      headline: `${selectedQuarter} 全球跨境信贷 $${totalClaims.toFixed(2)}T (环比 ${qoqStr}) · 首要走廊 ${topCorridorStr}${lookThroughEnabled ? ' · 已开启离岸穿透' : ''}`,
       observation: `${selectedQuarter} 官方核准数据：全球跨国银行信贷总额为 $${totalClaims.toFixed(2)}T (环比: ${qoqStr})，最大信贷动脉为 ${topCorridorStr}。`,
       mechanism: `资金深度集聚于跨大西洋走廊与离岸避税中枢，${lookThroughEnabled ? '已开启离岸穿透，还原至最终母国风险承担者。' : '表外对冲基金借道离岸群岛大幅加杠杆。'}`,
       verdict: lookThroughEnabled 
@@ -484,48 +487,86 @@ export function getModuleVerdict(tabId, context = {}) {
   }
 
   if (tabId === 'contagion') {
-    if (clearingResult && clearingResult.topVictimCountry) {
-      const victimName = clearingResult.topVictimCountry;
-      const shortfallStr = clearingResult.incrementalDisplayShortfall || '+$284.8B';
+    const cr = clearingResult?.currentRun || clearingResult;
+    if (cr && (cr.incrementalTotalDisplay !== undefined || clearingResult?.topVictimCountry)) {
+      const epicenterLabel = cr.epicenterNameZh
+        ? `${cr.epicenterNameZh} (${cr.epicenterCode}) ${cr.haircutPct}% 减记`
+        : '当前外生冲击';
+      const shortfallStr = cr.incrementalTotalDisplay !== undefined
+        ? `+$${cr.incrementalTotalDisplay}B`
+        : (clearingResult.incrementalDisplayShortfall || '+$284.8B');
+      const victimName = cr.topVictim
+        ? `${cr.topVictim.name_zh} (${cr.topVictim.code}: ${cr.topVictim.incrementalFormatted || ''})`
+        : (clearingResult.topVictimCountry || '德国 (DE)');
       return {
         ...dynamicBase,
-        observation: `Picard 实时清算求解完成：初始外生冲击引发全网边际违约赤字 ${shortfallStr}，受损最严重债权国为 ${victimName}。`,
-        mechanism: `直接债权国承担一阶资产冲销，而美英等网络核心枢纽则因同业交互借贷网络倒戈承担二阶级联传染损失。`,
+        headline: `${epicenterLabel} ➔ 全网边际违约赤字 ${shortfallStr} · 首要受损债权国 ${victimName}`,
+        observation: `Picard 实时清算求解完成：${epicenterLabel}引发全网边际违约赤字 ${shortfallStr}，受损最严重债权国为 ${victimName}。`,
+        mechanism: `直接债权国承担一阶资产冲销，而美英欧等网络核心枢纽则因同业交互借贷网络倒戈承担二阶级联传染损失。`,
         verdict: `【级联传导演算完毕】一阶与二阶多米诺传染已收敛，建议立即点击「映射至我的组合」在投资专户中建立 CDS 对冲防线。`,
         severity: 'CRITICAL'
       };
     }
     return {
       ...dynamicBase,
-      observation: `${selectedQuarter} 仿真环境：土耳其 40% 外债减记将引发全网 +$284.8B 边际违约赤字，德国与英国银行同业链受损严重。`,
+      headline: `${selectedQuarter} 基准仿真：震中减记引发全网级联清算，建议运行冲击或映射至投资组合`,
+      observation: `${selectedQuarter} 仿真环境：主权外债减记将通过同业清算网络引发一阶直接冲销与二阶多米诺级联赤字。`,
       severity: 'CRITICAL'
     };
   }
 
   if (tabId === 'portfolio') {
     if (portfolioResult) {
-      const savedStr = portfolioResult.netSavedMn > 0 ? `，已通过主动对冲保全 +$${portfolioResult.netSavedMn}M 资本` : '';
+      const savedStr = portfolioResult.netSavedMn > 0
+        ? ` · 主动对冲净挽回 +$${portfolioResult.netSavedMn}M (残余减记 -$${portfolioResult.hedgedLossMn}M)`
+        : '';
       return {
         ...dynamicBase,
-        observation: `在当前宏观情景下，组合基准 AUM 预期净减记为 -$${portfolioResult.totalLossMn}M (-${portfolioResult.portfolioLossPct}%)${savedStr}。`,
-        mechanism: `高贝塔主权外债承受直接减记折价，跨国商业银行信用债与离岸 PE 头寸受级联网络传染冲击。`,
+        headline: `基准 AUM $${portfolioResult.baseAumUsdMn}M · 压力净减记 -$${portfolioResult.totalLossMn}M (-${portfolioResult.portfolioLossPct}%) · 99% VaR -$${portfolioResult.stressVaR99Mn}M${savedStr}`,
+        observation: `在「${portfolioResult.scenarioName.split(' (')[0]}」情景下，组合基准 AUM ($${portfolioResult.baseAumUsdMn}M) 预期压力净减记为 -$${portfolioResult.totalLossMn}M (-${portfolioResult.portfolioLossPct}%)，99% 压力 VaR 为 -$${portfolioResult.stressVaR99Mn}M${savedStr}。`,
+        mechanism: `一阶直接主权冲击损失 -$${portfolioResult.firstOrderLossMn}M，二阶跨国同业网络级联传染损失 -$${portfolioResult.secondOrderLossMn}M。`,
         verdict: portfolioResult.netSavedMn > 0
-          ? `【对冲防护生效】主动对冲组合已收敛尾部风险，99% VaR 处于可控区间，建议导出投行研报卡片。`
-          : `【账户暴露风险】建议立即勾选「买入主权 CDS」与「离岸 SPV 去杠杆」，对冲极端尾部减记。`,
+          ? `【对冲防护生效】已激活 ${portfolioResult.activeHedges?.length || 1} 项对冲策略，净保全 +$${portfolioResult.netSavedMn}M 资本，建议导出投行研报卡片。`
+          : `【账户暴露风险】建议立即勾选「买入主权 CDS」与「离岸 SPV 调降至美债」，对冲极端尾部减记。`,
         severity: portfolioResult.portfolioLossPct > 5.0 ? 'CRITICAL' : 'WARNING'
       };
     }
   }
 
+  if (tabId === 'shadow') {
+    const usdShare = globalMacro.global_usd_share_pct ?? 54.2;
+    return {
+      ...dynamicBase,
+      headline: `${selectedQuarter} 离岸非银 (NBFI) 穿透：全球美元信贷份额 ${usdShare}% · 开曼/卢森堡表外 FX Swaps 隐性杠杆高企`,
+      observation: `${selectedQuarter} 监测：全球美元跨境信贷占比 ${usdShare}%，非银金融机构借道开曼 (KY) 与卢森堡 (LU) 滚动表外外汇掉期负债。`,
+      severity: 'CRITICAL'
+    };
+  }
+
   if (tabId === 'ews') {
     return {
       ...dynamicBase,
+      headline: `${selectedQuarter} 巴塞尔 EWS 雷达：前沿市场信贷/GDP 缺口走阔，TR 等高外债经济体亮起红色警报`,
       observation: `${selectedQuarter} 预警雷达：新兴市场信贷/GDP 缺口扩大，土耳其 (TR) 外债偿付比率 (DSR) 持续处于高危红色区间。`,
       severity: 'CRITICAL'
     };
   }
 
-  return dynamicBase;
+  if (tabId === 'usd') {
+    const usdShare = globalMacro.global_usd_share_pct ?? 54.2;
+    const stressIdx = globalMacro.bis_usd_funding_stress_index ?? 48.2;
+    return {
+      ...dynamicBase,
+      headline: `${selectedQuarter} 美元跨境份额 ${usdShare}% · 离岸美元融资压力指数 ${Number(stressIdx).toFixed(1)}/100`,
+      observation: `${selectedQuarter} 监测：美元在跨国银行借贷中占 ${usdShare}% 主导份额，离岸美元融资压力指数为 ${Number(stressIdx).toFixed(1)}。`,
+      severity: stressIdx > 55 ? 'CRITICAL' : 'WARNING'
+    };
+  }
+
+  return {
+    ...dynamicBase,
+    headline: dynamicBase.headline || dynamicBase.observation
+  };
 }
 
 // Helper to retrieve causal links for current tab

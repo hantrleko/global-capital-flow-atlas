@@ -90,9 +90,9 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
 - **发布机构**: EUGENE FINANCE Quantitative Macro Research
 - **基准组合**: 全球平衡多资产组合 (AUM $500.0M) | **报告期**: ${selectedQuarter}
 - **宏观压力情景**: 土耳其 (TR) 外债休克与欧洲同业蔓延 (倍数: 1.0x)
-- **组合预期净减记 (Total Loss)**: -$38.4M (-7.68%)
-- **直接主权减记 (1阶)**: -$21.5M (56.0%) | **二阶级联传染损失 (2阶)**: -$16.9M (44.0%)
-- **压力后资产净值 (Stressed AUM)**: $461.6M (资本留存率: 92.3%)
+- **组合预期净减记 (Total Loss)**: -$47.7M (-9.5%) | **99% 极端压力 VaR**: -$64.4M
+- **直接主权减记 (1阶)**: -$28.1M (58.9%) | **二阶级联传染损失 (2阶)**: -$19.6M (41.1%)
+- **压力后资产净值 (Stressed AUM)**: $452.3M (资本留存率: 90.5%)
 - **受损最大持仓**: 1. 土耳其美元外债 (-$22.8M), 2. 欧洲核心跨国银行信贷 (-$6.5M), 3. 标普 500 核心指数多头 (-$4.9M)
 - **主动对冲方案**: 建议买入 TR 主权 5Y CDS 保护，并将开曼离岸 PE 敞口收缩 20% 切换至 3M 短期美债。
 - **数据源**: BIS CBS Table B Ultimate Risk & Eisenberg-Noe 2001 Clearing Engine`;
@@ -538,8 +538,8 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
                 <div>
                   <h4 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                     <span>机构账户组合压力映射与极端 VaR 评估</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                      Phase 3 · v2.0
+                    <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                      v3.5.0 · 专户风控
                     </span>
                   </h4>
                   <p className="text-xs text-slate-400 mt-0.5">
@@ -548,29 +548,29 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
                 </div>
 
                 {/* 3 KPIs */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2 tabular-nums">
                   <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <span className="text-[10px] font-mono text-slate-400">基准组合资产</span>
+                    <span className="text-[11px] font-mono text-slate-400">基准组合资产</span>
                     <div className="text-base font-black font-mono text-white mt-0.5">
                       $500.0M
                     </div>
-                    <span className="text-[9px] font-mono text-slate-400">全球多资产配置</span>
+                    <span className="text-[11px] font-mono text-slate-400">全球多资产配置</span>
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/30">
-                    <span className="text-[10px] font-mono text-rose-300">预期净减记额</span>
+                    <span className="text-[11px] font-mono text-rose-300">预期净减记额</span>
                     <div className="text-base font-black font-mono text-rose-400 mt-0.5">
-                      -$38.4M
+                      -$47.7M
                     </div>
-                    <span className="text-[9px] font-mono text-rose-300">回撤 -7.68%</span>
+                    <span className="text-[11px] font-mono text-rose-300">回撤 -9.5%</span>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-purple-950/30 border border-purple-500/30">
-                    <span className="text-[10px] font-mono text-purple-300">99% 压力 VaR</span>
-                    <div className="text-base font-black font-mono text-purple-300 mt-0.5">
-                      -$51.8M
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-700">
+                    <span className="text-[11px] font-mono text-amber-300">99% 压力 VaR</span>
+                    <div className="text-base font-black font-mono text-amber-300 mt-0.5">
+                      -$64.4M
                     </div>
-                    <span className="text-[9px] font-mono text-purple-400">巴塞尔 III 1.35x</span>
+                    <span className="text-[11px] font-mono text-slate-400">巴塞尔 III 1.35x</span>
                   </div>
                 </div>
 
