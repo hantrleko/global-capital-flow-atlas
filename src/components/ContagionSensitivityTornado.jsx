@@ -1,14 +1,18 @@
 import React, { useMemo } from 'react';
 import { Sliders, TrendingUp, AlertTriangle } from 'lucide-react';
+import { computeClearingScenario } from '../utils/eisenbergNoeClearing';
 
 /**
- * ContagionSensitivityTornado (v4.5 / v5.0)
+ * ContagionSensitivityTornado (v5.1 / v6.0)
  * 
  * Computes and renders a horizontal sensitivity tornado diagram,
- * evaluating how variations in Haircut, Buffer Multiplier, and Deleveraging
- * swing the incremental systemic clearing loss (Delta S).
+ * evaluating true Eisenberg-Noe clearing swings across Haircut, Buffer Multiplier,
+ * Deleveraging, and Dollar Liquidity Squeeze.
  */
 export default function ContagionSensitivityTornado({
+  dataset = null,
+  selectedQuarter = '2026Q1',
+  customMatrix = null,
   simResults,
   epicenterCountry,
   haircutPct = 35,
@@ -17,32 +21,149 @@ export default function ContagionSensitivityTornado({
   dollarSqueeze = 15
 }) {
   const baselineLoss = simResults?.incrementalTotalRaw ?? (simResults?.totalIncrementalShortfall ?? 284.8);
+  const epiCode = epicenterCountry?.code || 'TR';
 
   const sensitivityDrivers = useMemo(() => {
-    // 1. Haircut swing: +/- 10%
-    const haircutLowFactor = Math.max(0.05, (haircutPct - 10) / Math.max(1, haircutPct));
-    const haircutHighFactor = (haircutPct + 10) / Math.max(1, haircutPct);
-    const haircutLow = baselineLoss * haircutLowFactor;
-    const haircutHigh = baselineLoss * haircutHighFactor;
+    let haircutLow = 0;
+    let haircutHigh = 0;
+    let bufferLow = 0;
+    let bufferHigh = 0;
+    let delevLow = 0;
+    let delevHigh = 0;
+    let squeezeLow = 0;
+    let squeezeHigh = 0;
 
-    // 2. Buffer Multiplier swing: 2.0x (wide buffer, lower loss) vs 1.0x (strict buffer, higher loss)
-    const bufferLow = baselineLoss * 0.94; // with 2.0x buffer
-    const bufferHigh = baselineLoss * 1.06; // with 1.0x buffer
+    if (dataset && dataset.bilateral_matrix) {
+      try {
+        // True Eisenberg-Noe Picard Clearing evaluations
+        // 1. Haircut swing: haircutPct - 10 vs haircutPct + 10
+        const hcLowVal = Math.max(5, haircutPct - 10);
+        const hcHighVal = haircutPct + 10;
+        const resHcLow = computeClearingScenario({
+          dataset,
+          quarter: selectedQuarter,
+          currentLinks: customMatrix,
+          epicenter: epiCode,
+          haircutPct: hcLowVal,
+          bufferMultiplier,
+          deleveragingMultiplier: deleveraging,
+          dollarSqueezePct: dollarSqueeze
+        });
+        const resHcHigh = computeClearingScenario({
+          dataset,
+          quarter: selectedQuarter,
+          currentLinks: customMatrix,
+          epicenter: epiCode,
+          haircutPct: hcHighVal,
+          bufferMultiplier,
+          deleveragingMultiplier: deleveraging,
+          dollarSqueezePct: dollarSqueeze
+        });
+        haircutLow = resHcLow.incrementalTotalRaw;
+        haircutHigh = resHcHigh.incrementalTotalRaw;
 
-    // 3. Deleveraging swing: 1.2x vs 2.5x
-    const delevLow = baselineLoss * 0.88;
-    const delevHigh = baselineLoss * 1.18;
+        // 2. Buffer Multiplier swing: 2.0x (wide buffer, lower loss) vs 1.0x (strict buffer, higher loss)
+        const resBufWide = computeClearingScenario({
+          dataset,
+          quarter: selectedQuarter,
+          currentLinks: customMatrix,
+          epicenter: epiCode,
+          haircutPct,
+          bufferMultiplier: 2.0,
+          deleveragingMultiplier: deleveraging,
+          dollarSqueezePct: dollarSqueeze
+        });
+        const resBufStrict = computeClearingScenario({
+          dataset,
+          quarter: selectedQuarter,
+          currentLinks: customMatrix,
+          epicenter: epiCode,
+          haircutPct,
+          bufferMultiplier: 1.0,
+          deleveragingMultiplier: deleveraging,
+          dollarSqueezePct: dollarSqueeze
+        });
+        bufferLow = resBufWide.incrementalTotalRaw;
+        bufferHigh = resBufStrict.incrementalTotalRaw;
 
-    // 4. Dollar Squeeze swing: 10% vs 25%
-    const squeezeLow = baselineLoss * 0.93;
-    const squeezeHigh = baselineLoss * 1.11;
+        // 3. Deleveraging multiplier swing: 1.2x vs 2.5x
+        const resDelLow = computeClearingScenario({
+          dataset,
+          quarter: selectedQuarter,
+          currentLinks: customMatrix,
+          epicenter: epiCode,
+          haircutPct,
+          bufferMultiplier,
+          deleveragingMultiplier: 1.2,
+          dollarSqueezePct: dollarSqueeze
+        });
+        const resDelHigh = computeClearingScenario({
+          dataset,
+          quarter: selectedQuarter,
+          currentLinks: customMatrix,
+          epicenter: epiCode,
+          haircutPct,
+          bufferMultiplier,
+          deleveragingMultiplier: 2.5,
+          dollarSqueezePct: dollarSqueeze
+        });
+        delevLow = resDelLow.incrementalTotalRaw;
+        delevHigh = resDelHigh.incrementalTotalRaw;
+
+        // 4. Dollar Squeeze swing: 5% vs 25%
+        const resSqLow = computeClearingScenario({
+          dataset,
+          quarter: selectedQuarter,
+          currentLinks: customMatrix,
+          epicenter: epiCode,
+          haircutPct,
+          bufferMultiplier,
+          deleveragingMultiplier: deleveraging,
+          dollarSqueezePct: 5
+        });
+        const resSqHigh = computeClearingScenario({
+          dataset,
+          quarter: selectedQuarter,
+          currentLinks: customMatrix,
+          epicenter: epiCode,
+          haircutPct,
+          bufferMultiplier,
+          deleveragingMultiplier: deleveraging,
+          dollarSqueezePct: 25
+        });
+        squeezeLow = resSqLow.incrementalTotalRaw;
+        squeezeHigh = resSqHigh.incrementalTotalRaw;
+      } catch (err) {
+        console.warn('Tornado non-linear clearing fallback:', err);
+      }
+    }
+
+    // Fallbacks if not computed
+    if (!haircutLow || !haircutHigh) {
+      const haircutLowFactor = Math.max(0.05, (haircutPct - 10) / Math.max(1, haircutPct));
+      const haircutHighFactor = (haircutPct + 10) / Math.max(1, haircutPct);
+      haircutLow = baselineLoss * haircutLowFactor;
+      haircutHigh = baselineLoss * haircutHighFactor;
+    }
+    if (!bufferLow || !bufferHigh) {
+      bufferLow = baselineLoss * 0.94;
+      bufferHigh = baselineLoss * 1.06;
+    }
+    if (!delevLow || !delevHigh) {
+      delevLow = baselineLoss * 0.88;
+      delevHigh = baselineLoss * 1.18;
+    }
+    if (!squeezeLow || !squeezeHigh) {
+      squeezeLow = baselineLoss * 0.93;
+      squeezeHigh = baselineLoss * 1.11;
+    }
 
     const list = [
       {
         id: 'haircut',
         label: '震中直接减记率 (Haircut ±10%)',
-        lowVal: haircutLow,
-        highVal: haircutHigh,
+        lowVal: Math.min(haircutLow, haircutHigh),
+        highVal: Math.max(haircutLow, haircutHigh),
         lowLabel: `${Math.max(5, haircutPct - 10)}%`,
         highLabel: `${haircutPct + 10}%`,
         swing: Math.abs(haircutHigh - haircutLow),
@@ -51,8 +172,8 @@ export default function ContagionSensitivityTornado({
       {
         id: 'deleveraging',
         label: '跨国银行去杠杆乘数 (1.2x - 2.5x)',
-        lowVal: delevLow,
-        highVal: delevHigh,
+        lowVal: Math.min(delevLow, delevHigh),
+        highVal: Math.max(delevLow, delevHigh),
         lowLabel: '1.2x 温和',
         highLabel: '2.5x 踩踏',
         swing: Math.abs(delevHigh - delevLow),
@@ -60,10 +181,10 @@ export default function ContagionSensitivityTornado({
       },
       {
         id: 'dollar_squeeze',
-        label: '离岸美元再融资抽紧 (10% - 25%)',
-        lowVal: squeezeLow,
-        highVal: squeezeHigh,
-        lowLabel: '10% 充裕',
+        label: '离岸美元再融资抽紧 (5% - 25%)',
+        lowVal: Math.min(squeezeLow, squeezeHigh),
+        highVal: Math.max(squeezeLow, squeezeHigh),
+        lowLabel: '5% 充裕',
         highLabel: '25% 紧缩',
         swing: Math.abs(squeezeHigh - squeezeLow),
         desc: '影响非美银行未对冲外汇掉期展期缺口与现汇利差走阔'
@@ -71,8 +192,8 @@ export default function ContagionSensitivityTornado({
       {
         id: 'buffer',
         label: '主权外储缓冲倍数 (1.0x - 2.0x)',
-        lowVal: bufferLow,
-        highVal: bufferHigh,
+        lowVal: Math.min(bufferLow, bufferHigh),
+        highVal: Math.max(bufferLow, bufferHigh),
         lowLabel: '2.0x 互换',
         highLabel: '1.0x 严格',
         swing: Math.abs(bufferHigh - bufferLow),
@@ -82,7 +203,7 @@ export default function ContagionSensitivityTornado({
 
     // Sort by swing descending (Tornado shape)
     return list.sort((a, b) => b.swing - a.swing);
-  }, [baselineLoss, haircutPct]);
+  }, [dataset, selectedQuarter, customMatrix, epiCode, baselineLoss, haircutPct, bufferMultiplier, deleveraging, dollarSqueeze]);
 
   const maxSwing = Math.max(...sensitivityDrivers.map(d => d.swing), 1);
 

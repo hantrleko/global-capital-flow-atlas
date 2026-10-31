@@ -3,7 +3,8 @@ import * as echarts from 'echarts';
 import { 
   AlertOctagon, Play, RotateCcw, ShieldAlert, ArrowRight, 
   TrendingDown, Layers, Zap, Download, Info, ChevronDown, ChevronUp, HelpCircle, FileText,
-  Activity, GitCompare, Sliders, CheckCircle2, BarChart2, Sparkles, Briefcase, Copy, Check
+  Activity, GitCompare, Sliders, CheckCircle2, BarChart2, Sparkles, Briefcase, Copy, Check,
+  Bookmark, Star
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import MethodologyFootnote from './MethodologyFootnote';
@@ -12,6 +13,7 @@ import ContagionSensitivityTornado from './ContagionSensitivityTornado';
 import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 import { getDataClassification } from '../utils/dataClassification';
 import { encodeReproducibilityCode } from '../utils/reproducibilityEngine';
+import { saveScenario } from '../utils/workspaceStorage';
 
 import {
   CLEARING_VERSION_REGISTRY,
@@ -78,6 +80,7 @@ export default function NetworkContagionSimulator({
   const [isRecomputing, setIsRecomputing] = useState(false); // Immediate visual feedback during recomputation
   const [simResults, setSimResults] = useState(null);
   const [copiedRepCode, setCopiedRepCode] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
   const handleCopyReproducibilityCode = () => {
     soundFx.playChime();
@@ -94,6 +97,28 @@ export default function NetworkContagionSimulator({
     }
     setCopiedRepCode(true);
     setTimeout(() => setCopiedRepCode(false), 3000);
+  };
+
+  const handleBookmarkScenario = () => {
+    soundFx.playChime();
+    const code = encodeReproducibilityCode({
+      quarter: selectedQuarter,
+      tab: 'contagion',
+      epicenter: epicenterCountry.code,
+      haircut: haircutPct,
+      bufferMultiplier: bufferMultiplier,
+      accountingBasis: 'ultimate_risk'
+    });
+    saveScenario({
+      title: `${epicenterCountry.name_zh || epicenterCountry.code} 主权减记 ${haircutPct}% (外储缓冲 ${bufferMultiplier}x)`,
+      reproducibilityCode: code,
+      epicenter: epicenterCountry.code,
+      haircut: haircutPct,
+      bufferMultiplier: bufferMultiplier,
+      notes: `增量清算损失: +$${simResults?.incrementalTotalDisplay || 0}B, 首要受害国: ${simResults?.topVictim?.name_zh || simResults?.topVictim?.code || '无'}`
+    });
+    setIsBookmarked(true);
+    setTimeout(() => setIsBookmarked(false), 2500);
   };
 
   // Scenario A & B state for Diff Workbench
@@ -779,6 +804,16 @@ export default function NetworkContagionSimulator({
           </button>
 
           <button
+            onClick={handleBookmarkScenario}
+            data-testid="bookmark-scenario-btn"
+            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 rounded-lg text-amber-200 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs font-mono"
+            title="将当前清算情景及复现码收藏至本地工作区"
+          >
+            <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'text-amber-400 fill-amber-400' : 'text-amber-300'}`} />
+            <span className="hidden sm:inline">{isBookmarked ? '已收藏' : '收藏情景'}</span>
+          </button>
+
+          <button
             onClick={handleExportScenarioCsv}
             className="px-2 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs font-mono"
             title="导出当前清算情景数据 CSV (包含版本元数据、基线与增量)"
@@ -1434,6 +1469,9 @@ export default function NetworkContagionSimulator({
         </div>
       ) : activeViewTab === 'sensitivity' ? (
         <ContagionSensitivityTornado
+          dataset={dataset}
+          selectedQuarter={selectedQuarter}
+          customMatrix={currentLinks}
           simResults={simResults}
           epicenterCountry={epicenterCountry}
           haircutPct={haircutPct}

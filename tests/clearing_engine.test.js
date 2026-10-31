@@ -63,6 +63,16 @@ import {
 import {
   computeQuarterlyDiffDigest
 } from '../src/utils/quarterlyDiffDigest.js';
+import {
+  solvePortfolioCriticalHaircut,
+  computePortfolioSafetyCushion,
+  HISTORICAL_CRISIS_PRESETS,
+  computeHistoricalCrisisReplay
+} from '../src/utils/reverseStressSolver.js';
+import {
+  EXPANDED_HEDGE_CATALOG,
+  solveOptimalHedgePackage
+} from '../src/utils/hedgeOptimizer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -991,8 +1001,8 @@ function runTestSuite() {
   // =========================================================================
   console.log('\nTest 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing');
   {
-    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v5.0.0', 'Clearing version registry PRODUCT must be v5.0.0');
-    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v5.0-InstitutionalWorkspace'), 'Model registry must declare v5.0-InstitutionalWorkspace');
+    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v6.0.0', 'Clearing version registry PRODUCT must be v6.0.0');
+    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v6.0-ReverseStress-OptimalHedge'), 'Model registry must declare v6.0-ReverseStress-OptimalHedge');
 
     // Conduit detection
     assert(isOffshoreConduit('KY'), 'KY (Cayman Islands) must be identified as offshore conduit');
@@ -1411,6 +1421,107 @@ function runTestSuite() {
       assert(typeof evt.tag === 'string' && evt.tag.length > 0, `Event ${idx} must have non-empty tag`);
       assert(typeof evt.takeaway === 'string' && evt.takeaway.length > 0, `Event ${idx} must have non-empty takeaway`);
     });
+  }
+
+  // =========================================================================
+  // Test 41: Phase 9 V6.0.0 Reverse Stress Testing Binary Search Solver & Safety Cushion
+  // =========================================================================
+  console.log('\nTest 41: Phase 9 V6.0.0 Reverse Stress Testing Binary Search Solver & Safety Cushion');
+  {
+    const defaultPortfolio = PORTFOLIO_PRESETS[0];
+
+    // 1. Solve critical haircut for target loss of $30M
+    const root = solvePortfolioCriticalHaircut({
+      dataset,
+      quarter: '2026Q1',
+      epicenter: 'TR',
+      bufferMultiplier: 1.5,
+      activePortfolio: defaultPortfolio,
+      targetLossLimitMn: 30.0,
+      maxIterations: 10
+    });
+
+    assert(root !== null, 'Reverse stress solver must return result object');
+    assert(typeof root.criticalHaircutPct === 'number', 'criticalHaircutPct must be numeric');
+    assert(root.criticalHaircutPct >= 1.0 && root.criticalHaircutPct <= 100.0, `criticalHaircutPct must be in [1, 100] (got ${root.criticalHaircutPct}%)`);
+    assert(root.iterations <= 10, 'Solver must converge within max iterations');
+
+    // 2. Safety cushion evaluation
+    const cushionSafe = computePortfolioSafetyCushion({
+      dataset,
+      quarter: '2026Q1',
+      epicenter: 'TR',
+      currentHaircut: 2,
+      bufferMultiplier: 1.5,
+      activePortfolio: defaultPortfolio,
+      targetLossLimitMn: 80.0
+    });
+
+    assert(cushionSafe.safetyCushionPct !== undefined, 'Safety cushion must compute cushion delta');
+    assert(cushionSafe.status === 'SAFE', `Low current haircut must be SAFE (got ${cushionSafe.status})`);
+
+    const cushionBreached = computePortfolioSafetyCushion({
+      dataset,
+      quarter: '2026Q1',
+      epicenter: 'TR',
+      currentHaircut: 50,
+      bufferMultiplier: 1.5,
+      activePortfolio: defaultPortfolio,
+      targetLossLimitMn: 50.0
+    });
+    assert(cushionBreached.status === 'BREACHED', 'High current haircut exceeding limit must be BREACHED');
+
+    // 3. Historical crisis replay matrix
+    const crisisMatrix = computeHistoricalCrisisReplay({
+      dataset,
+      activePortfolio: defaultPortfolio,
+      currentEpicenter: 'TR',
+      currentHaircut: 25,
+      currentBuffer: 1.5
+    });
+
+    assert(crisisMatrix !== null && typeof crisisMatrix === 'object', 'Crisis replay must return an object');
+    assert(Array.isArray(crisisMatrix.scenarios), 'Crisis replay must contain scenarios array');
+    assert(crisisMatrix.scenarios.length === 4, `Crisis replay must contain 4 scenarios (3 historical + 1 current, got ${crisisMatrix.scenarios.length})`);
+    
+    const crisisIds = crisisMatrix.scenarios.map(c => c.id);
+    assert(crisisIds.includes('gfc_2008'), 'Must include 2008 GFC');
+    assert(crisisIds.includes('euro_2011'), 'Must include 2011 Eurozone');
+    assert(crisisIds.includes('covid_2020'), 'Must include 2020 COVID');
+    assert(crisisIds.includes('current_active'), 'Must include current active scenario');
+
+    crisisMatrix.scenarios.forEach(item => {
+      assert(item.totalLossMn >= 0, `${item.name} totalLossMn must be non-negative`);
+      assert(item.lossPct >= 0, `${item.name} lossPct must be non-negative`);
+      assert(item.stressVaR99Mn >= 0, `${item.name} must have non-negative stressVaR99Mn`);
+    });
+  }
+
+  // =========================================================================
+  // Test 42: Phase 9 V6.0.0 Pareto Optimal Hedge Solver & Efficiency Frontier
+  // =========================================================================
+  console.log('\nTest 42: Phase 9 V6.0.0 Pareto Optimal Hedge Solver & Efficiency Frontier');
+  {
+    const defaultPortfolio = PORTFOLIO_PRESETS[0];
+
+    assert(EXPANDED_HEDGE_CATALOG.length >= 4, `Expanded hedge catalog must have >= 4 instruments (got ${EXPANDED_HEDGE_CATALOG.length})`);
+
+    const result = solveOptimalHedgePackage({
+      activePortfolio: defaultPortfolio,
+      scenarioId: 'tr_sovereign_crisis',
+      maxBudgetBps: 100, // 100 bps budget
+      minProtectionPct: 15.0
+    });
+
+    assert(result !== null, 'Hedge optimizer must return result object');
+    assert(result.allCandidates.length === (1 << EXPANDED_HEDGE_CATALOG.length), `Must evaluate all 2^N combinations (got ${result.allCandidates.length})`);
+    assert(result.paretoFrontier.length > 0, 'Pareto frontier must contain at least 1 optimal package');
+    assert(result.bestRecommendation !== null, 'Must produce a best recommendation');
+    assert(result.bestRecommendation.costBps <= 100, 'Best recommendation must be strictly within budget');
+    assert(result.bestRecommendation.withinBudget === true, 'Best recommendation must be flagged withinBudget');
+    assert(result.bestRecommendation.grossSavedMn >= 0, 'Gross saved must be non-negative');
+    assert(result.bestRecommendation.protectionRoi >= 0, 'Protection ROI must be non-negative');
+    assert(result.bestRecommendation.isParetoOptimal === true, 'Best recommendation must be on the Pareto frontier');
   }
 
   console.log('\n===============================================================');

@@ -1,7 +1,7 @@
 {
   "name": "global-capital-flow-atlas",
   "private": true,
-  "version": "5.0.0",
+  "version": "6.0.0",
   "type": "module",
   "scripts": {
     "predev": "node scripts/partition_dataset.js",

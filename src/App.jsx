@@ -54,7 +54,9 @@ const ChangelogModal = React.lazy(() => import('./components/ChangelogModal'));
 const InstitutionalChartCardModal = React.lazy(() => import('./components/InstitutionalChartCardModal'));
 const PortfolioStressOverlay = React.lazy(() => import('./components/PortfolioStressOverlay'));
 const InstitutionalWorkspaceModal = React.lazy(() => import('./components/InstitutionalWorkspaceModal'));
+const IcPitchDeckModal = React.lazy(() => import('./components/IcPitchDeckModal'));
 import { decodeReproducibilityCode } from './utils/reproducibilityEngine';
+import { evaluateWorkspaceAlerts } from './utils/workspaceStorage';
 
 const LoadingFallback = () => (
   <div className="w-full h-80 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -128,6 +130,8 @@ export default function App() {
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [isChartCardOpen, setIsChartCardOpen] = useState(false);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [isPitchDeckOpen, setIsPitchDeckOpen] = useState(false);
+  const [activeCustomPortfolio, setActiveCustomPortfolio] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [customMatrix, setCustomMatrix] = useState(null);
   const [customFileName, setCustomFileName] = useState(null);
@@ -432,6 +436,15 @@ export default function App() {
     lookThroughEnabled: externalMapConfig?.accountingBasis === 'ultimate_risk'
   }), [activeDataset, selectedQuarter, selectedCountry, selectedCurrency, liveClearingResult, livePortfolioResult, externalMapConfig]);
 
+  const workspaceAlertCount = useMemo(() => {
+    const alerts = evaluateWorkspaceAlerts({
+      incrementalLoss: liveClearingResult?.incrementalTotalRaw ?? 0,
+      cipBasis: -32,
+      stressVaR: livePortfolioResult?.stressVaR99Mn ?? 0
+    });
+    return alerts.length;
+  }, [liveClearingResult, livePortfolioResult]);
+
   const toggleSound = () => {
     const next = soundFx.toggleMute();
     setIsSoundMuted(next);
@@ -605,6 +618,8 @@ export default function App() {
         isBeginnerMode={isBeginnerMode}
         onToggleBeginnerMode={handleToggleBeginnerMode}
         onOpenWorkspace={() => setIsWorkspaceOpen(true)}
+        workspaceAlertCount={workspaceAlertCount}
+        onOpenPitchDeck={() => setIsPitchDeckOpen(true)}
       />
 
       {/* Historical Macro Milestones Ribbon (2018-2026 Epochs) */}
@@ -789,8 +804,10 @@ export default function App() {
               selectedCurrency={selectedCurrency}
               onOpenChartCard={() => setIsChartCardOpen(true)}
               onOpenContagion={() => handleSelectTab('contagion')}
+              onOpenPitchDeck={() => setIsPitchDeckOpen(true)}
               liveClearingShockMap={liveClearingShockMap}
               onPortfolioResultChange={setLivePortfolioResult}
+              externalPortfolio={activeCustomPortfolio}
             />
           )}
 
@@ -1080,6 +1097,8 @@ export default function App() {
             onSelectQuarter={setSelectedQuarter}
             onSelectTab={handleSelectTab}
             onSelectCountry={setSelectedCountry}
+            liveClearingResult={liveClearingResult}
+            livePortfolioResult={livePortfolioResult}
             onApplyScenario={(sc) => {
               setContagionConfig({
                 epicenter: sc.epicenter || 'TR',
@@ -1096,10 +1115,29 @@ export default function App() {
               setTimeout(() => setToastMessage(null), 3000);
             }}
             onApplyPortfolio={(p) => {
+              setActiveCustomPortfolio(p);
               handleSelectTab('portfolio');
               setToastMessage(`💼 已载入投资专户: ${p.name}`);
               setTimeout(() => setToastMessage(null), 3000);
             }}
+          />
+        </Suspense>
+      )}
+
+      {/* v6.0 Institutional Investment Committee (IC) PitchDeck Presentation Modal */}
+      {isPitchDeckOpen && (
+        <Suspense fallback={null}>
+          <IcPitchDeckModal
+            isOpen={isPitchDeckOpen}
+            onClose={() => setIsPitchDeckOpen(false)}
+            dataset={activeDataset}
+            selectedQuarter={selectedQuarter}
+            portfolioStressResult={livePortfolioResult}
+            activePortfolio={activeCustomPortfolio}
+            clearingResult={liveClearingResult}
+            epicenter={contagionConfig?.epicenter || 'TR'}
+            haircut={contagionConfig?.haircut || 25}
+            bufferMultiplier={contagionConfig?.bufferMultiplier || 1.5}
           />
         </Suspense>
       )}
@@ -1196,7 +1234,7 @@ export default function App() {
               title="查看平台版本迭代记录与演进架构"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>v5.0.0 日志</span>
+              <span>v6.0.0 日志</span>
             </button>
             <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>

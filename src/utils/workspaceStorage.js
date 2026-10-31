@@ -81,7 +81,7 @@ export const DEFAULT_WORKSPACE = {
     {
       id: 'sc-1',
       title: '土耳其前沿债务减记与跨国银行溢出',
-      reproducibilityCode: 'ATLAS-2026Q1-CONTAGION-TR35-B15-CBS-8F2B1A04',
+      reproducibilityCode: 'ATLAS-2026Q1-CONTAGION-TR35-B15-CBS-7C81BA51',
       epicenter: 'TR',
       haircut: 35,
       bufferMultiplier: 1.5,
@@ -90,7 +90,7 @@ export const DEFAULT_WORKSPACE = {
     {
       id: 'sc-2',
       title: '欧洲美元流动性骤紧与非银外汇掉期挤兑',
-      reproducibilityCode: 'ATLAS-2026Q1-CONTAGION-GB20-B10-CBS-3C89D4E1',
+      reproducibilityCode: 'ATLAS-2026Q1-CONTAGION-GB20-B10-CBS-3FE5A669',
       epicenter: 'GB',
       haircut: 20,
       bufferMultiplier: 1.0,
@@ -143,6 +143,64 @@ export function togglePinnedCountry(code) {
   const exists = list.includes(code);
   const nextList = exists ? list.filter(c => c !== code) : [...list, code];
   saveWorkspace({ ...ws, pinnedWatchlist: nextList });
+  return nextList;
+}
+
+export function saveScenario(scenario) {
+  const ws = getWorkspace();
+  const list = ws.savedScenarios || [];
+  const existingIdx = list.findIndex(s => s.id === scenario.id || (scenario.reproducibilityCode && s.reproducibilityCode === scenario.reproducibilityCode));
+  let nextList;
+  if (existingIdx >= 0) {
+    nextList = [...list];
+    nextList[existingIdx] = { ...list[existingIdx], ...scenario, updatedAt: new Date().toISOString() };
+  } else {
+    nextList = [
+      {
+        id: scenario.id || `sc-${Date.now()}`,
+        ...scenario,
+        createdAt: new Date().toISOString()
+      },
+      ...list
+    ];
+  }
+  saveWorkspace({ ...ws, savedScenarios: nextList });
+  return nextList;
+}
+
+export function deleteScenario(scenarioId) {
+  const ws = getWorkspace();
+  const nextList = (ws.savedScenarios || []).filter(s => s.id !== scenarioId);
+  saveWorkspace({ ...ws, savedScenarios: nextList });
+  return nextList;
+}
+
+export function saveCustomPortfolio(portfolio) {
+  const ws = getWorkspace();
+  const list = ws.savedPortfolios || [];
+  const existingIdx = list.findIndex(p => p.id === portfolio.id);
+  let nextList;
+  if (existingIdx >= 0) {
+    nextList = [...list];
+    nextList[existingIdx] = { ...list[existingIdx], ...portfolio, updatedAt: new Date().toISOString() };
+  } else {
+    nextList = [
+      {
+        id: portfolio.id || `pf-${Date.now()}`,
+        ...portfolio,
+        createdAt: new Date().toISOString()
+      },
+      ...list
+    ];
+  }
+  saveWorkspace({ ...ws, savedPortfolios: nextList });
+  return nextList;
+}
+
+export function deleteCustomPortfolio(portfolioId) {
+  const ws = getWorkspace();
+  const nextList = (ws.savedPortfolios || []).filter(p => p.id !== portfolioId);
+  saveWorkspace({ ...ws, savedPortfolios: nextList });
   return nextList;
 }
 

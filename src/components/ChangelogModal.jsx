@@ -9,12 +9,42 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v5.0.0',
+    version: 'v6.0.0',
     date: '2026-10-31',
     status: 'LATEST',
-    title: 'Phase 8 机构投研工作区与科学复现版 (Institutional Local Workspace, Scenario Reproducibility & Quarterly Macro Diff Radar)',
+    title: 'Phase 9 反向求根与智能风控处方系统 (Reverse Stress Solver, Historical Crisis Backtest, Pareto Optimal Hedge Engine & Investment Committee PitchDeck)',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '反向压力求根',
+        title: '二分法反向压力测试求根器与安全垫边际量化 (Binary Search Reverse Stress Solver & Safety Cushion)',
+        desc: '颠覆正向试凑传统，引入收敛容差 <0.5% 的二分搜索算法。自动求解击穿专户 VaR 容忍上限的主权临界减记率 α*，并测算安全垫缓冲边际与当前风险状态（SAFE / WARNING / BREACHED），助机构建立预先风控预警线。'
+      },
+      {
+        tag: '历史危机穿越',
+        title: '三大历史系统性流动性危机时空穿越回测 (Historical Crisis Cross-Time Replay: 2008 / 2011 / 2020)',
+        desc: '内置 2008 全球次贷危机 (雷曼倒闭/流动性冻结)、2011 欧债主权债务危机 (PIIGS主权利差走阔) 与 2020 COVID 离岸美元踩踏真实冲击基准。支持当前专户跨越周期即时回测，同屏输出历史危机下坏账减记与抗风险评级。'
+      },
+      {
+        tag: '帕累托最优处方',
+        title: '预算约束下的帕累托最优对冲组合求解器 (Pareto-Optimal Hedge Package Solver & Protection ROI)',
+        desc: '构建主权 CDS、黄金宏观看涨期权、外汇掉期备用额度与高评级国债流动性蓄水池等多维对冲工具箱。在严格成本预算约束下穷举非劣对冲空间，按减记挽回率/对冲成本自动精选最优处方，支持一键注入专户。'
+      },
+      {
+        tag: '投委会路演',
+        title: '彭博终端式 4 幕沉浸交互路演模式与投委会备忘录生成 (Investment Committee PitchDeck & Printable Executive Memo)',
+        desc: '全新推出面向高管与投委会的极简 4 幕路演终端（流动性格局 ➔ 网络传染与敏感龙卷风 ➔ 反向压力与历史穿越 ➔ 最优对冲处方与签署）。支持键盘方向键无缝翻页、EUGENE 专属水印防御及一键复制 Markdown 格式投研备忘录。'
+      }
+    ]
+  },
+  {
+    version: 'v5.0.0',
+    date: '2026-10-31',
+    status: 'STABLE',
+    title: 'Phase 8 机构投研工作区与科学复现版 (Institutional Local Workspace, Scenario Reproducibility & Quarterly Macro Diff Radar)',
+    badge: '历史稳定版',
+    badgeColor: 'border-slate-500/50 bg-slate-900/60 text-slate-300',
     highlights: [
       {
         tag: '本地工作区',
@@ -354,7 +384,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
   const handleCopyChangelog = () => {
     soundFx.playChime();
     const md = `# EUGENE FINANCE Global Capital Flow Atlas - Version Changelog
-Current Version: v2.0.0 (Updated 2026-10-28)
+Current Version: v6.0.0 (Updated 2026-10-31)
 
 ${SYSTEM_CHANGELOG.map(rel => `## ${rel.version} (${rel.date}) - ${rel.title}
 ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
@@ -384,7 +414,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v5.0.0 Current
+                  v6.0.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">

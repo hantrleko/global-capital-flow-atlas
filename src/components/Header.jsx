@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward, Search, X, Sun, Moon,
   Sparkles, Volume2, VolumeX, Bot, BookOpen, FileText, Sliders,
-  History, UploadCloud, Check, Share2, Briefcase, ChevronDown, ArrowRight
+  History, UploadCloud, Check, Share2, Briefcase, ChevronDown, ArrowRight,
+  Presentation
 } from 'lucide-react';
 import EugeneLogo from './EugeneLogo';
 import soundFx from '../utils/soundEffects';
@@ -44,7 +45,9 @@ export default function Header({
   onOpenInvestigationModal,
   isBeginnerMode = true,
   onToggleBeginnerMode,
-  onOpenWorkspace
+  onOpenWorkspace,
+  workspaceAlertCount = 0,
+  onOpenPitchDeck
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isToolboxOpen, setIsToolboxOpen] = useState(false);
@@ -263,6 +266,27 @@ export default function Header({
               >
                 <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
                 <span className="hidden sm:inline">工作区</span>
+                {workspaceAlertCount > 0 && (
+                  <span
+                    data-testid="header-workspace-alert-badge"
+                    className="w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-mono font-bold flex items-center justify-center animate-pulse"
+                  >
+                    {workspaceAlertCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* v6.0 Investment Committee PitchDeck Trigger */}
+            {onOpenPitchDeck && (
+              <button
+                onClick={onOpenPitchDeck}
+                data-testid="header-pitchdeck-btn"
+                className="h-7 px-2.5 rounded-lg border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-200 hover:text-white flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all whitespace-nowrap shadow-sm"
+                title="打开投委会 4 幕决策路演幻灯片 (IC PitchDeck)"
+              >
+                <Presentation className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">投委会路演</span>
               </button>
             )}
 

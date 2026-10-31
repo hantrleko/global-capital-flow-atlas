@@ -83,7 +83,7 @@ export default function EugeneLogo({
               EUGENE FINANCE
             </span>
             <span className="hidden sm:inline-block text-[11px] font-mono font-semibold px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-400/30 tracking-normal whitespace-nowrap">
-              ATLAS v5.0
+              ATLAS v6.0
             </span>
           </div>
           {subtitle && (

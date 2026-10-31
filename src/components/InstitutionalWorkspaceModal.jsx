@@ -27,7 +27,9 @@ export default function InstitutionalWorkspaceModal({
   onSelectTab,
   onSelectCountry,
   onApplyScenario,
-  onApplyPortfolio
+  onApplyPortfolio,
+  liveClearingResult = null,
+  livePortfolioResult = null
 }) {
   const [activeTab, setActiveTab] = useState('digest'); // 'digest' | 'portfolio' | 'scenarios' | 'alerts'
   const [workspace, setWorkspace] = useState(() => getWorkspace());
@@ -42,12 +44,14 @@ export default function InstitutionalWorkspaceModal({
   }, [dataset, selectedQuarter]);
 
   const triggeredAlerts = useMemo(() => {
+    const incrementalLoss = liveClearingResult?.incrementalTotalRaw ?? 165;
+    const stressVaR = livePortfolioResult?.stressVaR99Mn ?? 64.4;
     return evaluateWorkspaceAlerts({
-      incrementalLoss: 165, // Sample live context or connected value
+      incrementalLoss,
       cipBasis: -48,
-      stressVaR: 64.4
+      stressVaR
     });
-  }, []);
+  }, [liveClearingResult, livePortfolioResult]);
 
   const handleToggleCountry = (code) => {
     soundFx.playTick();
@@ -119,7 +123,7 @@ export default function InstitutionalWorkspaceModal({
                   机构投研工作区 (Institutional Workspace)
                 </h3>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-400/30 font-semibold">
-                  v5.0 · 本地安全就绪
+                  v6.0 · 本地安全就绪
                 </span>
                 {triggeredAlerts.length > 0 && (
                   <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold flex items-center gap-1 animate-pulse">

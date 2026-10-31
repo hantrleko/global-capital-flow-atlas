@@ -406,7 +406,7 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const overlay = page.locator('[data-testid="portfolio-stress-overlay"]');
     await expect(overlay).toBeVisible({ timeout: 10000 });
     await expect(overlay.getByText('我的组合压力映射').first()).toBeVisible();
-    await expect(overlay.getByText('v5.0.0 · 专户风控').first()).toBeVisible();
+    await expect(overlay.getByText('v6.0.0 · 专户风控').first()).toBeVisible();
 
     // 2. Verify KPI row values
     await expect(page.getByText('组合基准资产规模')).toBeVisible();
@@ -531,13 +531,13 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(exitBtn).toBeVisible();
     await exitBtn.click();
 
-    // 6. Verify Changelog Modal Displays v5.0.0 Current
-    const changelogBtn = page.getByRole('button', { name: /v[2-5]\.[05]\.0/i }).first();
+    // 6. Verify Changelog Modal Displays v6.0.0 Current
+    const changelogBtn = page.getByRole('button', { name: /v[2-6]\.[05]\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
-    await expect(page.getByText('v5.0.0 Current').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/机构投研工作区与科学复现版/).first()).toBeVisible();
+    await expect(page.getByText('v6.0.0 Current').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/反向求根与智能风控处方系统/).first()).toBeVisible();
   });
 
   test('13. Phase 5 v3.0.0: Automated Playbook State Choreography, Live Contagion-to-Portfolio Bridge & Active Hedge Overlay', async ({ page }) => {
@@ -833,6 +833,98 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(tornadoComponent.getByText(/模型敏感性龙卷风图/i)).toBeVisible();
     await expect(tornadoComponent.getByText(/研判启示/i)).toBeVisible();
     await expect(tornadoComponent.getByText(/波动范围/i).first()).toBeVisible();
+  });
+
+  test('17. Phase 9 v6.0.0: Reverse Stress Solver, Historical Crisis Backtest, Optimal Hedge Optimizer & IC PitchDeck Presentation', async ({ page }) => {
+    // 1. Visit Portfolio Stress Overlay page
+    await page.goto('/?tab=portfolio&q=2026Q1');
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    const overlay = page.locator('[data-testid="portfolio-stress-overlay"]');
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+    await expect(overlay.getByText('v6.0.0 · 专户风控').first()).toBeVisible();
+
+    // 2. Verify Save Portfolio to Workspace button
+    const savePortfolioBtn = page.locator('[data-testid="save-portfolio-to-workspace-btn"]');
+    await expect(savePortfolioBtn).toBeVisible();
+
+    // 3. Switch to Reverse Stress Testing Tab
+    const reverseStressTab = page.locator('[data-testid="tab-reverse-stress"]');
+    await expect(reverseStressTab).toBeVisible();
+    await reverseStressTab.click();
+
+    // Verify Reverse Stress Cushion Gauge
+    const cushionGauge = page.locator('[data-testid="reverse-stress-cushion-gauge"]');
+    await expect(cushionGauge).toBeVisible({ timeout: 5000 });
+    await expect(cushionGauge.getByText('破防临界点 (α*)')).toBeVisible();
+    await expect(cushionGauge.getByText('安全缓冲垫 (Safety Cushion)')).toBeVisible();
+
+    // 4. Switch to Historical Crisis Backtest Tab
+    const crisisTab = page.locator('[data-testid="tab-crisis-backtest"]');
+    await expect(crisisTab).toBeVisible();
+    await crisisTab.click();
+
+    // Verify Crisis Backtest Matrix
+    const crisisMatrix = page.locator('[data-testid="crisis-backtest-matrix"]');
+    await expect(crisisMatrix).toBeVisible({ timeout: 5000 });
+    await expect(crisisMatrix.getByText('历史经典危机平行穿越回测').first()).toBeVisible();
+    await expect(crisisMatrix.getByText('2008 全球金融危机').first()).toBeVisible();
+    await expect(crisisMatrix.getByText('2011 欧债危机').first()).toBeVisible();
+    await expect(crisisMatrix.getByText('2020 离岸美元荒').first()).toBeVisible();
+
+    // 5. Open Optimal Hedge Optimizer Modal
+    const hedgeOptimizerBtn = page.locator('[data-testid="auto-hedge-optimizer-btn"]');
+    await expect(hedgeOptimizerBtn).toBeVisible();
+    await hedgeOptimizerBtn.click();
+
+    const hedgeModal = page.locator('[data-testid="optimal-hedge-modal"]');
+    await expect(hedgeModal).toBeVisible({ timeout: 5000 });
+    await expect(hedgeModal.getByText('帕累托最优对冲处方求解器')).toBeVisible();
+    await expect(hedgeModal.getByText('首选对冲处方')).toBeVisible();
+
+    // Apply Optimal Hedge
+    const applyHedgeBtn = page.locator('[data-testid="apply-optimal-hedge-btn"]');
+    await expect(applyHedgeBtn).toBeVisible();
+    await applyHedgeBtn.click();
+    await expect(hedgeModal).not.toBeVisible();
+
+    // 6. Launch Investment Committee (IC) PitchDeck Presentation from Header
+    const pitchDeckHeaderBtn = page.locator('[data-testid="header-pitchdeck-btn"]');
+    await expect(pitchDeckHeaderBtn).toBeVisible();
+    await pitchDeckHeaderBtn.click();
+
+    const pitchDeckModal = page.locator('[data-testid="ic-pitchdeck-modal"]');
+    await expect(pitchDeckModal).toBeVisible({ timeout: 5000 });
+    await expect(pitchDeckModal.getByText('投委会决策路演 (IC PitchDeck)')).toBeVisible();
+    await expect(pitchDeckModal.getByText('01 / 04')).toBeVisible();
+
+    // Navigate to Slide 2
+    const nextSlideBtn = page.locator('[data-testid="next-slide-btn"]');
+    await expect(nextSlideBtn).toBeVisible();
+    await nextSlideBtn.click();
+    await expect(pitchDeckModal.getByText('02 / 04')).toBeVisible();
+
+    // Navigate to Slide 3
+    await nextSlideBtn.click();
+    await expect(pitchDeckModal.getByText('03 / 04')).toBeVisible();
+
+    // Navigate to Slide 4
+    await nextSlideBtn.click();
+    await expect(pitchDeckModal.getByText('04 / 04')).toBeVisible();
+    await expect(pitchDeckModal.getByText('投委会首选帕累托最优对冲处方')).toBeVisible();
+
+    // Test Copy IC Memo
+    const copyMemoBtn = page.locator('[data-testid="copy-ic-memo-btn"]');
+    await expect(copyMemoBtn).toBeVisible();
+    await copyMemoBtn.click();
+    await expect(copyMemoBtn).toContainText('已复制');
+
+    // Close PitchDeck Modal
+    const closePitchDeckBtn = page.locator('[data-testid="close-pitchdeck-btn"]');
+    await expect(closePitchDeckBtn).toBeVisible();
+    await closePitchDeckBtn.click();
+    await expect(pitchDeckModal).not.toBeVisible();
   });
 
 });
