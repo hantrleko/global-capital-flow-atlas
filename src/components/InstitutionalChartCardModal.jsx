@@ -539,7 +539,7 @@ ${topCorridors.map((c, i) => `${i + 1}. ${countryNameMap[c.source] || c.source} 
                   <h4 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                     <span>机构账户组合压力映射与极端 VaR 评估</span>
                     <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                      v4.0.0 · 专户风控
+                      v5.0.0 · 专户风控
                     </span>
                   </h4>
                   <p className="text-xs text-slate-400 mt-0.5">

@@ -303,7 +303,7 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                   我的组合压力映射
                 </h2>
                 <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-400/30">
-                  v4.0.0 · 专户风控
+                  v5.0.0 · 专户风控
                 </span>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                   BIS CBS 穿透映射

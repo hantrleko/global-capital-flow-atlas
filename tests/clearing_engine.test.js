@@ -48,6 +48,21 @@ import {
   CAUSAL_WORKFLOW_STEPS,
   USER_PERSONAS
 } from '../src/utils/financialGlossary.js';
+import {
+  encodeReproducibilityCode,
+  decodeReproducibilityCode,
+  buildDeepLinkWithCode
+} from '../src/utils/reproducibilityEngine.js';
+import {
+  getWorkspace,
+  saveWorkspace,
+  togglePinnedCountry,
+  evaluateWorkspaceAlerts,
+  DEFAULT_ALERT_RULES
+} from '../src/utils/workspaceStorage.js';
+import {
+  computeQuarterlyDiffDigest
+} from '../src/utils/quarterlyDiffDigest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -976,8 +991,8 @@ function runTestSuite() {
   // =========================================================================
   console.log('\nTest 33: Phase 2 Look-Through OFC Engine & Sector/Instrument Slicing');
   {
-    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v4.0.0', 'Clearing version registry PRODUCT must be v4.0.0');
-    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v4.0-CognitiveOnboarding'), 'Model registry must declare v4.0-CognitiveOnboarding');
+    assert(CLEARING_VERSION_REGISTRY.PRODUCT === 'v5.0.0', 'Clearing version registry PRODUCT must be v5.0.0');
+    assert(CLEARING_VERSION_REGISTRY.MODEL.includes('v5.0-InstitutionalWorkspace'), 'Model registry must declare v5.0-InstitutionalWorkspace');
 
     // Conduit detection
     assert(isOffshoreConduit('KY'), 'KY (Cayman Islands) must be identified as offshore conduit');
@@ -1320,6 +1335,81 @@ function runTestSuite() {
       assert(p.actions && typeof p.actions.enableBeginnerMode === 'boolean', `Persona ${p.id} must declare enableBeginnerMode`);
       assert(['focus', 'pro'].includes(p.actions.viewMode), `Persona ${p.id} must declare valid viewMode`);
       assert(['residence', 'ultimate_risk'].includes(p.actions.accountingBasis), `Persona ${p.id} must declare valid accountingBasis`);
+    });
+  }
+
+  // =========================================================================
+  // Test 39: Phase 8 V5.0.0 Scenario Reproducibility Code Roundtrip & Integrity
+  // =========================================================================
+  console.log('\nTest 39: Phase 8 V5.0.0 Scenario Reproducibility Code Roundtrip & Integrity');
+  {
+    const originalConfig = {
+      quarter: '2026Q1',
+      activeTab: 'contagion',
+      epicenter: 'TR',
+      haircutPct: 25,
+      bufferMultiplier: 1.5,
+      accountingBasis: 'residence'
+    };
+
+    const code = encodeReproducibilityCode(originalConfig);
+    assert(typeof code === 'string', 'Reproducibility code must be a string');
+    assert(code.startsWith('ATLAS-2026Q1-CONTAGION-TR25-B15-LBS-'), `Code prefix must match pattern (got ${code})`);
+
+    const decoded = decodeReproducibilityCode(code);
+    assert(decoded !== null, 'Decoded scenario must not be null');
+    assert(decoded.quarter === originalConfig.quarter, `Decoded quarter must match (got ${decoded.quarter})`);
+    assert(decoded.activeTab === originalConfig.activeTab, `Decoded activeTab must match (got ${decoded.activeTab})`);
+    assert(decoded.epicenter === originalConfig.epicenter, `Decoded epicenter must match (got ${decoded.epicenter})`);
+    assert(decoded.haircutPct === originalConfig.haircutPct, `Decoded haircutPct must match (got ${decoded.haircutPct})`);
+    assert(decoded.bufferMultiplier === originalConfig.bufferMultiplier, `Decoded bufferMultiplier must match (got ${decoded.bufferMultiplier})`);
+    assert(decoded.accountingBasis === originalConfig.accountingBasis, `Decoded accountingBasis must match (got ${decoded.accountingBasis})`);
+
+    // Verify corrupted code checksum rejection
+    const corruptedCode = code.slice(0, -2) + '00';
+    const corruptedDecoded = decodeReproducibilityCode(corruptedCode);
+    assert(corruptedDecoded === null, 'Corrupted checksum must be rejected with null');
+
+    // Verify deep link generation
+    const deepLink = buildDeepLinkWithCode(code);
+    assert(deepLink.includes(`?rep=${code}`), `Deep link must contain encoded ?rep= parameter (got ${deepLink})`);
+  }
+
+  // =========================================================================
+  // Test 40: Phase 8 V5.0.0 Institutional Local Workspace & Quarterly Diff Digest
+  // =========================================================================
+  console.log('\nTest 40: Phase 8 V5.0.0 Institutional Local Workspace & Quarterly Diff Digest');
+  {
+    // 1. Workspace Storage API
+    const ws = getWorkspace();
+    assert(ws !== null && typeof ws === 'object', 'Workspace must return a valid object');
+    assert(Array.isArray(ws.pinnedWatchlist), 'Workspace must have pinnedWatchlist array');
+    assert(Array.isArray(ws.savedPortfolios), 'Workspace must have savedPortfolios array');
+    assert(Array.isArray(ws.savedScenarios), 'Workspace must have savedScenarios array');
+    assert(Array.isArray(ws.alertRules) && ws.alertRules.length >= 4, 'Workspace must initialize with >= 4 default alert rules');
+
+    // Test toggle pinned country (SG is not initially in pinnedWatchlist)
+    assert(!ws.pinnedWatchlist.includes('SG'), 'SG is not initially pinned');
+    togglePinnedCountry('SG');
+    const wsAfterPin = getWorkspace();
+    assert(wsAfterPin.pinnedWatchlist.includes('SG'), 'SG must be added to pinned watchlist');
+    togglePinnedCountry('SG');
+    const wsAfterUnpin = getWorkspace();
+    assert(!wsAfterUnpin.pinnedWatchlist.includes('SG'), 'SG must be removed when toggled again');
+
+    // Test alert rule evaluation
+    const alerts = evaluateWorkspaceAlerts({ dataset, quarter: '2026Q1' });
+    assert(Array.isArray(alerts), 'evaluateWorkspaceAlerts must return an array');
+    assert(alerts.length >= 0, 'Alerts evaluated successfully');
+
+    // 2. Quarterly Diff Digest
+    const events = computeQuarterlyDiffDigest(dataset, '2026Q1');
+    assert(Array.isArray(events) && events.length === 3, `Diff digest must contain exactly 3 macro events (got ${events?.length})`);
+    events.forEach((evt, idx) => {
+      assert(typeof evt.title === 'string' && evt.title.length > 0, `Event ${idx} must have non-empty title`);
+      assert(typeof evt.summary === 'string' && evt.summary.length > 0, `Event ${idx} must have non-empty summary`);
+      assert(typeof evt.tag === 'string' && evt.tag.length > 0, `Event ${idx} must have non-empty tag`);
+      assert(typeof evt.takeaway === 'string' && evt.takeaway.length > 0, `Event ${idx} must have non-empty takeaway`);
     });
   }
 

@@ -3,13 +3,15 @@ import * as echarts from 'echarts';
 import { 
   AlertOctagon, Play, RotateCcw, ShieldAlert, ArrowRight, 
   TrendingDown, Layers, Zap, Download, Info, ChevronDown, ChevronUp, HelpCircle, FileText,
-  Activity, GitCompare, Sliders, CheckCircle2, BarChart2, Sparkles, Briefcase
+  Activity, GitCompare, Sliders, CheckCircle2, BarChart2, Sparkles, Briefcase, Copy, Check
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import MethodologyFootnote from './MethodologyFootnote';
 import DataClassificationBadge from './DataClassificationBadge';
+import ContagionSensitivityTornado from './ContagionSensitivityTornado';
 import { addWatermarkToDataUrl } from '../utils/exportWatermark';
 import { getDataClassification } from '../utils/dataClassification';
+import { encodeReproducibilityCode } from '../utils/reproducibilityEngine';
 
 import {
   CLEARING_VERSION_REGISTRY,
@@ -75,6 +77,24 @@ export default function NetworkContagionSimulator({
   const [allowModelProxy, setAllowModelProxy] = useState(false); // Explicit authorization for model proxy liabilities
   const [isRecomputing, setIsRecomputing] = useState(false); // Immediate visual feedback during recomputation
   const [simResults, setSimResults] = useState(null);
+  const [copiedRepCode, setCopiedRepCode] = useState(false);
+
+  const handleCopyReproducibilityCode = () => {
+    soundFx.playChime();
+    const code = encodeReproducibilityCode({
+      quarter: selectedQuarter,
+      tab: 'contagion',
+      epicenter: epicenterCountry.code,
+      haircut: haircutPct,
+      bufferMultiplier: bufferMultiplier,
+      accountingBasis: 'ultimate_risk'
+    });
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code);
+    }
+    setCopiedRepCode(true);
+    setTimeout(() => setCopiedRepCode(false), 3000);
+  };
 
   // Scenario A & B state for Diff Workbench
   const [diffScenarioA, setDiffScenarioA] = useState({
@@ -657,7 +677,10 @@ export default function NetworkContagionSimulator({
   };
 
   return (
-    <div className="glass-panel rounded-2xl p-2.5 sm:p-3.5 shadow-2xl space-y-2 scroll-mt-24">
+    <div
+      data-testid="network-contagion-simulator"
+      className="glass-panel rounded-2xl p-2.5 sm:p-3.5 shadow-2xl space-y-2 scroll-mt-24"
+    >
       {/* Top Header & Simulation Controls (Zero-Wrap Single Row on Desktop) */}
       <div className="flex flex-wrap lg:flex-nowrap items-center justify-between border-b border-slate-800 pb-1.5 gap-2 overflow-x-auto scrollbar-none">
         <div className="flex items-center gap-2 shrink-0">
@@ -746,6 +769,16 @@ export default function NetworkContagionSimulator({
           )}
 
           <button
+            onClick={handleCopyReproducibilityCode}
+            data-testid="copy-reproducibility-code-btn"
+            className="px-2.5 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-400/30 rounded-lg text-indigo-200 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs font-mono"
+            title="一键生成并复制当前推演的确定性学术复现码 (Deterministic Reproducibility Code)"
+          >
+            {copiedRepCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-indigo-400" />}
+            <span className="hidden sm:inline">{copiedRepCode ? '已复制复现码' : '场景复现码'}</span>
+          </button>
+
+          <button
             onClick={handleExportScenarioCsv}
             className="px-2 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs font-mono"
             title="导出当前清算情景数据 CSV (包含版本元数据、基线与增量)"
@@ -809,6 +842,21 @@ export default function NetworkContagionSimulator({
               >
                 <GitCompare className="w-3 h-3" />
                 <span>A/B 差分对比</span>
+              </button>
+              <button
+                onClick={() => {
+                  soundFx.playTick();
+                  setActiveViewTab('sensitivity');
+                }}
+                data-testid="tab-sensitivity-tornado"
+                className={`px-2.5 py-0.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                  activeViewTab === 'sensitivity'
+                    ? 'atlas-pill-active'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Sliders className="w-3 h-3" />
+                <span>敏感性龙卷风</span>
               </button>
             </div>
           )}
@@ -1384,6 +1432,15 @@ export default function NetworkContagionSimulator({
             </div>
           )}
         </div>
+      ) : activeViewTab === 'sensitivity' ? (
+        <ContagionSensitivityTornado
+          simResults={simResults}
+          epicenterCountry={epicenterCountry}
+          haircutPct={haircutPct}
+          bufferMultiplier={bufferMultiplier}
+          deleveraging={deleveragingMultiplier}
+          dollarSqueeze={dollarSqueezePct}
+        />
       ) : (
         /* Single Scenario View */
         <div className="space-y-3">
@@ -1770,11 +1827,11 @@ export default function NetworkContagionSimulator({
                   <span>🩸 第1阶: 直接债主冲销</span>
                 </span>
                 <span className="font-mono text-amber-400">
-                  {simResults.totalR1Loss ? `$${simResults.totalR1Loss}B` : (simResults.topVictim ? `增量第1` : '直接损失')}
+                  {simResults.totalR1Loss ? `$${simResults.totalR1Loss}B` : (simResults.topVictim?.incrementalDisplay ? `+$${simResults.topVictim.incrementalDisplay}B` : (simResults.currentRun?.topVictim?.incrementalDisplay ? `+$${simResults.currentRun.topVictim.incrementalDisplay}B` : '直接损失'))}
                 </span>
               </div>
               <div className="font-bold text-white text-sm truncate">
-                {simResults.topVictim ? `${simResults.topVictim.name_zh}首当其冲` : '跨国直贷行坏账'}
+                {simResults.topVictim ? `${simResults.topVictim.name_zh}首当其冲` : (simResults.currentRun?.topVictim ? `${simResults.currentRun.topVictim.name_zh}首当其冲` : '跨国直贷行坏账')}
               </div>
               <div className="text-[11px] text-slate-400 leading-tight">
                 主要债权国跨国银行计提直接坏账损失，冲销一级资本
@@ -1788,7 +1845,7 @@ export default function NetworkContagionSimulator({
                   <span>🌊 第2阶: 同业踩踏外溢</span>
                 </span>
                 <span className="font-mono text-sky-400">
-                  {simResults.incrementalTotalDisplay ? `+${simResults.incrementalTotalDisplay}B` : `$${simResults.totalSystemicLoss || 285}B`}
+                  {simResults.currentRun?.incrementalTotalDisplay ? `+${simResults.currentRun.incrementalTotalDisplay}B` : (simResults.incrementalTotalDisplay ? `+${simResults.incrementalTotalDisplay}B` : (simResults.totalR2Contagion ? `$${simResults.totalR2Contagion}B` : (simResults.totalSystemicLoss ? `$${simResults.totalSystemicLoss}B` : '$0.0B')))}
                 </span>
               </div>
               <div className="font-bold text-white text-sm">

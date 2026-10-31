@@ -1161,6 +1161,7 @@ export default function CapitalFlowMap({
               <Sparkles className="w-3 h-3 text-amber-300" />
               <span>穿透离岸中心</span>
             </button>
+            <ConceptTooltip termKey="cbs" showIcon={true} />
           </div>
 
           {/* Sector Slicing Selector */}
@@ -1403,7 +1404,9 @@ export default function CapitalFlowMap({
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-amber-200 flex items-center gap-1">
                   <span>剥离离岸过桥空壳</span>
-                  <span className="text-[10px] px-1 rounded bg-amber-500/20 text-amber-300 font-mono">-$6.84T</span>
+                  <span className="text-[10px] px-1 rounded bg-amber-500/20 text-amber-300 font-mono">
+                    -${((lookThroughResult?.totalBypassedBn ?? 6840) / 1000).toFixed(2)}T
+                  </span>
                 </div>
                 <div className="text-[11px] text-slate-400 truncate">开曼/卢森堡/香港通道 (KY / LU / HK)</div>
               </div>

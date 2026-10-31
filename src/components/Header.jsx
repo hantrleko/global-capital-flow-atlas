@@ -43,7 +43,8 @@ export default function Header({
   onToggleViewMode,
   onOpenInvestigationModal,
   isBeginnerMode = true,
-  onToggleBeginnerMode
+  onToggleBeginnerMode,
+  onOpenWorkspace
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isToolboxOpen, setIsToolboxOpen] = useState(false);
@@ -249,6 +250,19 @@ export default function Header({
                 title={isBeginnerMode ? '当前为【白话通俗解读】模式 (通俗比喻与三点释义)，点击切换至学术量化口径' : '当前为【专业量化术语】模式，点击开启零门槛白话释义'}
               >
                 <span>{isBeginnerMode ? '💡 白话解读' : '🏛️ 专业术语'}</span>
+              </button>
+            )}
+
+            {/* v5.0 Institutional Local Workspace Trigger */}
+            {onOpenWorkspace && (
+              <button
+                onClick={onOpenWorkspace}
+                data-testid="header-workspace-btn"
+                className="h-7 px-2.5 rounded-lg border border-indigo-400/35 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-200 hover:text-white flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all whitespace-nowrap"
+                title="打开机构投研工作区 (自定义专户管理、关注主权池、本季 3 件事、学术复现码)"
+              >
+                <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden sm:inline">工作区</span>
               </button>
             )}
 

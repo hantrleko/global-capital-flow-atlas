@@ -14,8 +14,8 @@
  */
 
 export const CLEARING_VERSION_REGISTRY = {
-  PRODUCT: 'v4.0.0',
-  MODEL: 'v4.0-CognitiveOnboarding-Narrative-EN2001',
+  PRODUCT: 'v5.0.0',
+  MODEL: 'v5.0-InstitutionalWorkspace-Reproducibility-EN2001',
   DATA: (quarter) => {
     if (quarter <= '2026Q1') return 'BIS-SDMX-Official';
     if (quarter === '2026Q2') return 'BIS-Pending-Release (2026-10-30)';

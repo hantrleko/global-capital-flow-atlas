@@ -53,6 +53,8 @@ const MethodologyAppendixModal = React.lazy(() => import('./components/Methodolo
 const ChangelogModal = React.lazy(() => import('./components/ChangelogModal'));
 const InstitutionalChartCardModal = React.lazy(() => import('./components/InstitutionalChartCardModal'));
 const PortfolioStressOverlay = React.lazy(() => import('./components/PortfolioStressOverlay'));
+const InstitutionalWorkspaceModal = React.lazy(() => import('./components/InstitutionalWorkspaceModal'));
+import { decodeReproducibilityCode } from './utils/reproducibilityEngine';
 
 const LoadingFallback = () => (
   <div className="w-full h-80 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -125,6 +127,7 @@ export default function App() {
   const [isAppendixOpen, setIsAppendixOpen] = useState(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [isChartCardOpen, setIsChartCardOpen] = useState(false);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [customMatrix, setCustomMatrix] = useState(null);
   const [customFileName, setCustomFileName] = useState(null);
@@ -186,6 +189,32 @@ export default function App() {
     setToastMessage(`✨ 已就绪【${persona.name}】预设视角！`);
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  // v5.0 Academic Scenario Reproducibility Code deep-link restoration
+  useEffect(() => {
+    const repParam = initialParams.get('rep');
+    if (repParam) {
+      const decoded = decodeReproducibilityCode(repParam);
+      if (decoded && decoded.isValid) {
+        if (decoded.quarter) setSelectedQuarter(decoded.quarter);
+        if (decoded.tab) setActiveTab(decoded.tab);
+        if (decoded.epicenter) {
+          setContagionConfig({
+            epicenter: decoded.epicenter,
+            haircut: decoded.haircut || 35,
+            bufferMultiplier: decoded.bufferMultiplier || 1.5,
+            deleveraging: 1.8,
+            dollarSqueeze: 15
+          });
+        }
+        if (decoded.accountingBasis) {
+          setExternalMapConfig({ accountingBasis: decoded.accountingBasis });
+        }
+        setToastMessage(`🔬 已根据学术复现码还原情景: ${decoded.code}`);
+        setTimeout(() => setToastMessage(null), 4000);
+      }
+    }
+  }, []);
 
   // v2.5 Guided Investigation Playbooks State
   const [activeInvestigationTrack, setActiveInvestigationTrack] = useState(null);
@@ -575,6 +604,7 @@ export default function App() {
         onOpenInvestigationModal={() => setIsInvestigationModalOpen(true)}
         isBeginnerMode={isBeginnerMode}
         onToggleBeginnerMode={handleToggleBeginnerMode}
+        onOpenWorkspace={() => setIsWorkspaceOpen(true)}
       />
 
       {/* Historical Macro Milestones Ribbon (2018-2026 Epochs) */}
@@ -1038,6 +1068,42 @@ export default function App() {
         </Suspense>
       )}
 
+      {/* v5.0 Institutional Local Workspace Modal */}
+      {isWorkspaceOpen && (
+        <Suspense fallback={null}>
+          <InstitutionalWorkspaceModal
+            isOpen={isWorkspaceOpen}
+            onClose={() => setIsWorkspaceOpen(false)}
+            dataset={activeDataset}
+            selectedQuarter={selectedQuarter}
+            countries={activeDataset.countries}
+            onSelectQuarter={setSelectedQuarter}
+            onSelectTab={handleSelectTab}
+            onSelectCountry={setSelectedCountry}
+            onApplyScenario={(sc) => {
+              setContagionConfig({
+                epicenter: sc.epicenter || 'TR',
+                haircut: sc.haircut || 35,
+                bufferMultiplier: sc.bufferMultiplier || 1.5,
+                deleveraging: 1.8,
+                dollarSqueeze: 15
+              });
+              if (sc.accountingBasis) {
+                setExternalMapConfig(prev => ({ ...(prev || {}), accountingBasis: sc.accountingBasis }));
+              }
+              handleSelectTab('contagion');
+              setToastMessage(`🎯 已加载学术情景: ${sc.epicenter} (Haircut ${sc.haircut}%)`);
+              setTimeout(() => setToastMessage(null), 3000);
+            }}
+            onApplyPortfolio={(p) => {
+              handleSelectTab('portfolio');
+              setToastMessage(`💼 已载入投资专户: ${p.name}`);
+              setTimeout(() => setToastMessage(null), 3000);
+            }}
+          />
+        </Suspense>
+      )}
+
       {/* Floating Deep Link Toast */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-slate-900/95 border border-emerald-500/50 text-emerald-300 text-xs font-mono shadow-[0_0_20px_rgba(16,185,129,0.35)] backdrop-blur-md flex items-center gap-2 animate-bounce-subtle">
@@ -1130,7 +1196,7 @@ export default function App() {
               title="查看平台版本迭代记录与演进架构"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>v4.0.0 日志</span>
+              <span>v5.0.0 日志</span>
             </button>
             <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>

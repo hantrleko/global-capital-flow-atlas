@@ -406,7 +406,7 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const overlay = page.locator('[data-testid="portfolio-stress-overlay"]');
     await expect(overlay).toBeVisible({ timeout: 10000 });
     await expect(overlay.getByText('我的组合压力映射').first()).toBeVisible();
-    await expect(overlay.getByText('v4.0.0 · 专户风控').first()).toBeVisible();
+    await expect(overlay.getByText('v5.0.0 · 专户风控').first()).toBeVisible();
 
     // 2. Verify KPI row values
     await expect(page.getByText('组合基准资产规模')).toBeVisible();
@@ -531,13 +531,13 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(exitBtn).toBeVisible();
     await exitBtn.click();
 
-    // 6. Verify Changelog Modal Displays v4.0.0 Current
-    const changelogBtn = page.getByRole('button', { name: /v[2-4]\.[05]\.0/i }).first();
+    // 6. Verify Changelog Modal Displays v5.0.0 Current
+    const changelogBtn = page.getByRole('button', { name: /v[2-5]\.[05]\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
-    await expect(page.getByText('v4.0.0 Current').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/认知破壁与全景串联/).first()).toBeVisible();
+    await expect(page.getByText('v5.0.0 Current').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/机构投研工作区与科学复现版/).first()).toBeVisible();
   });
 
   test('13. Phase 5 v3.0.0: Automated Playbook State Choreography, Live Contagion-to-Portfolio Bridge & Active Hedge Overlay', async ({ page }) => {
@@ -772,6 +772,67 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(dominoStrip.getByText('第1阶: 直接债主冲销')).toBeVisible();
     await expect(dominoStrip.getByText('第2阶: 同业踩踏外溢')).toBeVisible();
     await expect(dominoStrip.getByText('第3阶: 专户组合防线')).toBeVisible();
+  });
+
+  test('16. Phase 8 v5.0.0: Institutional Workspace, Reproducibility Code & Sensitivity Tornado', async ({ page }) => {
+    // 1. Visit root view
+    await page.goto('/?tab=map&q=2026Q1');
+    const mainViewport = page.locator('#main-viewport');
+    await expect(mainViewport).toBeVisible({ timeout: 10000 });
+
+    // 2. Open Institutional Local Workspace Modal from Header
+    const workspaceBtn = page.locator('[data-testid="header-workspace-btn"]');
+    await expect(workspaceBtn).toBeVisible();
+    await workspaceBtn.click();
+
+    const workspaceModal = page.locator('[data-testid="institutional-workspace-modal"]');
+    await expect(workspaceModal).toBeVisible({ timeout: 5000 });
+    await expect(workspaceModal.getByText('机构投研工作区 (Institutional Workspace)')).toBeVisible();
+
+    // Verify "本季 3 件事" digest cards exist
+    await expect(workspaceModal.getByText(/本季 3 件事/i).first()).toBeVisible();
+    await expect(workspaceModal.getByText('全球跨国银行总债权').first()).toBeVisible();
+
+    // Verify Tab switching: 自定义专户
+    const portfolioTab = workspaceModal.getByRole('button', { name: /自定义专户/i }).first();
+    await portfolioTab.click();
+    await expect(workspaceModal.getByText('宏观对冲优选组合')).toBeVisible();
+
+    // Verify Tab switching: 收藏情景与复现码
+    const scenariosTab = workspaceModal.getByRole('button', { name: /收藏情景/i }).first();
+    await scenariosTab.click();
+    await expect(workspaceModal.getByText(/输入学术复现码立即还原推演情景/i)).toBeVisible();
+    await expect(workspaceModal.locator('input[placeholder*="ATLAS-"]')).toBeVisible();
+
+    // Close Workspace Modal
+    const closeWorkspaceBtn = page.locator('[data-testid="close-workspace-modal"]').first();
+    await closeWorkspaceBtn.click();
+    await expect(workspaceModal).not.toBeVisible();
+
+    // 3. Navigate to Contagion Simulator
+    const contagionTabBtn = page.locator('[data-testid="header-tab-contagion"]');
+    await contagionTabBtn.click();
+
+    const contagionSimulator = page.locator('[data-testid="network-contagion-simulator"]');
+    await expect(contagionSimulator).toBeVisible({ timeout: 10000 });
+
+    // 4. Verify Reproducibility Code Copy Button
+    const copyRepCodeBtn = page.locator('[data-testid="copy-reproducibility-code-btn"]');
+    await expect(copyRepCodeBtn).toBeVisible();
+    await copyRepCodeBtn.click();
+    await expect(copyRepCodeBtn).toContainText('已复制');
+
+    // 5. Switch to Sensitivity Tornado Tab
+    const sensitivityTabBtn = page.locator('[data-testid="tab-sensitivity-tornado"]');
+    await expect(sensitivityTabBtn).toBeVisible();
+    await sensitivityTabBtn.click();
+
+    // Verify Sensitivity Tornado Component
+    const tornadoComponent = page.locator('[data-testid="contagion-sensitivity-tornado"]');
+    await expect(tornadoComponent).toBeVisible({ timeout: 5000 });
+    await expect(tornadoComponent.getByText(/模型敏感性龙卷风图/i)).toBeVisible();
+    await expect(tornadoComponent.getByText(/研判启示/i)).toBeVisible();
+    await expect(tornadoComponent.getByText(/波动范围/i).first()).toBeVisible();
   });
 
 });

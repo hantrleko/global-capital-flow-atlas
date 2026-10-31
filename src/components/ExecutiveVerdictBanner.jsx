@@ -22,6 +22,29 @@ const TAB_METAPHORS = {
   }
 };
 
+const MODULE_CONCEPTS = {
+  map: [
+    { key: 'lbs', label: 'LBS 居住地' },
+    { key: 'cbs', label: 'CBS 穿透' },
+    { key: 'look_through', label: '穿透还原' }
+  ],
+  shadow: [
+    { key: 'fx_swaps', label: '外汇掉期' },
+    { key: 'nbfis', label: '影子银行' },
+    { key: 'cip_basis', label: 'CIP 基差' }
+  ],
+  contagion: [
+    { key: 'eisenberg_noe', label: 'Eisenberg-Noe' },
+    { key: 'picard', label: 'Picard 迭代' },
+    { key: 'deleveraging', label: '去杠杆踩踏' }
+  ],
+  portfolio: [
+    { key: 'var', label: '压力 VaR' },
+    { key: 'cds', label: '主权 CDS' },
+    { key: 'direct_loss', label: '一阶损失' }
+  ]
+};
+
 export default function ExecutiveVerdictBanner({
   activeTab,
   onSelectTab,
@@ -271,6 +294,21 @@ export default function ExecutiveVerdictBanner({
               </div>
             </div>
           )}
+
+          {/* Module Key Concepts Quick Lookup Pills */}
+          <div className="pt-2 border-t border-white/[0.06] flex items-center gap-2 flex-wrap text-xs">
+            <span className="text-[11px] text-slate-400 font-medium">核心概念速查:</span>
+            {(MODULE_CONCEPTS[activeTab] || [
+              { key: 'lbs', label: 'LBS 居住地' },
+              { key: 'cbs', label: 'CBS 最终风险' }
+            ]).map(c => (
+              <ConceptTooltip key={c.key} termKey={c.key}>
+                <span className="px-2 py-0.5 rounded bg-slate-800/90 text-indigo-300 border border-indigo-400/30 text-[11px] font-mono cursor-help hover:border-indigo-400 transition-colors">
+                  💡 {c.label}
+                </span>
+              </ConceptTooltip>
+            ))}
+          </div>
         </div>
       )}
     </div>

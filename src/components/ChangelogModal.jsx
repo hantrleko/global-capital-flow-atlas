@@ -9,12 +9,42 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v4.0.0',
-    date: '2026-10-29',
+    version: 'v5.0.0',
+    date: '2026-10-31',
     status: 'LATEST',
-    title: 'Phase 7 认知破壁与全景串联：零门槛投研导览与通俗因果叙事版 (Zero-Threshold Onboarding & Narrative Causal Atlas)',
+    title: 'Phase 8 机构投研工作区与科学复现版 (Institutional Local Workspace, Scenario Reproducibility & Quarterly Macro Diff Radar)',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '本地工作区',
+        title: '机构级零依赖本地专户工作区与动态阈值预警雷达 (Institutional Local Workspace & Alert Engine)',
+        desc: '全平台提供零后端、强隐私的客户端本地工作区。支持跨国节点自选盯盘池、自定义专户组合创设与持久化、4 维度阈值预警规则库（主权减记 VaR、资本外流异动、抵押品 Haircut 及外汇掉期暗雷）以及季度环比宏观异动摘要（本季 3 件事），打造机构投研专属控制台。'
+      },
+      {
+        tag: '科学复现',
+        title: '全状态情景复现码系统与一键定址分发 (Deterministic Reproducibility Code & Deep-Link Restore)',
+        desc: '引入标准化学术级复现码规范（如 ATLAS-2026Q1-CONTAGION-TR25-B15-LBS-3A8F9E2D），将季度、震中、受损深度、缓冲系数、会计基准及校验和完全确定性压缩。支持一键复制复现码、URL 参数（?rep=...）深度直连与工作区收藏夹秒级回放，确保团队跨席位无损协同。'
+      },
+      {
+        tag: '敏感性龙卷风',
+        title: '级联传染敏感性龙卷风分析与关键驱动因子分解 (Contagion Sensitivity Tornado & Swing Delta)',
+        desc: '在级联清算模拟器中新增「🌪️ 敏感性龙卷风」全景面板。水平双向摆动条量化测算 Haircut 减记、缓冲系数 Buffer Multiplier、去杠杆踩踏与离岸美元荒四大参数对全网坏账的边际弹性，自动识别核心摇摆因子，告别黑盒试凑。'
+      },
+      {
+        tag: '环比雷达',
+        title: '双边矩阵季度环比异动雷达与宏观研判追踪 (Quarterly Diff Digest & Automated Macro Narratives)',
+        desc: '内置季度差异分析引擎，自动比对双边信贷走廊与主权敞口环比增减幅。提炼当季跨境资本重配、离岸影子杠杆积聚与清算抗冲击力迁徙三大核心宏观事实，为投研研判提供扎实的历史纵深与增量感知。'
+      }
+    ]
+  },
+  {
+    version: 'v4.0.0',
+    date: '2026-10-29',
+    status: 'STABLE',
+    title: 'Phase 7 认知破壁与全景串联：零门槛投研导览与通俗因果叙事版 (Zero-Threshold Onboarding & Narrative Causal Atlas)',
+    badge: '历史稳定版',
+    badgeColor: 'border-slate-500/50 bg-slate-900/60 text-slate-300',
     highlights: [
       {
         tag: '小白透视',
@@ -354,7 +384,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v4.0.0 Current
+                  v5.0.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
