@@ -903,7 +903,7 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
           {/* Safety Margin Gauge */}
           <div
             data-testid="reverse-stress-cushion-gauge"
-            className="p-4 rounded-xl bg-[#070a12]/90 border border-white/[0.08] grid grid-cols-1 md:grid-cols-4 gap-3"
+            className="p-4 rounded-xl bg-[#070a12]/90 border border-white/[0.08] grid grid-cols-1 md:grid-cols-4 gap-3 atlas-specular-bar"
           >
             <div className="space-y-1">
               <span className="text-[11px] text-slate-400 font-mono">当前情景冲击</span>
@@ -933,6 +933,46 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                 {safetyMetrics.statusZh}
               </span>
               <span className="text-[10px] text-slate-400 mt-0.5">迭代 {safetyMetrics.iterations} 轮精准收敛</span>
+            </div>
+
+            {/* Visual Horizon Scale Bar */}
+            <div className="col-span-1 md:col-span-4 pt-3 border-t border-white/[0.08] space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                <span>0% 极小冲击</span>
+                <span className="text-amber-300 font-semibold">主权违约减记率光学标尺 (0% – 100%)</span>
+                <span>100% 完全违约</span>
+              </div>
+              <div className="relative w-full h-4 bg-slate-900 rounded-full overflow-hidden border border-white/10">
+                <div
+                  className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-emerald-500/25 via-emerald-500/40 to-amber-500/40 transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.max(0, safetyMetrics.criticalHaircutPct))}%` }}
+                />
+                <div
+                  className="absolute top-0 bottom-0 right-0 bg-rose-500/25 border-l border-rose-500"
+                  style={{ width: `${Math.max(0, 100 - safetyMetrics.criticalHaircutPct)}%` }}
+                />
+                <div
+                  className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_8px_#ffffff] z-10 transition-all duration-300"
+                  style={{ left: `${Math.min(99, Math.max(1, safetyMetrics.currentHaircut))}%` }}
+                  title={`当前设定冲击: ${safetyMetrics.currentHaircut}%`}
+                />
+                <div
+                  className="absolute top-0 bottom-0 w-1 bg-amber-400 shadow-[0_0_8px_#f59e0b] z-10 transition-all duration-300"
+                  style={{ left: `${Math.min(99, Math.max(1, safetyMetrics.criticalHaircutPct))}%` }}
+                  title={`破防临界点 α*: ${safetyMetrics.criticalHaircutPct}%`}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                <span className="text-slate-300 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-white shadow-sm inline-block" /> 当前冲击 {safetyMetrics.currentHaircut}%
+                </span>
+                <span className="text-amber-300 font-semibold flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> 临界点 α* {safetyMetrics.criticalHaircutPct}%
+                </span>
+                <span className={safetyMetrics.safetyCushionPct >= 0 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+                  缓冲空间: {safetyMetrics.safetyCushionPct > 0 ? `+${safetyMetrics.safetyCushionPct}%` : `${safetyMetrics.safetyCushionPct}%`}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -997,6 +1037,24 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                   <p className="text-[11px] text-slate-400 leading-snug">
                     {sc.desc}
                   </p>
+
+                  {/* Micro Visual Stress vs Limit Bar */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                      <span>损失占限额</span>
+                      <span className={sc.isBreached ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+                        {Math.round((sc.totalLossMn / targetLossLimitMn) * 100)}%
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-slate-900 border border-white/5 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          sc.isBreached ? 'bg-gradient-to-r from-amber-500 to-rose-500' : 'bg-gradient-to-r from-emerald-500 to-sky-500'
+                        }`}
+                        style={{ width: `${Math.min(100, Math.round((sc.totalLossMn / targetLossLimitMn) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono">

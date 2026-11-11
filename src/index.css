@@ -82,6 +82,94 @@ body.theme-light .glass-panel {
   box-shadow: 0 2px 12px -2px rgba(15, 23, 42, 0.05);
 }
 
+/* Elevated Luxury Card & Specular Highlight */
+.atlas-card-elevated {
+  background: linear-gradient(180deg, rgba(16, 24, 40, 0.94) 0%, rgba(10, 15, 28, 0.96) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 10px 24px -6px rgba(2, 6, 23, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+body.theme-light .atlas-card-elevated {
+  background: #ffffff;
+  border: 1px solid rgba(203, 213, 225, 0.85);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
+    0 4px 16px -2px rgba(15, 23, 42, 0.06);
+}
+
+/* Precision Coordinate Micro Dot Matrix */
+.atlas-dot-matrix {
+  background-image: radial-gradient(rgba(148, 163, 184, 0.14) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+body.theme-light .atlas-dot-matrix {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.09) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Top Specular Reflection Line */
+.atlas-specular-bar {
+  position: relative;
+}
+.atlas-specular-bar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  pointer-events: none;
+}
+
+/* Financial Micro Delta Pills */
+.atlas-metric-pill-pos {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.atlas-metric-pill-neg {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.atlas-metric-pill-neutral {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 600;
+}
+
 /* Unified Segmented Track & Neutral Active Capsule */
 @layer components {
   .atlas-segmented {

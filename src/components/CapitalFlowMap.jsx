@@ -1164,8 +1164,10 @@ export default function CapitalFlowMap({
             <ConceptTooltip termKey="cbs" showIcon={true} />
           </div>
 
+          <div className="h-4 w-px bg-white/[0.08] hidden lg:block mx-0.5" />
+
           {/* Sector Slicing Selector */}
-          <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/60 rounded-lg px-1.5 py-0.5 text-[11px]">
+          <div className="flex items-center gap-1 bg-slate-900/90 hover:bg-slate-800/90 border border-white/10 rounded-lg px-2 py-0.5 text-[11px] transition-all">
             <Building2 className="w-3 h-3 text-sky-400" />
             <select
               value={selectedSector}
@@ -1173,19 +1175,19 @@ export default function CapitalFlowMap({
                 soundFx.playTick();
                 setSelectedSector(e.target.value);
               }}
-              className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-[11px]"
+              className="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer text-[11px]"
               title="按跨国交易对手部门切片 (BIS CBS Table B 部门拆解)"
             >
-              <option value="all">🏢 全部门</option>
-              <option value="banks">🏦 银行同业</option>
-              <option value="nbfi">🔮 非银机构</option>
-              <option value="sovereign">🏛️ 主权部门</option>
-              <option value="non_financial">🏭 实体企业</option>
+              <option value="all" className="bg-slate-900 text-slate-200">🏢 全部门</option>
+              <option value="banks" className="bg-slate-900 text-slate-200">🏦 银行同业</option>
+              <option value="nbfi" className="bg-slate-900 text-slate-200">🔮 非银机构</option>
+              <option value="sovereign" className="bg-slate-900 text-slate-200">🏛️ 主权部门</option>
+              <option value="non_financial" className="bg-slate-900 text-slate-200">🏭 实体企业</option>
             </select>
           </div>
 
           {/* Instrument Slicing Selector */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-900/90 border border-slate-700/60 rounded-lg px-1.5 py-0.5 text-[11px]">
+          <div className="hidden sm:flex items-center gap-1 bg-slate-900/90 hover:bg-slate-800/90 border border-white/10 rounded-lg px-2 py-0.5 text-[11px] transition-all">
             <Coins className="w-3 h-3 text-amber-400" />
             <select
               value={selectedInstrument}
@@ -1193,15 +1195,17 @@ export default function CapitalFlowMap({
                 soundFx.playTick();
                 setSelectedInstrument(e.target.value);
               }}
-              className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-[11px]"
+              className="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer text-[11px]"
               title="按金融工具类别切片 (贷款存款/国际债务证券/衍生品)"
             >
-              <option value="all">📜 全部工具</option>
-              <option value="loans">💳 贷款存款</option>
-              <option value="securities">📈 债务证券</option>
-              <option value="derivatives">⚡ 外汇衍生品</option>
+              <option value="all" className="bg-slate-900 text-slate-200">📜 全部工具</option>
+              <option value="loans" className="bg-slate-900 text-slate-200">💳 贷款存款</option>
+              <option value="securities" className="bg-slate-900 text-slate-200">📈 债务证券</option>
+              <option value="derivatives" className="bg-slate-900 text-slate-200">⚡ 外汇衍生品</option>
             </select>
           </div>
+
+          <div className="h-4 w-px bg-white/[0.08] hidden lg:block mx-0.5" />
 
           {/* Mode Switcher */}
           <div className="atlas-segmented text-[11px]">
@@ -1267,6 +1271,8 @@ export default function CapitalFlowMap({
             </button>
           </div>
 
+          <div className="h-4 w-px bg-white/[0.08] hidden 2xl:block mx-0.5" />
+
           {/* Corridor Density Curation Toggle */}
           <div className="hidden 2xl:flex atlas-segmented text-[11px]">
             {[
@@ -1288,17 +1294,19 @@ export default function CapitalFlowMap({
             ))}
           </div>
 
+          <div className="h-4 w-px bg-white/[0.08] hidden lg:block mx-0.5" />
+
           {/* Focus Country Isolation */}
-          <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/60 rounded-lg px-2 py-0.5 text-[11px] shrink-0">
+          <div className="flex items-center gap-1 bg-slate-900/90 hover:bg-slate-800/90 border border-white/10 rounded-lg px-2 py-0.5 text-[11px] shrink-0 transition-all">
             <Target className="w-3 h-3 text-sky-400" />
             <select
               value={focusCountry}
               onChange={(e) => setFocusCountry(e.target.value)}
-              className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-[11px]"
+              className="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer text-[11px]"
             >
-              <option value="ALL">🌐 全局视角</option>
+              <option value="ALL" className="bg-slate-900 text-slate-200">🌐 全局视角</option>
               {countries.map(c => (
-                <option key={c.code} value={c.code}>
+                <option key={c.code} value={c.code} className="bg-slate-900 text-slate-200">
                   {c.name_zh} ({c.code})
                 </option>
               ))}
@@ -1551,8 +1559,27 @@ export default function CapitalFlowMap({
                 </button>
               </div>
 
+              {/* Dynamic Visual Flow Beam */}
+              <div className="bg-slate-900/70 rounded-xl px-3 py-2 border border-white/5 mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+                  <span className="text-xs font-bold font-mono text-white">{activeCorridorStats.source}</span>
+                  <span className="text-[10px] text-slate-400 truncate max-w-[60px]">{activeCorridorStats.fromName}</span>
+                </div>
+                <div className="flex-1 mx-3 relative flex items-center">
+                  <div className="w-full h-0.5 bg-gradient-to-r from-sky-500/30 via-sky-400 to-emerald-400/50 rounded-full"></div>
+                  <div className="absolute left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-sky-400 animate-ping opacity-75"></div>
+                  <div className="absolute left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_#38bdf8]"></div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-slate-400 truncate max-w-[60px] text-right">{activeCorridorStats.toName}</span>
+                  <span className="text-xs font-bold font-mono text-emerald-400">{activeCorridorStats.target}</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                </div>
+              </div>
+
               {/* Metric Cards */}
-              <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="grid grid-cols-2 gap-2 mb-2">
                 <div className="bg-slate-900/80 rounded-xl p-2.5 border border-white/5">
                   <div className="text-[10px] text-slate-400">{selectedQuarter} 跨国债权</div>
                   <div className="text-sm font-bold text-white font-mono mt-0.5">
@@ -1566,6 +1593,36 @@ export default function CapitalFlowMap({
                   </div>
                 </div>
               </div>
+
+              {/* Currency Breakdown Bar */}
+              {(() => {
+                const usdPct = Math.min(100, Math.max(0, Math.round((activeCorridorStats.usdVol / Math.max(1, activeCorridorStats.value)) * 100)));
+                const otherPct = 100 - usdPct;
+                return (
+                  <div className="bg-slate-900/60 rounded-xl p-2.5 border border-white/5 mb-3">
+                    <div className="flex items-center justify-between text-[10px] mb-1.5">
+                      <span className="text-slate-400 font-medium">计价货币构成透视</span>
+                      <div className="flex items-center gap-2 font-mono text-[10px]">
+                        <span className="text-emerald-400 font-medium">USD {usdPct}%</span>
+                        <span className="text-slate-600">|</span>
+                        <span className="text-indigo-400 font-medium">非美 {otherPct}%</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-slate-800">
+                      <div 
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300"
+                        style={{ width: `${usdPct}%` }}
+                        title={`美元 (USD): ${activeCorridorStats.usdVol} 亿 USD (${usdPct}%)`}
+                      />
+                      <div 
+                        className="h-full bg-gradient-to-r from-indigo-500 to-sky-400 transition-all duration-300"
+                        style={{ width: `${otherPct}%` }}
+                        title={`其他主要储备货币: ${Math.max(0, activeCorridorStats.value - activeCorridorStats.usdVol).toFixed(0)} 亿 (${otherPct}%)`}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Sparkline Header */}
               <div className="flex items-center justify-between text-[11px] mb-1">

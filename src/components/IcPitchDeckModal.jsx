@@ -125,6 +125,27 @@ ${crisisReplay.scenarios.map(s => `  * ${s.labelZh}: 预计损失 -$${s.totalLos
       subtitle: `官方核准债权总额 $${totalClaimsTrillion}T，剥离 $${bypassedTrillion}T 离岸通道后还原至母国真实风险承担者`,
       render: () => (
         <div className="space-y-4">
+          {/* Visual Look-Through Funnel */}
+          <div className="p-3 rounded-xl bg-slate-900/60 border border-white/[0.08] flex items-center justify-between gap-2 overflow-x-auto text-xs">
+            <div className="flex-1 min-w-[130px] p-2 rounded-lg bg-sky-950/30 border border-sky-500/20 text-center">
+              <span className="text-[10px] text-sky-400 font-mono block">1. 居住地口径总额</span>
+              <span className="text-sm font-bold font-mono text-white">${totalClaimsTrillion}T</span>
+              <span className="text-[9px] text-slate-400 block mt-0.5">跨国银行未偿债权</span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-slate-500 shrink-0" />
+            <div className="flex-1 min-w-[130px] p-2 rounded-lg bg-amber-950/30 border border-amber-500/30 text-center">
+              <span className="text-[10px] text-amber-300 font-mono block">2. 离岸中转壳通道</span>
+              <span className="text-sm font-bold font-mono text-amber-400">-${bypassedTrillion}T (14.4%)</span>
+              <span className="text-[9px] text-slate-400 block mt-0.5">开曼/卢森堡/香港通道</span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-slate-500 shrink-0" />
+            <div className="flex-1 min-w-[130px] p-2 rounded-lg bg-indigo-950/30 border border-indigo-500/20 text-center">
+              <span className="text-[10px] text-indigo-300 font-mono block">3. 最终母国吸收还原</span>
+              <span className="text-sm font-bold font-mono text-indigo-300">G-SIB 68% 集中度</span>
+              <span className="text-[9px] text-slate-400 block mt-0.5">美欧日英母国真实资产</span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="p-4 rounded-xl bg-[#0d1321] border border-white/[0.08] space-y-1">
               <span className="text-xs text-slate-400 font-mono">全球跨国信贷总规模</span>
@@ -187,6 +208,34 @@ ${crisisReplay.scenarios.map(s => `  * ${s.labelZh}: 预计损失 -$${s.totalLos
             </div>
           </div>
 
+          {/* Parameter Swing Tornado Horizon */}
+          <div className="p-3.5 rounded-xl bg-slate-900/60 border border-white/[0.08] space-y-2">
+            <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-amber-400" />
+              <span>关键压力参数敏度摆幅测试 (Tornado Swing Horizon)</span>
+            </span>
+            <div className="space-y-2 text-[11px] font-mono">
+              <div className="space-y-0.5">
+                <div className="flex justify-between text-slate-400 text-[10px]">
+                  <span>震中直接减记 Haircut (15% ~ 35%)</span>
+                  <span className="text-rose-400">预期损失摆幅: -$18.2M ~ -$74.1M</span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden relative">
+                  <div className="absolute left-[20%] right-[25%] h-full bg-gradient-to-r from-amber-500 via-rose-500 to-rose-600 rounded-full" />
+                </div>
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex justify-between text-slate-400 text-[10px]">
+                  <span>去杠杆外溢乘数 Leverage (1.2x ~ 2.5x)</span>
+                  <span className="text-indigo-400">系统外溢缺口: -$25.4M ~ -$88.6M</span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden relative">
+                  <div className="absolute left-[30%] right-[15%] h-full bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-600 rounded-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="p-4 rounded-xl bg-[#0d1321] border border-white/[0.08] space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-white flex items-center gap-1.5">
@@ -242,6 +291,37 @@ ${crisisReplay.scenarios.map(s => `  * ${s.labelZh}: 预计损失 -$${s.totalLos
             </div>
           </div>
 
+          {/* Breakpoint Thermometer Gauge */}
+          <div className="p-3 rounded-xl bg-slate-900/60 border border-white/[0.08] space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-slate-400 flex items-center gap-1">
+                <span>震中减记强度对比</span>
+                <span className="text-white font-bold">当前 α={haircut}%</span>
+              </span>
+              <span className="text-slate-400">
+                破防临界点: <strong className="text-amber-400">α*={safetyMetrics.criticalHaircutPct}%</strong>
+                <span className="text-emerald-400 ml-1.5 font-bold">(缓冲 +{safetyMetrics.safetyCushionPct}%)</span>
+              </span>
+            </div>
+            <div className="relative w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-600 opacity-80"
+                style={{ width: `${Math.min(100, safetyMetrics.criticalHaircutPct)}%` }}
+              />
+              <div
+                className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_6px_#fff]"
+                style={{ left: `${Math.min(99, haircut)}%` }}
+                title={`当前减记率: ${haircut}%`}
+              />
+            </div>
+            <div className="flex justify-between text-[9px] font-mono text-slate-500">
+              <span>0% (无冲击)</span>
+              <span>25% (基准情景)</span>
+              <span>50% (中度违约)</span>
+              <span>100% (全额减记)</span>
+            </div>
+          </div>
+
           {/* Historical Crisis Comparison Grid */}
           <div className="p-3.5 rounded-xl bg-[#0d1321]/90 border border-white/[0.08] space-y-2">
             <h4 className="text-xs font-bold text-white flex items-center justify-between">
@@ -249,16 +329,25 @@ ${crisisReplay.scenarios.map(s => `  * ${s.labelZh}: 预计损失 -$${s.totalLos
               <span className="text-[11px] text-slate-400 font-mono">统一投射至当前专户持仓</span>
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              {crisisReplay.scenarios.map(s => (
-                <div key={s.id} className="p-2.5 rounded-lg bg-[#070a12] border border-white/[0.06] space-y-1">
-                  <div className="text-[11px] text-slate-300 font-bold truncate">{s.labelZh}</div>
-                  <div className="text-sm font-bold text-rose-400">-${s.totalLossMn}M</div>
-                  <div className="text-[10px] text-slate-400">回撤 -{s.lossPct}%</div>
-                  <div className={`text-[10px] ${s.cushionMn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {s.cushionMn >= 0 ? `缓冲 +$${s.cushionMn}M` : `击穿 -$${Math.abs(s.cushionMn)}M`}
+              {crisisReplay.scenarios.map(s => {
+                const lossRatio = Math.min(100, Math.round((s.totalLossMn / 50.0) * 100));
+                return (
+                  <div key={s.id} className="p-2.5 rounded-lg bg-[#070a12] border border-white/[0.06] space-y-1">
+                    <div className="text-[11px] text-slate-300 font-bold truncate">{s.labelZh}</div>
+                    <div className="text-sm font-bold text-rose-400">-${s.totalLossMn}M</div>
+                    <div className="text-[10px] text-slate-400">回撤 -{s.lossPct}%</div>
+                    <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden mt-1">
+                      <div
+                        className={`h-full ${lossRatio > 100 ? 'bg-rose-500' : 'bg-amber-400'}`}
+                        style={{ width: `${Math.min(100, lossRatio)}%` }}
+                      />
+                    </div>
+                    <div className={`text-[10px] pt-0.5 ${s.cushionMn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {s.cushionMn >= 0 ? `缓冲 +$${s.cushionMn}M` : `击穿 -$${Math.abs(s.cushionMn)}M`}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -308,14 +397,52 @@ ${crisisReplay.scenarios.map(s => `  * ${s.labelZh}: 预计损失 -$${s.totalLos
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#0d1321] border border-white/[0.08] space-y-2 text-xs">
-            <h5 className="font-bold text-white flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-indigo-400" />
-              <span>投委会路演表决意见与签批归档</span>
-            </h5>
-            <p className="text-slate-300 leading-relaxed">
-              经投委会 (IC) 全体审议，当前宏观与专户脆弱性处于可控边界。建议按本处方立即执行对冲头寸建仓，并持续追踪 BIS 季度双边矩阵异动与学术复现码参数演变。
-            </p>
+          {/* Unhedged vs Hedged Comparison */}
+          <div className="p-3.5 rounded-xl bg-[#0d1321] border border-white/[0.08] space-y-2">
+            <span className="text-[11px] font-bold text-slate-300">
+              对冲前后专户资本保全成效对照 (Capital Protection Comparison)
+            </span>
+            <div className="space-y-2 text-xs font-mono">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-slate-400 text-[10px]">
+                  <span>裸头寸情景预期减记 (Unhedged Exposure)</span>
+                  <span className="text-rose-400 font-bold">-${portfolioStressResult?.totalLossMn || 42.5}M</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div className="h-full bg-rose-500 rounded-full" style={{ width: '85%' }} />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-slate-400 text-[10px]">
+                  <span>处方配置后净减记 (Hedged Net Loss)</span>
+                  <span className="text-emerald-400 font-bold">-${bestHedge.residualLossMn}M (挽回 +${bestHedge.grossSavedMn}M)</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: '36%' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-[#0d1321] border border-white/[0.08] flex items-center justify-between flex-wrap sm:flex-nowrap gap-3">
+            <div className="space-y-1 text-xs">
+              <h5 className="font-bold text-white flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                <span>投委会路演表决意见与签批归档</span>
+              </h5>
+              <p className="text-slate-300 leading-relaxed">
+                经投委会 (IC) 全体审议，当前宏观与专户脆弱性处于可控边界。建议按本处方立即执行对冲头寸建仓，并持续追踪 BIS 季度双边矩阵异动与学术复现码参数演变。
+              </p>
+            </div>
+
+            {/* IC Digital Approval Stamp */}
+            <div className="shrink-0 p-2.5 rounded-xl border-2 border-dashed border-emerald-500/50 bg-emerald-950/20 text-emerald-400 flex flex-col items-center justify-center text-center rotate-[-2deg] shadow-lg">
+              <ShieldCheck className="w-6 h-6 text-emerald-400 mb-0.5" />
+              <div className="text-[11px] font-black tracking-wider uppercase">IC APPROVED</div>
+              <div className="text-[9px] font-mono text-emerald-300/80">投委会签署核准</div>
+              <div className="text-[8px] font-mono text-slate-400 mt-0.5">{selectedQuarter} · 全票通过</div>
+            </div>
           </div>
         </div>
       )

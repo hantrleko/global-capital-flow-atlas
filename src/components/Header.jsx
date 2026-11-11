@@ -107,7 +107,7 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#070a12]/95 backdrop-blur-md border-b border-white/[0.08] shadow-md">
+    <header className="sticky top-0 z-40 bg-[#070a12]/95 backdrop-blur-md border-b border-white/[0.08] shadow-md atlas-specular-bar">
       <div className="max-w-[1780px] w-full mx-auto px-3 sm:px-5">
         {/* ROW 1: Compact 44px Institutional Bar (Brand + Quarter Timeline Capsule + Primary Tools & Toolbox Popover) */}
         <div className="h-11 flex items-center justify-between gap-2 border-b border-white/[0.06]">
@@ -471,11 +471,11 @@ export default function Header({
             {onOpenChangelog && (
               <button
                 onClick={onOpenChangelog}
-                className="h-7 px-2 rounded-lg border border-white/[0.1] bg-[#0d1321] hover:bg-[#131b2e] text-slate-200 hover:text-white flex items-center gap-1.5 text-[11px] font-mono font-semibold cursor-pointer transition-all whitespace-nowrap"
-                title="查看 v4.0.0 版本更迭记录与架构演进日志"
+                className="h-7 px-2.5 rounded-lg border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-200 hover:text-white flex items-center gap-1.5 text-[11px] font-mono font-semibold cursor-pointer transition-all whitespace-nowrap shadow-sm"
+                title="查看 v6.0.0 版本更迭记录与架构演进日志"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span>v4.0.0</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>v6.0.0</span>
               </button>
             )}
           </div>
