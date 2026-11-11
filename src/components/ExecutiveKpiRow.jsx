@@ -133,7 +133,7 @@ export default function ExecutiveKpiRow({
             <span className="text-xs font-semibold text-slate-300" title="Total Cross-Border Banking Claims (BIS LBS)">
               全球跨境信贷总额
             </span>
-            <span className="text-[10px] font-mono text-sky-300 bg-sky-950/60 px-1.5 py-0.2 rounded border border-sky-500/25">
+            <span className="text-[11px] font-mono text-sky-300 bg-sky-950/60 px-1.5 py-0.2 rounded border border-sky-500/25">
               BIS LBS
             </span>
           </div>
@@ -165,7 +165,7 @@ export default function ExecutiveKpiRow({
             <span className="text-xs font-semibold text-slate-300" title="USD Denominated Share & Offshore Funding Stress Index">
               美元份额与紧缩指数
             </span>
-            <span className="text-[10px] font-mono text-indigo-300 bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-500/25">
+            <span className="text-[11px] font-mono text-indigo-300 bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-500/25">
               CBS 统计
             </span>
           </div>
@@ -196,7 +196,7 @@ export default function ExecutiveKpiRow({
             <span className="text-xs font-semibold text-slate-300" title="Top-5 Bilateral Corridor Concentration & Core Hubs">
               走廊集中度与核心枢纽
             </span>
-            <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/25">
+            <span className="text-[11px] font-mono text-emerald-300 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/25">
               506 走廊
             </span>
           </div>

@@ -325,7 +325,7 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(mainViewport).toBeVisible({ timeout: 10000 });
 
     // 1. Verify v3.0.0 Changelog Modal opens and renders evolution timeline
-    const changelogBtn = page.getByRole('button', { name: /v[2-4]\./i }).first();
+    const changelogBtn = page.getByRole('button', { name: /v[2-6]\./i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
