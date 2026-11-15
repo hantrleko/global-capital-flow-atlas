@@ -127,21 +127,21 @@ export default function ExecutiveKpiRow({
   return (
     <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-2.5 w-full pb-0.5 md:pb-0 scrollbar-none">
       {/* KPI Card 1: Total Claims */}
-      <div className="min-w-[280px] md:min-w-0 flex-1 atlas-card-elevated atlas-specular-bar rounded-xl px-4 py-2 flex items-center justify-between shadow-md hover:border-sky-400/30 transition-all shrink-0">
-        <div className="space-y-1">
+      <div className="min-w-[280px] md:min-w-0 flex-1 atlas-card-elevated atlas-specular-bar rounded-xl px-4 py-2 flex items-center justify-between gap-2 shadow-md hover:border-sky-400/30 transition-all shrink-0">
+        <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-300" title="Total Cross-Border Banking Claims (BIS LBS)">
+            <span className="text-xs font-semibold text-slate-300 whitespace-nowrap" title="Total Cross-Border Banking Claims (BIS LBS)">
               全球跨境信贷总额
             </span>
-            <span className="text-[11px] font-mono text-sky-300 bg-sky-950/60 px-1.5 py-0.2 rounded border border-sky-500/25">
+            <span className="text-[11px] font-mono text-sky-300 bg-sky-950/60 px-1.5 py-0.2 rounded border border-sky-500/25 whitespace-nowrap shrink-0">
               BIS LBS
             </span>
           </div>
-          <div className="flex items-baseline gap-2 tabular-nums">
-            <span className="text-base md:text-lg font-black font-mono text-white tracking-tight">
+          <div className="flex items-baseline gap-2 tabular-nums flex-wrap sm:flex-nowrap">
+            <span className="text-base md:text-lg font-black font-mono text-white tracking-tight whitespace-nowrap">
               {totalFormatted}
             </span>
-            <span className={`text-[11px] font-mono font-semibold px-1.5 py-0.2 rounded border ${
+            <span className={`text-[11px] font-mono font-semibold px-1.5 py-0.2 rounded border whitespace-nowrap ${
               deltaBn >= 0 ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30' : 'bg-rose-950/40 text-rose-300 border-rose-500/30'
             }`}>
               {deltaBn >= 0 ? `+${deltaBn}B` : `${deltaBn}B`} ({deltaBn >= 0 ? `+${deltaPct}%` : `${deltaPct}%`})
@@ -159,17 +159,17 @@ export default function ExecutiveKpiRow({
       </div>
 
       {/* KPI Card 2: USD Share & Stress */}
-      <div className="min-w-[280px] md:min-w-0 flex-1 atlas-card-elevated atlas-specular-bar rounded-xl px-4 py-2 flex items-center justify-between shadow-md hover:border-indigo-400/30 transition-all shrink-0">
-        <div className="space-y-1">
+      <div className="min-w-[280px] md:min-w-0 flex-1 atlas-card-elevated atlas-specular-bar rounded-xl px-4 py-2 flex items-center justify-between gap-2 shadow-md hover:border-indigo-400/30 transition-all shrink-0">
+        <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-300" title="USD Denominated Share & Offshore Funding Stress Index">
+            <span className="text-xs font-semibold text-slate-300 whitespace-nowrap" title="USD Denominated Share & Offshore Funding Stress Index">
               美元份额与紧缩指数
             </span>
-            <span className="text-[11px] font-mono text-indigo-300 bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-500/25">
+            <span className="text-[11px] font-mono text-indigo-300 bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-500/25 whitespace-nowrap shrink-0">
               CBS 统计
             </span>
           </div>
-          <div className="flex items-baseline gap-2 tabular-nums">
+          <div className="flex items-baseline gap-2 tabular-nums whitespace-nowrap">
             <span className="text-base md:text-lg font-black font-mono text-white tracking-tight">
               {Number(animatedUsdShare).toFixed(1)}%
             </span>
@@ -181,7 +181,7 @@ export default function ExecutiveKpiRow({
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 shrink-0">
           <StressMiniGauge value={Number(stressIndex)} />
           <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-400/25 flex items-center justify-center text-indigo-400 shrink-0">
             <DollarSign className="w-4 h-4" />
@@ -190,21 +190,21 @@ export default function ExecutiveKpiRow({
       </div>
 
       {/* KPI Card 3: Network Corridors & Hubs */}
-      <div className="min-w-[280px] md:min-w-0 flex-1 atlas-card-elevated atlas-specular-bar rounded-xl px-4 py-2 flex items-center justify-between shadow-md hover:border-emerald-400/30 transition-all shrink-0">
-        <div className="space-y-1">
+      <div className="min-w-[280px] md:min-w-0 flex-1 atlas-card-elevated atlas-specular-bar rounded-xl px-4 py-2 flex items-center justify-between gap-2 shadow-md hover:border-emerald-400/30 transition-all shrink-0">
+        <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-300" title="Top-5 Bilateral Corridor Concentration & Core Hubs">
+            <span className="text-xs font-semibold text-slate-300 whitespace-nowrap" title="Top-5 Bilateral Corridor Concentration & Core Hubs">
               走廊集中度与核心枢纽
             </span>
-            <span className="text-[11px] font-mono text-emerald-300 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/25">
+            <span className="text-[11px] font-mono text-emerald-300 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/25 whitespace-nowrap shrink-0">
               506 走廊
             </span>
           </div>
           <div className="flex items-baseline gap-2 tabular-nums">
-            <span className="text-base md:text-lg font-black font-mono text-white tracking-tight">
+            <span className="text-base md:text-lg font-black font-mono text-white tracking-tight whitespace-nowrap">
               Top 5 占 {Number(animatedTop5).toFixed(1)}%
             </span>
-            <span className="text-xs font-sans text-slate-400">
+            <span className="text-xs font-sans text-slate-400 whitespace-nowrap truncate">
               枢纽: 美英日德中
             </span>
           </div>

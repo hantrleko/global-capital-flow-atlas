@@ -472,10 +472,10 @@ export default function Header({
               <button
                 onClick={onOpenChangelog}
                 className="h-7 px-2.5 rounded-lg border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-200 hover:text-white flex items-center gap-1.5 text-[11px] font-mono font-semibold cursor-pointer transition-all whitespace-nowrap shadow-sm"
-                title="查看 v6.0.0 版本更迭记录与架构演进日志"
+                title="查看 v6.5.0 版本更迭记录与架构演进日志"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>v6.0.0</span>
+                <span>v6.5.0</span>
               </button>
             )}
           </div>

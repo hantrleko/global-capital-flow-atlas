@@ -9,12 +9,42 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v6.0.0',
-    date: '2026-10-31',
+    version: 'v6.5.0',
+    date: '2026-11-11',
     status: 'LATEST',
-    title: 'Phase 9 反向求根与智能风控处方系统 (Reverse Stress Solver, Historical Crisis Backtest, Pareto Optimal Hedge Engine & Investment Committee PitchDeck)',
+    title: 'Phase 10 静奢质感与高管触感微交互升级 (Quiet-Luxury Surface Elevation, Micro-Sparklines, Corridor HUD & Magazine-Grade IC PitchDeck)',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '高管微图表',
+        title: 'KPI 卡片内置 36Q SVG 趋势波形、半圆应力仪表盘与 5 走廊比例条',
+        desc: '在首屏 KPI 卡片中融入 36 季度交叉边界信贷渐变波形图、动态变色半圆紧缩应力仪表盘及 Top 5 走廊分段权重条，一屏尽览趋势与压力态势。'
+      },
+      {
+        tag: '静奢玻璃质感',
+        title: '顶部镜面高光流线、微高光分层与点阵暗纹矩阵',
+        desc: '引入 .atlas-card-elevated 与 .atlas-specular-bar 物理光学质感体系，优化地图控制栏分段隔断与深色毛玻璃下拉选单。'
+      },
+      {
+        tag: '走廊 HUD 升级',
+        title: '双边走廊动态能量流束与币种构成双色比例条',
+        desc: '在点击跨境信贷走廊唤起的 HUD 浮层中增加动态流束脉冲光点及 USD vs 非美计价构成条，直击流动性错配核心。'
+      },
+      {
+        tag: '路演杂志级重塑',
+        title: '投委会 PitchDeck 4 幕全面视觉化与 IC Approved 签批印章',
+        desc: '新增 3 阶段离岸穿透漏斗图、参数敏度摆幅地平线、破防临界温度计及对冲成效对比条，末页加盖投委会核准电子印章。'
+      }
+    ]
+  },
+  {
+    version: 'v6.0.0',
+    date: '2026-10-31',
+    status: 'STABLE',
+    title: 'Phase 9 反向求根与智能风控处方系统 (Reverse Stress Solver, Historical Crisis Backtest, Pareto Optimal Hedge Engine & Investment Committee PitchDeck)',
+    badge: '历史稳定版',
+    badgeColor: 'border-slate-500/50 bg-slate-900/60 text-slate-300',
     highlights: [
       {
         tag: '反向压力求根',
@@ -384,7 +414,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
   const handleCopyChangelog = () => {
     soundFx.playChime();
     const md = `# EUGENE FINANCE Global Capital Flow Atlas - Version Changelog
-Current Version: v6.0.0 (Updated 2026-10-31)
+Current Version: v6.5.0 (Updated 2026-11-11)
 
 ${SYSTEM_CHANGELOG.map(rel => `## ${rel.version} (${rel.date}) - ${rel.title}
 ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
@@ -414,7 +444,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v6.0.0 Current
+                  v6.5.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">

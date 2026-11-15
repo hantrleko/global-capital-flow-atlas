@@ -531,12 +531,12 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(exitBtn).toBeVisible();
     await exitBtn.click();
 
-    // 6. Verify Changelog Modal Displays v6.0.0 Current
+    // 6. Verify Changelog Modal Displays v6.5.0 Current
     const changelogBtn = page.getByRole('button', { name: /v[2-6]\.[05]\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
-    await expect(page.getByText('v6.0.0 Current').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('v6.5.0 Current').first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/反向求根与智能风控处方系统/).first()).toBeVisible();
   });
 
