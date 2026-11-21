@@ -21,6 +21,7 @@ import {
   computeStressWorkbenchAnalysis,
   buildDataFingerprint
 } from '../utils/eisenbergNoeClearing';
+import { runCompoundContagionWithSwapRescue } from '../utils/v7QuantEngine';
 
 export { CLEARING_VERSION_REGISTRY };
 
@@ -81,6 +82,36 @@ export default function NetworkContagionSimulator({
   const [simResults, setSimResults] = useState(null);
   const [copiedRepCode, setCopiedRepCode] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+
+  // v7.0 Direction A: Multi-Epicenter Compound Shock & Central Bank Swap Line Rescue State
+  const [secondaryEpicenters, setSecondaryEpicenters] = useState(['KY']);
+  const [swapLineRescueBn, setSwapLineRescueBn] = useState(200);
+
+  const toggleSecondaryEpicenter = (code) => {
+    soundFx.playTick();
+    setSecondaryEpicenters(prev =>
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code].slice(0, 2)
+    );
+  };
+
+  const compoundRescueResult = useMemo(() => {
+    if (!dataset || !selectedQuarter) return null;
+    try {
+      return runCompoundContagionWithSwapRescue({
+        dataset,
+        quarter: selectedQuarter,
+        primaryEpicenter: epicenter,
+        primaryHaircutPct: haircutPct,
+        secondaryEpicenters,
+        bufferMultiplier,
+        swapLineRescueBn,
+        deleveragingMultiplier,
+        dollarSqueezePct
+      });
+    } catch {
+      return null;
+    }
+  }, [dataset, selectedQuarter, epicenter, haircutPct, secondaryEpicenters, bufferMultiplier, swapLineRescueBn, deleveragingMultiplier, dollarSqueezePct]);
 
   const handleCopyReproducibilityCode = () => {
     soundFx.playChime();
@@ -1909,6 +1940,148 @@ export default function NetworkContagionSimulator({
                 穿透至二级市场资产池，计算在险价值 VaR 并建立防御
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* v7.0 Direction A: Multi-Epicenter Compound Shock, Fed Swap Line Rescue & 4-Wave Dynamic Contagion Cascade */}
+      {compoundRescueResult && (
+        <div
+          data-testid="multi-epicenter-swap-panel"
+          className="p-3.5 bg-[#0d1321]/95 border border-indigo-500/30 rounded-xl shadow-lg space-y-3 atlas-card-elevated atlas-specular-bar animate-fade-in"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-bold">
+                v7.0 复合清算与政策博弈
+              </span>
+              <h3 className="text-xs sm:text-sm font-bold text-white">
+                多震中并发冲击、美联储央行互换 (Fed Swap Lines) 救援博弈与四期动态传染波次
+              </h3>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              {/* Secondary Epicenter Selector Pills */}
+              <div className="flex items-center gap-1 bg-slate-900/90 border border-white/10 rounded-lg px-2 py-1">
+                <span className="text-slate-400 font-mono">叠加次生震中:</span>
+                {['KY', 'BR', 'GB', 'IT', 'HK'].filter(c => c !== epicenter).map(code => {
+                  const isActive = secondaryEpicenters.includes(code);
+                  return (
+                    <button
+                      key={code}
+                      onClick={() => toggleSecondaryEpicenter(code)}
+                      data-testid={`toggle-sec-epicenter-${code}`}
+                      className={`px-1.5 py-0.5 rounded font-mono text-[11px] font-semibold transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-rose-500/30 text-rose-200 border border-rose-400/50'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      +{code}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Central Bank Swap Line Rescue Injection Selector */}
+              <div className="flex items-center gap-1 bg-slate-900/90 border border-emerald-500/30 rounded-lg px-2 py-1">
+                <span className="text-emerald-300 font-mono">央行互换救援 (Swap Lines):</span>
+                {[
+                  { val: 0, label: '$0B (无救援)' },
+                  { val: 200, label: '+$200B 互换托底' },
+                  { val: 500, label: '+$500B 无限量托底' }
+                ].map(opt => (
+                  <button
+                    key={opt.val}
+                    onClick={() => {
+                      soundFx.playChime();
+                      setSwapLineRescueBn(opt.val);
+                    }}
+                    data-testid={`swap-rescue-btn-${opt.val}`}
+                    className={`px-2 py-0.5 rounded font-mono text-[11px] font-semibold transition-all cursor-pointer ${
+                      swapLineRescueBn === opt.val
+                        ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/50'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 4-Metric Comparison Row: Single vs Compound vs Swap-Rescued vs Saved */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs font-mono">
+            <div className="p-2.5 rounded-lg bg-slate-900/80 border border-white/[0.06]">
+              <div className="text-[11px] text-slate-400">单震中 ({epicenter}) 基准违约增量</div>
+              <div className="text-base font-bold text-slate-200 mt-0.5">
+                +${compoundRescueResult.singleEpicenterShortfallBn}B
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">传统单点静态截面出清</div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-rose-950/25 border border-rose-500/30">
+              <div className="text-[11px] text-rose-300">
+                复合震中 ({epicenter}{secondaryEpicenters.length > 0 ? `+${secondaryEpicenters.join('+')}` : ''}) 无救援赤字
+              </div>
+              <div className="text-base font-bold text-rose-400 mt-0.5">
+                +${compoundRescueResult.unrescuedIncrementalShortfallBn}B
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">非线性交叉违约共振放大 1.12x</div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-indigo-950/25 border border-indigo-500/30">
+              <div className="text-[11px] text-indigo-300">央行互换干预后净违约赤字</div>
+              <div className="text-base font-bold text-indigo-300 mt-0.5">
+                +${compoundRescueResult.rescuedIncrementalShortfallBn}B
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">
+                定向注入 ${compoundRescueResult.swapLineRescueBn}B 美元流动性缓冲
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-emerald-950/25 border border-emerald-500/30">
+              <div className="text-[11px] text-emerald-300">政策救援阻断级联坏账净额</div>
+              <div className="text-base font-bold text-emerald-400 mt-0.5">
+                -${compoundRescueResult.swapSavedShortfallBn}B
+              </div>
+              <div className="text-[11px] text-emerald-300/80 mt-0.5">
+                政策杠杆乘数: {compoundRescueResult.swapMultiplierRoi}x 减损效率
+              </div>
+            </div>
+          </div>
+
+          {/* 4-Wave Dynamic Contagion Cascade (T+0 -> T+3 Quarters) */}
+          <div
+            data-testid="dynamic-contagion-waves"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs"
+          >
+            {compoundRescueResult.dynamicWaves.map((w) => {
+              const maxWaveBn = Math.max(1, compoundRescueResult.unrescuedIncrementalShortfallBn * 0.45);
+              const grossWidthPct = Math.min(100, Math.round((w.grossLossBn / maxWaveBn) * 100));
+              const netWidthPct = Math.min(100, Math.round((w.netLossBn / maxWaveBn) * 100));
+              return (
+                <div key={w.waveId} className="p-2.5 rounded-lg bg-[#070a12]/90 border border-white/[0.06] space-y-1.5">
+                  <div className="flex items-center justify-between font-mono text-[11px]">
+                    <span className="text-sky-400 font-bold">{w.period}</span>
+                    <span className="text-slate-300">
+                      毛冲击 <strong className="text-rose-400">${w.grossLossBn}B</strong> ➔ 净 <strong className="text-emerald-400">${w.netLossBn}B</strong>
+                    </span>
+                  </div>
+                  <div className="font-bold text-white text-xs">{w.title}</div>
+                  <div className="space-y-1">
+                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden" title="无救援毛冲击">
+                      <div className="h-full bg-rose-500/80 rounded-full" style={{ width: `${grossWidthPct}%` }} />
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden" title="央行互换干预后净冲击">
+                      <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${netWidthPct}%` }} />
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-slate-400 leading-snug">{w.desc}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

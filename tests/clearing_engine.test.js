@@ -73,6 +73,13 @@ import {
   EXPANDED_HEDGE_CATALOG,
   solveOptimalHedgePackage
 } from '../src/utils/hedgeOptimizer.js';
+import {
+  runCompoundContagionWithSwapRescue,
+  runPortfolioMonteCarloSimulation,
+  computeLossAttributionWaterfall,
+  computeCountryDrawerStressPreview,
+  computeMultiPortfolioArena
+} from '../src/utils/v7QuantEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1522,6 +1529,91 @@ function runTestSuite() {
     assert(result.bestRecommendation.grossSavedMn >= 0, 'Gross saved must be non-negative');
     assert(result.bestRecommendation.protectionRoi >= 0, 'Protection ROI must be non-negative');
     assert(result.bestRecommendation.isParetoOptimal === true, 'Best recommendation must be on the Pareto frontier');
+  }
+
+  // =========================================================================
+  // Test 43: Phase 11 V7.0.0 Compound Multi-Epicenter Clearing, Fed Swap Line Rescue & 4-Wave Dynamic Cascade
+  // =========================================================================
+  console.log('\nTest 43: Phase 11 V7.0.0 Compound Multi-Epicenter Clearing, Fed Swap Line Rescue & 4-Wave Dynamic Cascade');
+  {
+    const compoundRes = runCompoundContagionWithSwapRescue({
+      dataset,
+      quarter: '2026Q1',
+      primaryEpicenter: 'TR',
+      primaryHaircutPct: 25,
+      secondaryEpicenters: ['KY'],
+      bufferMultiplier: 1.5,
+      swapLineRescueBn: 200
+    });
+
+    assert(compoundRes !== null && typeof compoundRes === 'object', 'Compound contagion engine must return result object');
+    assert(compoundRes.isCompoundShock === true, 'Must flag isCompoundShock when secondaryEpicenters provided');
+    assert(compoundRes.unrescuedIncrementalShortfallBn > compoundRes.singleEpicenterShortfallBn, 'Compound multi-epicenter shortfall must exceed single-epicenter baseline');
+    assert(compoundRes.rescuedIncrementalShortfallBn < compoundRes.unrescuedIncrementalShortfallBn, 'Central bank swap line injection must reduce net incremental shortfall');
+    assert(compoundRes.swapSavedShortfallBn > 0, 'Swap rescue saved shortfall must be positive when swapLineRescueBn > 0');
+    assert(Array.isArray(compoundRes.dynamicWaves) && compoundRes.dynamicWaves.length === 4, 'Must decompose into 4 dynamic quarterly contagion waves (T+0 to T+3)');
+  }
+
+  // =========================================================================
+  // Test 44: Phase 11 V7.0.0 Deterministic 500-Trial Monte Carlo Fat-Tail & 99% CVaR (Expected Shortfall)
+  // =========================================================================
+  console.log('\nTest 44: Phase 11 V7.0.0 Deterministic 500-Trial Monte Carlo Fat-Tail & 99% CVaR (Expected Shortfall)');
+  {
+    const mc1 = runPortfolioMonteCarloSimulation({
+      activePortfolio: PORTFOLIO_PRESETS[0],
+      scenarioId: 'tr_sovereign_crisis',
+      trialsCount: 500,
+      seed: 20260700
+    });
+    const mc2 = runPortfolioMonteCarloSimulation({
+      activePortfolio: PORTFOLIO_PRESETS[0],
+      scenarioId: 'tr_sovereign_crisis',
+      trialsCount: 500,
+      seed: 20260700
+    });
+
+    assert(mc1.trialsCount === 500, 'Monte Carlo must run 500 trials');
+    assert(mc1.unhedgedStats.cvar99Mn === mc2.unhedgedStats.cvar99Mn, 'Deterministic seed must yield bitwise identical 99% CVaR across runs');
+    assert(mc1.unhedgedStats.cvar99Mn >= mc1.unhedgedStats.var99Mn, '99% Expected Shortfall (CVaR) must be >= 99% VaR');
+    assert(mc1.unhedgedStats.var99Mn >= mc1.unhedgedStats.var95Mn, '99% VaR must be >= 95% VaR');
+    assert(mc1.hedgedStats.cvar99Mn < mc1.unhedgedStats.cvar99Mn, 'Pareto hedge must reduce 99% CVaR tail loss');
+    assert(mc1.tailReductionMn > 0, 'Tail reduction amount must be positive');
+    assert(Array.isArray(mc1.histogramBins) && mc1.histogramBins.length === 12, 'Must generate 12 histogram distribution bins');
+  }
+
+  // =========================================================================
+  // Test 45: Phase 11 V7.0.0 5-Stage Attribution Waterfall, Sovereign Drawer Stress Preview & Multi-Portfolio Arena
+  // =========================================================================
+  console.log('\nTest 45: Phase 11 V7.0.0 5-Stage Attribution Waterfall, Sovereign Drawer Stress Preview & Multi-Portfolio Arena');
+  {
+    const waterfall = computeLossAttributionWaterfall({
+      dataset,
+      quarter: '2026Q1',
+      epicenter: 'TR',
+      haircutPct: 25,
+      activePortfolio: PORTFOLIO_PRESETS[0]
+    });
+
+    assert(Array.isArray(waterfall.stages) && waterfall.stages.length === 5, 'Attribution waterfall must have 5 end-to-end stages');
+    assert(waterfall.unhedgedLossMn > waterfall.residualLossMn, 'Hedge interception must reduce unhedged loss to lower net residual');
+
+    const drawerPreview = computeCountryDrawerStressPreview({
+      dataset,
+      quarter: '2026Q1',
+      countryCode: 'TR',
+      simulatedHaircutPct: 25
+    });
+    assert(drawerPreview.networkIncrementalShortfallBn > 0, 'Drawer stress preview must compute positive network shortfall for TR');
+    assert(drawerPreview.portfolioSimulatedLossMn > 0, 'Drawer stress preview must compute positive portfolio impact');
+
+    const arena = computeMultiPortfolioArena({
+      dataset,
+      quarter: '2026Q1',
+      epicenter: 'TR',
+      haircutPct: 25
+    });
+    assert(arena.arenaRows.length >= 3, 'Multi-portfolio arena must compare all preset institutional portfolios');
+    assert(typeof arena.mostResilientPortfolioName === 'string' && arena.mostResilientPortfolioName.length > 0, 'Arena must identify most resilient champion portfolio');
   }
 
   console.log('\n===============================================================');

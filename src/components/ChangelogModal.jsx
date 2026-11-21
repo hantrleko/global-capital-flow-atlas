@@ -9,12 +9,42 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v6.5.0',
-    date: '2026-11-11',
+    version: 'v7.0.0',
+    date: '2026-11-21',
     status: 'LATEST',
-    title: 'Phase 10 静奢质感与高管触感微交互升级 (Quiet-Luxury Surface Elevation, Micro-Sparklines, Corridor HUD & Magazine-Grade IC PitchDeck)',
+    title: 'Phase 11 全域数理深水区与因果归因作战系统 (Compound Multi-Epicenter Clearing, Fed Swap Line Rescue, 500-Trial Monte Carlo 99% CVaR, 5-Stage Attribution Waterfall & Multi-Portfolio Arena)',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '复合震中与央行救援',
+        title: '多震中并发交叉传染、美联储互换 (Fed Swap Lines) 救援博弈与 T+0→T+3 四期波次演进',
+        desc: '突破单震中静态截面局限，支持叠加次生震中（如 TR+KY）模拟 1.12x 共振传染；引入央行互换流动性注入（+$200B/+$500B）政策博弈开关及四季度动态波次演进视窗。'
+      },
+      {
+        tag: '蒙特卡洛肥尾',
+        title: '500 次确定性蒙特卡洛肥尾分布与 99% 期望短缺 (Expected Shortfall / CVaR) 引擎',
+        desc: '基于 Mulberry32 确定性种子与 Student-t 肥尾跳跃扩散抽样，输出未对冲与帕累托对冲后的双分布频数直方图，精准量化 95% VaR、99% VaR 与 99% CVaR 极端尾部削峰幅度。'
+      },
+      {
+        tag: '五级归因与抽屉直连',
+        title: '端到端五级风险传导归因瀑布与主权 360° 抽屉实时专户冲击速览',
+        desc: '构建「震中违约 ➔ 跨境走廊 ➔ G-SIB 母行 ➔ 专户持仓 ➔ 对冲拦截」五级损益瀑布图；在国别 360° 抽屉中新增「压力与专户」标签页，无需切页即可秒级预览任意国家违约对全网与专户的冲击。'
+      },
+      {
+        tag: '竞技场与执行副驾',
+        title: '多专户横向抗压竞技场 (Stress Arena) 与可执行动作的 AI 投研副驾 2.0',
+        desc: '支持多机构策略专户同屏比拼净回撤、99% CVaR、破防临界点 α* 与韧性评分；升级 Macro AI Copilot 2.0 为带一键引擎调参动作卡的智能执行代理。'
+      }
+    ]
+  },
+  {
+    version: 'v6.5.0',
+    date: '2026-11-11',
+    status: 'STABLE',
+    title: 'Phase 10 静奢质感与高管触感微交互升级 (Quiet-Luxury Surface Elevation, Micro-Sparklines, Corridor HUD & Magazine-Grade IC PitchDeck)',
+    badge: '历史稳定版',
+    badgeColor: 'border-slate-500/50 bg-slate-900/60 text-slate-300',
     highlights: [
       {
         tag: '高管微图表',
@@ -444,7 +474,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v6.5.0 Current
+                  v7.0.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">

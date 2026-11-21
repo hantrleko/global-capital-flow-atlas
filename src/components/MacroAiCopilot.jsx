@@ -14,7 +14,9 @@ export default function MacroAiCopilot({
   onSelectQuarter,
   onSelectTab,
   onSelectCountry,
-  activeTab
+  activeTab,
+  onOpenPitchDeck,
+  onExecuteContagionShock
 }) {
   const [activeSubTab, setActiveSubTab] = useState('briefing'); // 'briefing' | 'anomalies' | 'qa'
   const [copied, setCopied] = useState(false);
@@ -375,6 +377,93 @@ export default function MacroAiCopilot({
                 <p className="text-xs md:text-sm leading-relaxed text-slate-300">
                   {executiveBriefing.summaryText}
                 </p>
+              </div>
+
+              {/* v7.0 Direction C2: Actionable AI Copilot 2.0 Execution Directives */}
+              <div
+                data-testid="actionable-copilot-cards"
+                className="p-4 rounded-xl bg-slate-900/90 border border-indigo-500/35 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-400" />
+                    <span>v7.0 AI 投研副驾可执行动作指令卡 (Actionable Execution Directives)</span>
+                  </h4>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                    一键引擎调参直达
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+                  <div className="p-3 rounded-xl bg-[#070a12] border border-rose-500/30 flex flex-col justify-between space-y-2.5">
+                    <div>
+                      <div className="text-[11px] font-mono text-rose-300 font-bold">ACTION 01 · 复合震中推演</div>
+                      <div className="font-bold text-white mt-0.5">注入 TR+KY 复合违约与互换救援</div>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                        一键在级联清算引擎中加载前沿主权减记与美联储 $200B 互换托底博弈。
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        soundFx.playChime();
+                        if (onExecuteContagionShock) {
+                          onExecuteContagionShock({ epicenter: 'TR', haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
+                        }
+                        onSelectTab('contagion');
+                        onClose();
+                      }}
+                      data-testid="copilot-action-contagion"
+                      className="w-full py-1.5 px-2.5 rounded-lg bg-rose-600/25 hover:bg-rose-600/40 border border-rose-500/40 text-rose-200 font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer transition-all"
+                    >
+                      <span>⚡ 一键加载复合清算沙盘</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[#070a12] border border-emerald-500/30 flex flex-col justify-between space-y-2.5">
+                    <div>
+                      <div className="text-[11px] font-mono text-emerald-300 font-bold">ACTION 02 · 肥尾风控与竞技场</div>
+                      <div className="font-bold text-white mt-0.5">检视专户 99% CVaR 与五级归因</div>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                        直达专户风控台，查看 500 次蒙特卡洛肥尾分布、五级瀑布归因与多专户 PK。
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        soundFx.playChime();
+                        onSelectTab('portfolio');
+                        onClose();
+                      }}
+                      data-testid="copilot-action-portfolio"
+                      className="w-full py-1.5 px-2.5 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/40 border border-emerald-500/40 text-emerald-200 font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer transition-all"
+                    >
+                      <span>🛡️ 一键前往专户风控与归因</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[#070a12] border border-amber-500/30 flex flex-col justify-between space-y-2.5">
+                    <div>
+                      <div className="text-[11px] font-mono text-amber-300 font-bold">ACTION 03 · 投委会决策交付</div>
+                      <div className="font-bold text-white mt-0.5">启动 4 幕投委会路演 (PitchDeck)</div>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                        自动汇总当前季度清算赤字、破防临界点 α* 与最优对冲处方生成路演汇报。
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        soundFx.playChime();
+                        onClose();
+                        if (onOpenPitchDeck) onOpenPitchDeck();
+                      }}
+                      data-testid="copilot-action-pitchdeck"
+                      className="w-full py-1.5 px-2.5 rounded-lg bg-amber-600/25 hover:bg-amber-600/40 border border-amber-500/40 text-amber-200 font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer transition-all"
+                    >
+                      <span>📊 一键开启投委会路演终端</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Key Macro Risk Factors */}

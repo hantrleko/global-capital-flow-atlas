@@ -1002,6 +1002,8 @@ export default function App() {
         onSelectTab={handleSelectTab}
         onSelectCountry={setSelectedCountry}
         activeTab={activeTab}
+        onOpenPitchDeck={() => setIsPitchDeckOpen(true)}
+        onExecuteContagionShock={(shock) => setContagionConfig(shock)}
       />
 
       {/* Command Palette Modal */}
@@ -1234,7 +1236,7 @@ export default function App() {
               title="查看平台版本迭代记录与演进架构"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>v6.0.0 日志</span>
+              <span>v7.0.0 日志</span>
             </button>
             <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>

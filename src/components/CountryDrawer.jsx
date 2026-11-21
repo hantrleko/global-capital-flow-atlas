@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import { getDataClassification } from '../utils/dataClassification';
+import { computeCountryDrawerStressPreview } from '../utils/v7QuantEngine';
 
 export default function CountryDrawer({
   dataset,
@@ -56,6 +57,21 @@ export default function CountryDrawer({
     ? (country.fx_reserves / shortTermDebtEst).toFixed(2)
     : '1.20';
   const isGuidottiAdequate = parseFloat(guidottiRatio) >= 1.0;
+
+  // v7.0 Direction B2: Sovereign 360° Live Stress & Portfolio Impact Preview
+  const stressPreview = useMemo(() => {
+    if (!dataset || !countryCode) return null;
+    try {
+      return computeCountryDrawerStressPreview({
+        dataset,
+        quarter: selectedQuarter,
+        countryCode,
+        simulatedHaircutPct: 25
+      });
+    } catch {
+      return null;
+    }
+  }, [dataset, selectedQuarter, countryCode]);
 
   // Mini Historical Trend Chart
   useEffect(() => {
@@ -254,14 +270,29 @@ export default function CountryDrawer({
               soundFx.playTick();
               setActiveTab('piercing');
             }}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 ${
               activeTab === 'piercing'
                 ? 'bg-emerald-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            最终风险穿透
+            风险穿透
+          </button>
+          <button
+            onClick={() => {
+              soundFx.playTick();
+              setActiveTab('stress_impact');
+            }}
+            data-testid="drawer-tab-stress-impact"
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === 'stress_impact'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'text-rose-300 hover:text-white hover:bg-slate-800/50'
+            }`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            压力与专户
           </button>
         </div>
 
@@ -529,6 +560,88 @@ export default function CountryDrawer({
                     {isOffshoreConduit ? `-${piercedReallocationShare}% (剥除)` : '+35% (真实担保承保)'}
                   </span>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: v7.0 LIVE STRESS & PORTFOLIO IMPACT PREVIEW */}
+        {activeTab === 'stress_impact' && stressPreview && (
+          <div
+            data-testid="drawer-stress-impact-panel"
+            className="space-y-3.5 animate-fade-in text-xs"
+          >
+            <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/40 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-rose-300 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                  <span>主权 360° 实时清算与专户冲击速览</span>
+                </span>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-200 border border-rose-400/30">
+                  假设 {country.code} 减记 -25%
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                若 {country.name_zh} ({country.code}) 发生 25% 外债违约减记，通过 Eisenberg-Noe 网络不动点清算实时投射对全球银行体系及您当前专户的冲击：
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 font-mono">
+              <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                <span className="text-[11px] text-slate-400">全网增量违约赤字</span>
+                <div className="text-base font-bold text-rose-400">
+                  +${stressPreview.networkIncrementalShortfallBn}B
+                </div>
+                <span className="text-[11px] text-slate-400 block">
+                  直接冲销: ${stressPreview.epicenterHaircutAmountBn}B
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                <span className="text-[11px] text-slate-400">头号跨国债权受害国</span>
+                <div className="text-base font-bold text-amber-300 truncate">
+                  {stressPreview.topCreditorVictim
+                    ? `${stressPreview.topCreditorVictim.name_zh} (+$${stressPreview.topCreditorVictim.shortfallBn}B)`
+                    : '无显著外溢'}
+                </div>
+                <span className="text-[11px] text-slate-400 block">
+                  一阶+二阶级联坏账居首
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-indigo-950/25 border border-indigo-500/35 space-y-1">
+                <span className="text-[11px] text-indigo-300">当前专户预期净减记</span>
+                <div className="text-base font-bold text-rose-400">
+                  -${stressPreview.portfolioSimulatedLossMn}M
+                </div>
+                <span className="text-[11px] text-slate-300 block">
+                  占 AUM 比例: -{stressPreview.portfolioSimulatedLossPct}%
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                <span className="text-[11px] text-slate-400">专户直接持仓敞口</span>
+                <div className="text-base font-bold text-white">
+                  ${stressPreview.portfolioDirectExposureMn}M
+                </div>
+                <span className="text-[11px] text-slate-400 block">
+                  基准 AUM: ${stressPreview.portfolioBaseAumMn}M
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+              <div className="font-bold text-white text-xs flex items-center justify-between">
+                <span>该情景下专户受损最重 Top 3 持仓</span>
+                <span className="text-[11px] font-mono text-indigo-300">含二阶传染与离岸穿透</span>
+              </div>
+              <div className="space-y-1.5">
+                {stressPreview.portfolioTopImpactedPositions.map((pos) => (
+                  <div key={pos.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-950/70 border border-white/[0.05]">
+                    <span className="text-slate-200 truncate max-w-[200px]">{pos.name.split(' (')[0]} ({pos.country})</span>
+                    <span className="font-mono font-bold text-rose-400">-${pos.lossMn}M (-{pos.rawLossPct}%)</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

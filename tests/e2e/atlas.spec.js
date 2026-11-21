@@ -325,7 +325,7 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(mainViewport).toBeVisible({ timeout: 10000 });
 
     // 1. Verify v3.0.0 Changelog Modal opens and renders evolution timeline
-    const changelogBtn = page.getByRole('button', { name: /v[2-6]\./i }).first();
+    const changelogBtn = page.getByRole('button', { name: /v[2-7]\./i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
@@ -531,12 +531,12 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(exitBtn).toBeVisible();
     await exitBtn.click();
 
-    // 6. Verify Changelog Modal Displays v6.5.0 Current
-    const changelogBtn = page.getByRole('button', { name: /v[2-6]\.[05]\.0/i }).first();
+    // 6. Verify Changelog Modal Displays v7.0.0 Current
+    const changelogBtn = page.getByRole('button', { name: /v[2-7]\.[05]\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
-    await expect(page.getByText('v6.5.0 Current').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('v7.0.0 Current').first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/反向求根与智能风控处方系统/).first()).toBeVisible();
   });
 
@@ -925,6 +925,53 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(closePitchDeckBtn).toBeVisible();
     await closePitchDeckBtn.click();
     await expect(pitchDeckModal).not.toBeVisible();
+  });
+
+  test('18. Phase 11 v7.0.0: Compound Multi-Epicenter Clearing, Fed Swap Rescue, 500-Trial Monte Carlo 99% CVaR, 5-Stage Waterfall & Multi-Portfolio Arena', async ({ page }) => {
+    // 1. Verify Compound Multi-Epicenter & Central Bank Swap Line Rescue Panel in Contagion Simulator
+    await page.goto('/?tab=contagion&q=2026Q1&intro=0');
+    await expect(page.locator('#main-viewport')).toBeVisible({ timeout: 10000 });
+
+    const compoundPanel = page.locator('[data-testid="multi-epicenter-swap-panel"]');
+    await expect(compoundPanel).toBeVisible({ timeout: 8000 });
+    await expect(compoundPanel.getByText('v7.0 复合清算与政策博弈')).toBeVisible();
+
+    const swap500Btn = page.locator('[data-testid="swap-rescue-btn-500"]');
+    await expect(swap500Btn).toBeVisible();
+    await swap500Btn.click();
+
+    const dynamicWaves = page.locator('[data-testid="dynamic-contagion-waves"]');
+    await expect(dynamicWaves).toBeVisible();
+    await expect(dynamicWaves.getByText('T+0 季度')).toBeVisible();
+    await expect(dynamicWaves.getByText('T+3 季度')).toBeVisible();
+
+    // 2. Navigate to Portfolio Stress Overlay & Verify 5-Stage Loss Attribution Waterfall
+    await page.goto('/?tab=portfolio&q=2026Q1&intro=0');
+    const overlay = page.locator('[data-testid="portfolio-stress-overlay"]');
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+
+    const waterfall = page.locator('[data-testid="loss-attribution-waterfall"]');
+    await expect(waterfall).toBeVisible();
+    await expect(waterfall.getByText('STAGE 01')).toBeVisible();
+    await expect(waterfall.getByText('STAGE 05')).toBeVisible();
+
+    // 3. Switch to 500-Trial Monte Carlo Fat-Tail & 99% CVaR Tab
+    const mcTabBtn = page.locator('[data-testid="tab-monte-carlo"]');
+    await expect(mcTabBtn).toBeVisible();
+    await mcTabBtn.click();
+
+    const mcPanel = page.locator('[data-testid="monte-carlo-tail-panel"]');
+    await expect(mcPanel).toBeVisible();
+    await expect(mcPanel.getByText('99% 期望短缺 (CVaR / ES 极值均值)')).toBeVisible();
+
+    // 4. Switch to Multi-Portfolio Stress Arena Tab
+    const arenaTabBtn = page.locator('[data-testid="tab-portfolio-arena"]');
+    await expect(arenaTabBtn).toBeVisible();
+    await arenaTabBtn.click();
+
+    const arenaPanel = page.locator('[data-testid="multi-portfolio-arena"]');
+    await expect(arenaPanel).toBeVisible();
+    await expect(arenaPanel.getByText('多专户横向抗压竞技场')).toBeVisible();
   });
 
 });

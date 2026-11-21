@@ -26,6 +26,11 @@ import {
   solveOptimalHedgePackage,
   EXPANDED_HEDGE_CATALOG
 } from '../utils/hedgeOptimizer';
+import {
+  runPortfolioMonteCarloSimulation,
+  computeLossAttributionWaterfall,
+  computeMultiPortfolioArena
+} from '../utils/v7QuantEngine';
 
 export default function PortfolioStressOverlay({
   dataset,
@@ -142,6 +147,41 @@ export default function PortfolioStressOverlay({
       enableLookThrough
     });
   }, [activePortfolio, selectedScenarioId, liveClearingShockMap, hedgeBudgetBps, stressMultiplier, enableLookThrough]);
+
+  // v7.0 Direction A3: Deterministic 500-Trial Monte Carlo Fat-Tail & 99% CVaR Simulation
+  const monteCarloResult = useMemo(() => {
+    return runPortfolioMonteCarloSimulation({
+      activePortfolio,
+      baseStressResult: stressResult,
+      scenarioId: selectedScenarioId,
+      trialsCount: 500,
+      seed: 20260700
+    });
+  }, [activePortfolio, stressResult, selectedScenarioId]);
+
+  // v7.0 Direction B1: 5-Stage End-to-End Loss Attribution Waterfall
+  const waterfallResult = useMemo(() => {
+    return computeLossAttributionWaterfall({
+      dataset,
+      quarter: selectedQuarter,
+      epicenter: 'TR',
+      haircutPct: 25,
+      activePortfolio,
+      portfolioStressResult: stressResult
+    });
+  }, [dataset, selectedQuarter, activePortfolio, stressResult]);
+
+  // v7.0 Direction C1: Multi-Portfolio Stress Arena Comparison
+  const arenaResult = useMemo(() => {
+    return computeMultiPortfolioArena({
+      dataset,
+      quarter: selectedQuarter,
+      epicenter: 'TR',
+      haircutPct: 25,
+      bufferMultiplier: 1.5,
+      customPortfolios: selectedPresetId === 'custom' ? [activePortfolio] : []
+    });
+  }, [dataset, selectedQuarter, selectedPresetId, activePortfolio]);
 
   // Save to workspace
   const handleSaveToWorkspace = () => {
@@ -505,20 +545,20 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
           </div>
 
           {/* Sub-View Mode Switcher */}
-          <div className="atlas-segmented text-xs shrink-0">
+          <div className="atlas-segmented text-xs shrink-0 flex-wrap">
             <button
               onClick={() => { soundFx.playTick(); setActiveSubTab('attribution'); }}
               data-testid="tab-attribution"
-              className={`px-3 py-1 rounded-md font-semibold cursor-pointer transition-all ${
+              className={`px-2.5 py-1 rounded-md font-semibold cursor-pointer transition-all ${
                 activeSubTab === 'attribution' ? 'atlas-pill-active' : 'text-slate-400 hover:text-white'
               }`}
             >
-              📊 减记拆解
+              📊 减记拆解与五级归因
             </button>
             <button
               onClick={() => { soundFx.playTick(); setActiveSubTab('reverse_stress'); }}
               data-testid="tab-reverse-stress"
-              className={`px-3 py-1 rounded-md font-semibold cursor-pointer transition-all ${
+              className={`px-2.5 py-1 rounded-md font-semibold cursor-pointer transition-all ${
                 activeSubTab === 'reverse_stress' ? 'atlas-pill-active text-amber-300' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -527,11 +567,29 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
             <button
               onClick={() => { soundFx.playTick(); setActiveSubTab('crisis_backtest'); }}
               data-testid="tab-crisis-backtest"
-              className={`px-3 py-1 rounded-md font-semibold cursor-pointer transition-all ${
+              className={`px-2.5 py-1 rounded-md font-semibold cursor-pointer transition-all ${
                 activeSubTab === 'crisis_backtest' ? 'atlas-pill-active text-sky-300' : 'text-slate-400 hover:text-white'
               }`}
             >
               ⏳ 历史危机平行穿越
+            </button>
+            <button
+              onClick={() => { soundFx.playTick(); setActiveSubTab('monte_carlo'); }}
+              data-testid="tab-monte-carlo"
+              className={`px-2.5 py-1 rounded-md font-semibold cursor-pointer transition-all ${
+                activeSubTab === 'monte_carlo' ? 'atlas-pill-active text-rose-300' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🎲 蒙特卡洛肥尾 (99% CVaR)
+            </button>
+            <button
+              onClick={() => { soundFx.playTick(); setActiveSubTab('portfolio_arena'); }}
+              data-testid="tab-portfolio-arena"
+              className={`px-2.5 py-1 rounded-md font-semibold cursor-pointer transition-all ${
+                activeSubTab === 'portfolio_arena' ? 'atlas-pill-active text-emerald-300' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🏆 多专户抗压 PK
             </button>
           </div>
         </div>
@@ -863,6 +921,50 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
               </button>
             </div>
           </div>
+
+          {/* v7.0 Direction B1: 5-Stage End-to-End Loss Attribution Waterfall */}
+          {waterfallResult && (
+            <div
+              data-testid="loss-attribution-waterfall"
+              className="lg:col-span-3 rounded-xl p-4 bg-[#0d1321]/95 border border-indigo-400/25 space-y-3 atlas-card-elevated atlas-specular-bar"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-bold">
+                    v7.0 五级因果归因瀑布
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-bold text-white">
+                    端到端五级风险传导与对冲归因链路 (震中引爆 ➔ 跨境走廊 ➔ G-SIB 母行 ➔ 专户减记 ➔ 对冲赔付)
+                  </h4>
+                </div>
+                <span className="text-[11px] font-mono text-emerald-300">
+                  毛减记 -${waterfallResult.unhedgedLossMn}M ➔ 对冲挽回 +${waterfallResult.grossSavedMn}M ➔ 净残余 -${waterfallResult.residualLossMn}M
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs">
+                {waterfallResult.stages.map((st) => (
+                  <div
+                    key={st.id}
+                    className={`p-3 rounded-xl border flex flex-col justify-between space-y-2 ${st.colorClass}`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className="font-bold opacity-85">STAGE {st.stageNo}</span>
+                        <span className="px-1.5 py-0.2 rounded bg-black/30 border border-white/10">{st.tag}</span>
+                      </div>
+                      <div className="font-bold text-white text-xs">{st.title}</div>
+                      <div className="text-base font-black font-mono text-white pt-0.5">{st.metricLabel}</div>
+                      <div className="text-[11px] font-mono opacity-90">{st.metricSub}</div>
+                    </div>
+                    <p className="text-[11px] text-slate-300/90 leading-snug border-t border-white/10 pt-1.5">
+                      {st.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1065,6 +1167,221 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* v7.0 Direction A3: 500-TRIAL MONTE CARLO FAT-TAIL & 99% CVaR (EXPECTED SHORTFALL) PANEL */}
+      {activeSubTab === 'monte_carlo' && monteCarloResult && (
+        <div
+          data-testid="monte-carlo-tail-panel"
+          className="rounded-xl p-5 bg-[#0d1321]/95 border border-rose-500/35 space-y-4 shadow-xl atlas-card-elevated atlas-specular-bar"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
+                  v7.0 肥尾随机引擎 · {monteCarloResult.trialsCount} 次抽样
+                </span>
+                <h3 className="text-sm font-bold text-white tracking-tight">
+                  蒙特卡洛肥尾损失分布与 99% 期望短缺 (Expected Shortfall / CVaR)
+                </h3>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                基于确定性随机数种子 ({monteCarloResult.seed}) 与 Student-t 肥尾跳跃扩散模型，模拟未对冲（红）与帕累托对冲后（绿）的尾部损失概率密度分布。
+              </p>
+            </div>
+            <div className="text-xs font-mono px-3 py-1.5 rounded-lg bg-emerald-950/35 border border-emerald-500/35 text-emerald-300 font-bold">
+              99% CVaR 尾部削峰: +${monteCarloResult.tailReductionMn}M (-{monteCarloResult.tailReductionPct}%)
+            </div>
+          </div>
+
+          {/* 4 Tail-Risk Comparison Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono">
+            <div className="p-3.5 rounded-xl bg-[#070a12]/90 border border-white/[0.08] space-y-1">
+              <span className="text-[11px] text-slate-400">期望压力损失均值 (Expected Mean)</span>
+              <div className="text-lg font-bold text-white">
+                -${monteCarloResult.unhedgedStats.meanLossMn}M
+              </div>
+              <div className="text-[11px] text-emerald-400">
+                对冲后均值: -${monteCarloResult.hedgedStats.meanLossMn}M
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#070a12]/90 border border-amber-500/30 space-y-1">
+              <span className="text-[11px] text-amber-300">95% 置信度压力 VaR</span>
+              <div className="text-lg font-bold text-amber-300">
+                -${monteCarloResult.unhedgedStats.var95Mn}M
+              </div>
+              <div className="text-[11px] text-emerald-400">
+                对冲后 95% VaR: -${monteCarloResult.hedgedStats.var95Mn}M
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#070a12]/90 border border-rose-500/35 space-y-1">
+              <span className="text-[11px] text-rose-300">99% 极端分位 VaR</span>
+              <div className="text-lg font-bold text-rose-400">
+                -${monteCarloResult.unhedgedStats.var99Mn}M
+              </div>
+              <div className="text-[11px] text-emerald-400">
+                对冲后 99% VaR: -${monteCarloResult.hedgedStats.var99Mn}M
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-rose-950/25 border border-rose-500/50 space-y-1">
+              <span className="text-[11px] text-rose-200 font-bold">99% 期望短缺 (CVaR / ES 极值均值)</span>
+              <div className="text-lg font-black text-rose-400">
+                -${monteCarloResult.unhedgedStats.cvar99Mn}M
+              </div>
+              <div className="text-[11px] text-emerald-300 font-bold">
+                对冲后 99% CVaR: -${monteCarloResult.hedgedStats.cvar99Mn}M
+              </div>
+            </div>
+          </div>
+
+          {/* Dual Distribution Histogram (Unhedged vs Hedged) */}
+          <div className="p-4 rounded-xl bg-[#070a12]/90 border border-white/[0.08] space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="font-bold text-white">
+                500 次随机冲击损失频数分布直方图 (Unhedged vs. Pareto-Hedged PDF)
+              </span>
+              <div className="flex items-center gap-4 text-[11px] font-mono">
+                <span className="flex items-center gap-1.5 text-rose-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-rose-500/80 inline-block" /> 未对冲裸敞口分布
+                </span>
+                <span className="flex items-center gap-1.5 text-emerald-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block" /> 帕累托对冲后截尾分布
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-12 gap-1.5 items-end h-36 pt-4 px-2 border-b border-white/10">
+              {monteCarloResult.histogramBins.map((bin) => {
+                const uHeight = Math.min(100, Math.max(4, Math.round(bin.unhedgedPct * 2.6)));
+                const hHeight = Math.min(100, Math.max(4, Math.round(bin.hedgedPct * 2.6)));
+                return (
+                  <div key={bin.binIndex} className="flex flex-col items-center h-full justify-end group">
+                    <div className="w-full flex items-end justify-center gap-0.5 h-28">
+                      <div
+                        className={`w-1/2 rounded-t transition-all ${bin.isTailZone ? 'bg-rose-500' : 'bg-rose-500/65'}`}
+                        style={{ height: `${bin.unhedgedCount > 0 ? uHeight : 2}%` }}
+                        title={`未对冲 [${bin.binLabel}]: ${bin.unhedgedCount} 次 (${bin.unhedgedPct}%)`}
+                      />
+                      <div
+                        className="w-1/2 bg-emerald-400/85 rounded-t transition-all"
+                        style={{ height: `${bin.hedgedCount > 0 ? hHeight : 2}%` }}
+                        title={`对冲后 [${bin.binLabel}]: ${bin.hedgedCount} 次 (${bin.hedgedPct}%)`}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-12 gap-1 text-center font-mono text-[11px] text-slate-400">
+              {monteCarloResult.histogramBins.map((bin) => (
+                <div key={bin.binIndex} className="truncate" title={bin.binLabel}>
+                  ${Math.round(bin.maxMn)}M
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* v7.0 Direction C1: MULTI-PORTFOLIO STRESS ARENA */}
+      {activeSubTab === 'portfolio_arena' && arenaResult && (
+        <div
+          data-testid="multi-portfolio-arena"
+          className="rounded-xl p-5 bg-[#0d1321]/95 border border-emerald-500/35 space-y-4 shadow-xl atlas-card-elevated atlas-specular-bar"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                  v7.0 多策略同屏竞技场
+                </span>
+                <h3 className="text-sm font-bold text-white tracking-tight">
+                  多专户横向抗压竞技场 (Multi-Portfolio Stress Resilience Arena)
+                </h3>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                将全部机构预设专户与自定义组合置于同一宏观冲击下横向比拼：净回撤率、99% CVaR 尾部极值、破防临界点 α* 与最优对冲 ROI。
+              </p>
+            </div>
+            <div className="text-xs font-mono px-3 py-1.5 rounded-lg bg-emerald-950/35 border border-emerald-500/35 text-emerald-300 font-bold">
+              最佳抗压冠军: {cleanZhName(arenaResult.mostResilientPortfolioName)}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-sans">
+              <thead>
+                <tr className="border-b border-white/[0.08] text-[11px] text-slate-400 bg-[#070a12]/70 font-mono">
+                  <th className="py-2.5 px-3">专户策略名称</th>
+                  <th className="py-2.5 px-2 text-right">基准规模</th>
+                  <th className="py-2.5 px-2 text-right">未对冲减记</th>
+                  <th className="py-2.5 px-2 text-right">99% CVaR (ES)</th>
+                  <th className="py-2.5 px-2 text-right">破防临界点 (α*)</th>
+                  <th className="py-2.5 px-2 text-right">安全缓冲垫</th>
+                  <th className="py-2.5 px-2 text-right">最优对冲 ROI</th>
+                  <th className="py-2.5 px-2 text-center">韧性评分</th>
+                  <th className="py-2.5 px-3 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.06] text-slate-200 font-mono">
+                {arenaResult.arenaRows.map((row) => {
+                  const isCurrent = row.id === selectedPresetId;
+                  return (
+                    <tr
+                      key={row.id}
+                      className={`transition-colors ${isCurrent ? 'bg-indigo-950/35' : 'hover:bg-white/[0.03]'}`}
+                    >
+                      <td className="py-3 px-3 font-sans font-bold text-white flex items-center gap-2">
+                        <span>{cleanZhName(row.name)}</span>
+                        {isCurrent && (
+                          <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/25 text-indigo-300 border border-indigo-400/40">
+                            当前激活
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-2 text-right text-slate-300">${row.baseAumUsdMn}M</td>
+                      <td className="py-3 px-2 text-right text-rose-400 font-bold">
+                        -${row.unhedgedLossMn}M (-{row.lossPct}%)
+                      </td>
+                      <td className="py-3 px-2 text-right text-rose-300">
+                        -${row.cvar99Mn}M (-{row.cvar99Pct}%)
+                      </td>
+                      <td className="py-3 px-2 text-right text-amber-300 font-bold">
+                        {row.criticalHaircutPct}%
+                      </td>
+                      <td className={`py-3 px-2 text-right font-bold ${row.safetyCushionPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {row.safetyCushionPct > 0 ? `+${row.safetyCushionPct}%` : `${row.safetyCushionPct}%`}
+                      </td>
+                      <td className="py-3 px-2 text-right text-emerald-300 font-bold">
+                        {row.bestHedgeRoi}x (残余 -${row.hedgedResidualLossMn}M)
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/35 text-emerald-300 font-bold text-[11px]">
+                          {row.resilienceScore} 分
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <button
+                          onClick={() => {
+                            soundFx.playChime();
+                            setSelectedPresetId(row.id);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-[#131b2e] hover:bg-indigo-600/40 border border-white/10 text-[11px] font-sans font-semibold text-indigo-200 hover:text-white cursor-pointer transition-all"
+                        >
+                          {isCurrent ? '正在检视' : '切换至此专户'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
