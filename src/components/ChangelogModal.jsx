@@ -9,12 +9,37 @@ import soundFx from '../utils/soundEffects';
 
 export const SYSTEM_CHANGELOG = [
   {
-    version: 'v7.0.0',
-    date: '2026-11-21',
+    version: 'v7.5.0',
+    date: '2026-11-22',
     status: 'LATEST',
-    title: 'Phase 11 全域数理深水区与因果归因作战系统 (Compound Multi-Epicenter Clearing, Fed Swap Line Rescue, 500-Trial Monte Carlo 99% CVaR, 5-Stage Attribution Waterfall & Multi-Portfolio Arena)',
+    title: 'Phase 12 终极体验闭环：极简禅意画布、买方个券级 CSV 久期导入与 19 模块全域因果跳板',
     badge: '当前生产版本',
     badgeColor: 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300',
+    highlights: [
+      {
+        tag: '极简禅意画布',
+        title: 'Zen Canvas Mode 一键释放 85% 主视窗视野',
+        desc: '在顶部控制台新增极简画布开关，开启后自动折叠上方 KPI 与诊断横幅，仅保留单行浮动恢复条，为网络拓扑与清算模拟提供沉浸式巨幕投研视窗。'
+      },
+      {
+        tag: '个券 CSV 久期',
+        title: '买方实盘个券级 CSV 导入与久期/OAS 压力映射引擎',
+        desc: '支持解析含 ticker、国家、资产类别、名义规模、久期 (Duration) 与 OAS 利差的 CSV 持仓清单，实时核算加权久期并一键注入专户压力与 99% CVaR 引擎。'
+      },
+      {
+        tag: '全域因果跳板',
+        title: '19 模块全域因果行动条 (Universal Causal Action Bridge)',
+        desc: '打通全部 15 个二级延伸分析模块与核心四支柱的联动壁垒，支持任意延伸模块顶部一键注入级联清算沙盘、映射专户 CVaR、检视主权 360° 抽屉或汇入投委会 4 幕路演。'
+      }
+    ]
+  },
+  {
+    version: 'v7.0.0',
+    date: '2026-11-21',
+    status: 'STABLE',
+    title: 'Phase 11 全域数理深水区与因果归因作战系统 (Compound Multi-Epicenter Clearing, Fed Swap Line Rescue, 500-Trial Monte Carlo 99% CVaR, 5-Stage Attribution Waterfall & Multi-Portfolio Arena)',
+    badge: '历史稳定版',
+    badgeColor: 'border-slate-500/50 bg-slate-900/60 text-slate-300',
     highlights: [
       {
         tag: '复合震中与央行救援',
@@ -444,7 +469,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
   const handleCopyChangelog = () => {
     soundFx.playChime();
     const md = `# EUGENE FINANCE Global Capital Flow Atlas - Version Changelog
-Current Version: v6.5.0 (Updated 2026-11-11)
+Current Version: v7.5.0 (Updated 2026-11-22)
 
 ${SYSTEM_CHANGELOG.map(rel => `## ${rel.version} (${rel.date}) - ${rel.title}
 ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
@@ -474,7 +499,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                   版本更迭记录与架构演进日志
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  v7.0.0 Current
+                  v7.5.0 Current
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -573,7 +598,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                           <span className="text-base font-black font-mono tracking-tight text-white">
                             {rel.version}
                           </span>
-                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${rel.badgeColor}`}>
+                          <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${rel.badgeColor}`}>
                             {rel.badge}
                           </span>
                         </div>
@@ -593,7 +618,7 @@ ${rel.highlights.map(h => `- **${h.title}**: ${h.desc}`).join('\n')}
                             className="p-2.5 rounded-lg bg-slate-950/50 border border-slate-800/80 flex flex-col gap-1"
                           >
                             <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-300">
-                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-sky-500/10 border border-sky-500/30 text-sky-400">
+                              <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-sky-500/10 border border-sky-500/30 text-sky-400">
                                 {h.tag}
                               </span>
                               <span>{h.title}</span>

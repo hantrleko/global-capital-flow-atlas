@@ -63,7 +63,7 @@ export default function EugeneLogo({
   const currentSize = sizeMap[size] || sizeMap.md;
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={`flex items-center gap-1.5 ${className}`}>
       <div 
         data-testid="eugene-logo"
         className={`${currentSize.box} rounded-lg overflow-hidden bg-white border border-white/20 shadow-sm flex items-center justify-center shrink-0 transition-transform hover:scale-105`}
@@ -78,12 +78,12 @@ export default function EugeneLogo({
 
       {showText && (
         <div className="flex flex-col leading-tight select-none min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className={`${currentSize.title} font-extrabold tracking-wider text-white uppercase font-sans whitespace-nowrap`}>
+          <div className="flex items-center gap-1">
+            <span className={`${currentSize.title} font-extrabold tracking-normal text-white uppercase font-sans whitespace-nowrap`}>
               EUGENE FINANCE
             </span>
-            <span className="hidden sm:inline-block text-[11px] font-mono font-semibold px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-400/30 tracking-normal whitespace-nowrap">
-              ATLAS v7.0
+            <span className="hidden sm:inline-block text-[11px] font-mono font-semibold px-1 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-400/30 tracking-normal whitespace-nowrap">
+              ATLAS v7.5
             </span>
           </div>
           {subtitle && (

@@ -3,7 +3,8 @@ import * as echarts from 'echarts';
 import {
   Briefcase, TrendingDown, ShieldAlert, Sparkles,
   Copy, Check, Plus, Trash2, ChevronRight, ShieldCheck,
-  Sliders, ArrowUpRight, Award, Zap, History, Save, FolderOpen, Presentation, AlertTriangle
+  Sliders, ArrowUpRight, Award, Zap, History, Save, FolderOpen, Presentation, AlertTriangle,
+  Upload, FileText, X
 } from 'lucide-react';
 import soundFx from '../utils/soundEffects';
 import { useAnimatedNumber } from '../utils/useAnimatedValue';
@@ -14,6 +15,11 @@ import {
   ASSET_CLASS_PROFILES,
   computePortfolioStressOverlay
 } from '../utils/portfolioStressEngine';
+import {
+  SAMPLE_GRANULAR_CSV,
+  parseAndValidateHoldingsCsv,
+  computeGranularBondStress
+} from '../utils/csvHoldingsEngine';
 import {
   saveCustomPortfolio,
   getWorkspace
@@ -57,6 +63,9 @@ export default function PortfolioStressOverlay({
   const [savedToWorkspace, setSavedToWorkspace] = useState(false);
   const [isOptimizerModalOpen, setIsOptimizerModalOpen] = useState(false);
   const [hedgeBudgetBps, setHedgeBudgetBps] = useState(100);
+  const [isCsvImporterOpen, setIsCsvImporterOpen] = useState(false);
+  const [csvInputText, setCsvInputText] = useState('');
+  const [csvUploadFileName, setCsvUploadFileName] = useState('');
 
   // Custom portfolio state
   const [customPositions, setCustomPositions] = useState([
@@ -98,6 +107,62 @@ export default function PortfolioStressOverlay({
     }
     return PORTFOLIO_PRESETS.find(p => p.id === selectedPresetId) || PORTFOLIO_PRESETS[0];
   }, [selectedPresetId, customPositions, customAum, selectedCurrency, externalPortfolio]);
+
+  // Granular CSV Holdings Live Parsing & Duration/OAS Bond Stress Preview (150bps shock)
+  const parsedCsvHoldings = useMemo(() => {
+    if (!csvInputText.trim()) {
+      return {
+        positions: [],
+        errors: [],
+        totalAumMn: 0,
+        weightedDurationYears: 0,
+        weightedOasBps: 0,
+        count: 0
+      };
+    }
+    return parseAndValidateHoldingsCsv(csvInputText);
+  }, [csvInputText]);
+
+  const csvBondStressPreview = useMemo(() => {
+    return computeGranularBondStress(parsedCsvHoldings.positions, 150);
+  }, [parsedCsvHoldings.positions]);
+
+  const activeGranularBondSummary = useMemo(() => {
+    const positions = activePortfolio?.positions || [];
+    const hasGranularMetrics = positions.some(
+      (p) => typeof p.durationYears === 'number' || typeof p.oasBps === 'number'
+    );
+    if (!hasGranularMetrics) return null;
+    return computeGranularBondStress(positions, 150);
+  }, [activePortfolio]);
+
+  const handleCsvFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      soundFx.playTick();
+      setCsvUploadFileName(file.name);
+      setCsvInputText(text);
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleLoadSampleCsv = () => {
+    soundFx.playTick();
+    setCsvUploadFileName('buy_side_granular_sample.csv');
+    setCsvInputText(SAMPLE_GRANULAR_CSV);
+  };
+
+  const handleApplyCsvHoldings = () => {
+    if (parsedCsvHoldings.positions.length === 0) return;
+    soundFx.playChime();
+    setCustomPositions(parsedCsvHoldings.positions);
+    setCustomAum(parsedCsvHoldings.totalAumMn);
+    setSelectedPresetId('custom');
+    setIsCsvImporterOpen(false);
+  };
 
   // Compute Stress Result
   const stressResult = useMemo(() => {
@@ -503,7 +568,7 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
 
         {/* Portfolio Preset Switcher Pills */}
         <div className="mt-3.5 pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2 flex-wrap text-xs">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-medium text-slate-400 shrink-0 flex items-center gap-1">
               <Briefcase className="w-3 h-3 text-indigo-400" />
               <span>账户配置:</span>
@@ -541,6 +606,21 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
             >
               <span>自定义组合</span>
               <span className="text-[11px] font-mono opacity-85 tabular-nums">(${customAum}M)</span>
+            </button>
+            <button
+              onClick={() => {
+                soundFx.playTick();
+                setIsCsvImporterOpen(prev => !prev);
+              }}
+              data-testid="open-csv-holdings-btn"
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border ${
+                isCsvImporterOpen
+                  ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50'
+                  : 'bg-[#131b2e]/90 text-emerald-300 hover:text-white border-emerald-500/35 hover:border-emerald-400/60'
+              }`}
+              title="导入买方个券级 CSV 持仓 (含久期 Duration / OAS 利差)"
+            >
+              <span>📥 导入 CSV 个券久期持仓</span>
             </button>
           </div>
 
@@ -593,6 +673,222 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
             </button>
           </div>
         </div>
+
+        {/* Granular CSV Holdings & Duration/OAS Stress Importer Panel */}
+        {isCsvImporterOpen && (
+          <div
+            data-testid="csv-holdings-importer-panel"
+            className="mt-3.5 pt-3.5 border-t border-emerald-500/25 space-y-3 animate-fade-in"
+          >
+            <div className="rounded-xl p-4 bg-[#070a12]/90 border border-emerald-500/30 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] pb-2.5">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-sm font-bold text-white">
+                      买方个券级 CSV 持仓与久期 / OAS 压力映射导入器
+                    </h3>
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                      Duration + OAS 估值冲击
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    标准字段: ticker,name,country,assetClass,amountMn,durationYears,oasBps
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCsvImporterOpen(false)}
+                  className="h-7 w-7 rounded-lg border border-white/[0.1] bg-[#131b2e] text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                  title="关闭导入面板"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Sample Loader & Local File Upload Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleLoadSampleCsv}
+                    data-testid="load-sample-csv-btn"
+                    className="h-8 px-3 rounded-lg border border-emerald-500/40 bg-emerald-950/35 hover:bg-emerald-900/45 text-emerald-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>载入买方实盘个券模板 (含久期 Duration / OAS)</span>
+                  </button>
+
+                  <label className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/[0.1] bg-[#131b2e] text-xs text-slate-300">
+                    <Upload className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span className="text-[11px] text-slate-400 shrink-0">本地 CSV 上传:</span>
+                    <input
+                      type="file"
+                      accept=".csv,.txt"
+                      onChange={handleCsvFileUpload}
+                      className="text-[11px] file:text-[11px] text-slate-300 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border file:border-white/15 file:bg-[#0d1321] file:text-slate-200 hover:file:bg-[#182238] file:cursor-pointer cursor-pointer max-w-[230px]"
+                    />
+                  </label>
+                </div>
+
+                {csvUploadFileName && (
+                  <span className="text-[11px] font-mono text-indigo-300">
+                    当前载入: {csvUploadFileName}
+                  </span>
+                )}
+              </div>
+
+              {/* Editor Textarea + Live Parsed Preview */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="font-semibold text-slate-300">CSV 原始持仓输入区</span>
+                    <span className="font-mono">支持缺失久期/OAS 自动补全缺省值</span>
+                  </div>
+                  <textarea
+                    data-testid="csv-holdings-textarea"
+                    value={csvInputText}
+                    onChange={(e) => setCsvInputText(e.target.value)}
+                    rows={7}
+                    spellCheck={false}
+                    placeholder={'ticker,name,country,assetClass,amountMn,durationYears,oasBps\nUST-10Y,US Treasury 4.25% Nov 2034,US,sovereign_debt,180,8.2,12'}
+                    className={`w-full rounded-xl p-3 font-mono text-xs leading-relaxed border focus:outline-none focus:border-emerald-400/60 transition-colors resize-y ${
+                      isLightTheme
+                        ? 'bg-white text-slate-900 border-slate-300 placeholder:text-slate-400'
+                        : 'bg-[#0d1321] text-slate-100 border-white/[0.12] placeholder:text-slate-500'
+                    }`}
+                  />
+                </div>
+
+                {/* Live Parsed Preview Box */}
+                <div className="rounded-xl p-3.5 bg-[#0d1321]/95 border border-white/[0.08] flex flex-col justify-between space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-white">实时解析与久期/OAS 冲击预览</span>
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-400/30">
+                      +150bps 平行加息/利差冲击
+                    </span>
+                  </div>
+
+                  {!csvInputText.trim() ? (
+                    <div className="flex-1 flex items-center justify-center py-6 text-center text-xs text-slate-400 border border-dashed border-white/[0.08] rounded-lg px-4">
+                      请粘贴 CSV 个券持仓、上传本地 .csv 文件，或点击「载入买方实盘个券模板」查看实时久期与 OAS 压力测算。
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {parsedCsvHoldings.errors.length > 0 && (
+                        <div className="p-2.5 rounded-lg bg-rose-950/35 border border-rose-500/40 space-y-1 text-[11px] text-rose-200">
+                          <div className="font-semibold flex items-center gap-1.5 text-rose-300">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                            <span>校验告警 ({parsedCsvHoldings.errors.length} 条)</span>
+                          </div>
+                          {parsedCsvHoldings.errors.slice(0, 3).map((err, idx) => (
+                            <div key={idx} className="font-mono leading-snug">{err}</div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 tabular-nums">
+                        <div className="p-2.5 rounded-lg bg-[#131b2e]/90 border border-white/[0.07]">
+                          <div className="text-[11px] text-slate-400">有效标的数</div>
+                          <div className="text-sm font-bold font-mono text-white mt-0.5">
+                            {parsedCsvHoldings.count} 只
+                          </div>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-[#131b2e]/90 border border-white/[0.07]">
+                          <div className="text-[11px] text-slate-400">总规模 AUM</div>
+                          <div className="text-sm font-bold font-mono text-sky-300 mt-0.5">
+                            ${parsedCsvHoldings.totalAumMn}M
+                          </div>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-[#131b2e]/90 border border-white/[0.07]">
+                          <div className="text-[11px] text-slate-400">加权久期</div>
+                          <div className="text-sm font-bold font-mono text-indigo-300 mt-0.5">
+                            {parsedCsvHoldings.weightedDurationYears} Years
+                          </div>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-[#131b2e]/90 border border-white/[0.07]">
+                          <div className="text-[11px] text-slate-400">加权 OAS</div>
+                          <div className="text-sm font-bold font-mono text-amber-300 mt-0.5">
+                            {parsedCsvHoldings.weightedOasBps} bps
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-rose-950/25 border border-rose-500/35 flex flex-wrap items-center justify-between gap-2 tabular-nums">
+                        <div className="space-y-0.5">
+                          <div className="text-[11px] font-semibold text-rose-200">
+                            +150bps 利率/利差冲击估值预估 (Duration + OAS Shock)
+                          </div>
+                          <div className="text-[11px] font-mono text-slate-300">
+                            久期 MtM -${csvBondStressPreview.durationLossMn}M · 利差走阔调整 -${csvBondStressPreview.spreadStressAdjustmentMn}M
+                          </div>
+                        </div>
+                        <div className="text-right font-mono">
+                          <div className="text-sm font-bold text-rose-400">
+                            -${csvBondStressPreview.totalLossMn}M
+                          </div>
+                          <div className="text-[11px] text-rose-300">
+                            回撤 -{csvBondStressPreview.lossPct}%
+                          </div>
+                        </div>
+                      </div>
+
+                      {parsedCsvHoldings.positions.length > 0 && (
+                        <div className="max-h-28 overflow-y-auto rounded-lg border border-white/[0.07] bg-[#070a12]/80">
+                          <table className="w-full text-left text-[11px] font-mono tabular-nums">
+                            <thead>
+                              <tr className="border-b border-white/[0.08] text-slate-400 bg-[#131b2e]/60">
+                                <th className="py-1.5 px-2">Ticker</th>
+                                <th className="py-1.5 px-2">国家</th>
+                                <th className="py-1.5 px-2">资产类别</th>
+                                <th className="py-1.5 px-2 text-right">规模</th>
+                                <th className="py-1.5 px-2 text-right">久期</th>
+                                <th className="py-1.5 px-2 text-right">OAS</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/[0.05] text-slate-200">
+                              {parsedCsvHoldings.positions.map((item) => (
+                                <tr key={item.id}>
+                                  <td className="py-1 px-2 font-semibold text-emerald-300">{item.ticker}</td>
+                                  <td className="py-1 px-2">{item.country}</td>
+                                  <td className="py-1 px-2 text-slate-300">{item.assetClass}</td>
+                                  <td className="py-1 px-2 text-right">${item.amountMn}M</td>
+                                  <td className="py-1 px-2 text-right">{item.durationYears}Y</td>
+                                  <td className="py-1 px-2 text-right">{item.oasBps}bp</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Action Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <span className="text-[11px] text-slate-400">
+                  应用后将自动切换至「自定义组合」并更新全盘压力映射、500 次蒙特卡洛 99% CVaR 及对冲求解器
+                </span>
+                <button
+                  type="button"
+                  onClick={handleApplyCsvHoldings}
+                  disabled={parsedCsvHoldings.positions.length === 0}
+                  data-testid="apply-csv-holdings-btn"
+                  className={`h-8 px-4 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md ${
+                    parsedCsvHoldings.positions.length > 0
+                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer'
+                      : 'bg-slate-800 text-slate-500 border border-white/[0.08] cursor-not-allowed'
+                  }`}
+                >
+                  <span>⚡ 立即应用个券级持仓并映射压力</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 2. Top Executive KPI Bar (5 Core Portfolio Risk Metrics) */}
@@ -1391,11 +1687,19 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h3
-              className="text-sm font-bold text-white flex items-center gap-2"
+              className="text-sm font-bold text-white flex items-center gap-2 flex-wrap"
               title="Position Exposures & Stress Breakdown"
             >
               <span>持仓穿透与压力明细清单</span>
               <span className="text-xs font-mono text-indigo-300">({stressResult.positionResults.length} 项标的)</span>
+              {activeGranularBondSummary && (
+                <span
+                  data-testid="active-granular-bond-summary"
+                  className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                >
+                  加权久期 {activeGranularBondSummary.weightedDurationYears} Years · 加权 OAS {activeGranularBondSummary.weightedOasBps} bps · +150bps 估值冲击 -${activeGranularBondSummary.totalLossMn}M
+                </span>
+              )}
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
               展示各持仓资产类别风险贝塔、离岸母国穿透标记与一阶/二阶损失归因
@@ -1443,8 +1747,18 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
                 const riskLabelMap = { HIGH: '高危', MEDIUM: '关注', LOW: '稳健' };
                 return (
                   <tr key={pos.id} className="hover:bg-white/[0.03] transition-colors">
-                    <td className="py-2.5 px-3 font-medium text-white flex items-center gap-1.5" title={pos.name}>
+                    <td className="py-2.5 px-3 font-medium text-white flex items-center gap-1.5 flex-wrap" title={pos.name}>
+                      {pos.ticker && (
+                        <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-400/30 font-semibold">
+                          {pos.ticker}
+                        </span>
+                      )}
                       <span>{cleanZhName(pos.name)}</span>
+                      {typeof pos.durationYears === 'number' && (
+                        <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-300 border border-white/[0.08]">
+                          D {pos.durationYears}Y · OAS {pos.oasBps ?? 0}bp
+                        </span>
+                      )}
                       {pos.isLookedThrough && (
                         <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
                           已穿透

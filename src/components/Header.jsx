@@ -47,7 +47,9 @@ export default function Header({
   onToggleBeginnerMode,
   onOpenWorkspace,
   workspaceAlertCount = 0,
-  onOpenPitchDeck
+  onOpenPitchDeck,
+  isZenMode = false,
+  onToggleZenMode
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isToolboxOpen, setIsToolboxOpen] = useState(false);
@@ -108,28 +110,28 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-40 bg-[#070a12]/95 backdrop-blur-md border-b border-white/[0.08] shadow-md atlas-specular-bar">
-      <div className="max-w-[1780px] w-full mx-auto px-3 sm:px-5">
-        {/* ROW 1: Compact 44px Institutional Bar (Brand + Quarter Timeline Capsule + Primary Tools & Toolbox Popover) */}
-        <div className="h-11 flex items-center justify-between gap-2 border-b border-white/[0.06]">
+      <div className="max-w-[1780px] w-full mx-auto px-2 sm:px-3">
+        {/* ROW 1: Compact 36px Institutional Bar (Brand + Quarter Timeline Capsule + Primary Tools & Toolbox Popover) */}
+        <div className="h-9 flex items-center justify-between gap-1 border-b border-white/[0.06]">
           {/* Left: Brand Identity */}
           <div className="flex items-center shrink-0 min-w-0">
-            <EugeneLogo size="md" subtitle="BIS 宏观审慎投研终端" />
+            <EugeneLogo size="sm" subtitle="BIS 宏观审慎投研终端" />
           </div>
 
           {/* Center: Unified Quarter Timeline & Data Provenance Capsule */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <div className="flex items-center bg-[#0d1321] border border-white/[0.08] rounded-lg p-0.5">
               <button
                 onClick={prevQuarter}
                 disabled={currentQuarterIdx <= 0}
-                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/70 disabled:opacity-30 cursor-pointer"
+                className="p-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800/70 disabled:opacity-30 cursor-pointer"
                 title="上一季度 (←)"
               >
                 <SkipBack className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={onTogglePlay}
-                className="px-1.5 py-0.5 rounded text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/70 flex items-center cursor-pointer"
+                className="px-1 py-0.5 rounded text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/70 flex items-center cursor-pointer"
                 title={isPlaying ? '暂停演进 (Space)' : '自动播放季度演进 (Space)'}
               >
                 {isPlaying ? <Pause className="w-3 h-3 text-amber-400" /> : <Play className="w-3 h-3 text-emerald-400" />}
@@ -137,7 +139,7 @@ export default function Header({
               <button
                 onClick={nextQuarter}
                 disabled={currentQuarterIdx >= quarters.length - 1}
-                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/70 disabled:opacity-30 cursor-pointer"
+                className="p-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800/70 disabled:opacity-30 cursor-pointer"
                 title="下一季度 (→)"
               >
                 <SkipForward className="w-3.5 h-3.5" />
@@ -147,13 +149,13 @@ export default function Header({
             <span
               id="current-quarter-display"
               data-testid="current-quarter-display"
-              className="text-xs font-mono font-bold text-white px-2 py-0.5 bg-[#0d1321] border border-white/[0.1] rounded-md tabular-nums"
+              className="text-xs font-mono font-bold text-white px-1.5 py-0.5 bg-[#0d1321] border border-white/[0.1] rounded-md tabular-nums"
             >
               {selectedQuarter}
             </span>
 
             <span
-              className={`inline-flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded-full border whitespace-nowrap ${classification.badgeClass}`}
+              className={`inline-flex items-center gap-1 text-[11px] font-mono font-medium px-1.5 py-0.5 rounded-full border whitespace-nowrap ${classification.badgeClass}`}
               title={classification.provenance}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${classification.dotClass}`} />
@@ -167,7 +169,7 @@ export default function Header({
                   soundFx.playChime();
                   onSelectQuarter('2026Q4');
                 }}
-                className="hidden sm:flex h-7 px-2.5 rounded-lg bg-[#131b2e] hover:bg-[#182238] border border-indigo-400/30 text-indigo-200 hover:text-white text-[11px] font-medium items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
+                className="hidden sm:flex h-7 px-1.5 rounded-lg bg-[#131b2e] hover:bg-[#182238] border border-indigo-400/30 text-indigo-200 hover:text-white text-[11px] font-medium items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
                 title="切换至 2026Q3–Q4 宏观前瞻情景与压力敏感性推演"
               >
                 <Sparkles className="w-3 h-3 text-indigo-400" />
@@ -179,7 +181,7 @@ export default function Header({
                   soundFx.playTick();
                   onSelectQuarter('2026Q1');
                 }}
-                className="hidden sm:flex h-7 px-2.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 hover:text-white text-[11px] font-medium items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
+                className="hidden sm:flex h-7 px-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 hover:text-white text-[11px] font-medium items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
                 title="返回最新 BIS 官方核准发布季度 (2026Q1: $47.62T)"
               >
                 <Check className="w-3 h-3 text-emerald-400" />
@@ -188,11 +190,11 @@ export default function Header({
             )}
           </div>
 
-          {/* Right: Search, Investigation, Chart Card, Share, Theme, Toolbox Popover & Version */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Compact Country Search (lg+) */}
-            <div className="relative hidden lg:block">
-              <div className="flex items-center bg-[#0d1321] border border-white/[0.08] rounded-lg px-2 py-1 text-xs text-slate-300 w-36 xl:w-44 focus-within:w-52 focus-within:border-indigo-400/60 transition-all">
+          {/* Right: Search, Investigation, Chart Card, Share, Theme, Zen Mode, Toolbox Popover & Version */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Compact Country Search (2xl+, keeps 1280px Row 1 completely overflow-free) */}
+            <div className="relative hidden 2xl:block">
+              <div className="flex items-center bg-[#0d1321] border border-white/[0.08] rounded-lg px-2 py-1 text-xs text-slate-300 w-36 focus-within:w-48 focus-within:border-indigo-400/60 transition-all">
                 <Search className="w-3.5 h-3.5 text-slate-400 mr-1.5 shrink-0" />
                 <input
                   type="text"
@@ -232,7 +234,7 @@ export default function Header({
               <button
                 onClick={onOpenIntro}
                 data-testid="header-tour-btn"
-                className="h-7 px-2.5 rounded-lg border border-indigo-400/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-200 hover:text-white flex items-center gap-1 text-xs font-semibold cursor-pointer transition-all whitespace-nowrap"
+                className="h-7 px-1.5 rounded-lg border border-indigo-400/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-200 hover:text-white flex items-center gap-0.5 text-[11px] font-semibold cursor-pointer transition-all whitespace-nowrap"
                 title="打开 30 秒新手导览、角色极速就绪与四步因果推演流程图"
               >
                 <span>🧭</span>
@@ -245,7 +247,7 @@ export default function Header({
               <button
                 onClick={onToggleBeginnerMode}
                 data-testid="header-beginner-toggle"
-                className={`h-7 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap ${
+                className={`h-7 px-1.5 rounded-lg border text-[11px] font-semibold flex items-center gap-0.5 cursor-pointer transition-all whitespace-nowrap ${
                   isBeginnerMode
                     ? 'border-amber-400/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
                     : 'border-white/[0.08] bg-[#0d1321] hover:bg-[#131b2e] text-slate-300 hover:text-white'
@@ -261,10 +263,10 @@ export default function Header({
               <button
                 onClick={onOpenWorkspace}
                 data-testid="header-workspace-btn"
-                className="h-7 px-2.5 rounded-lg border border-indigo-400/35 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-200 hover:text-white flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all whitespace-nowrap"
+                className="h-7 px-1.5 rounded-lg border border-indigo-400/35 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-200 hover:text-white flex items-center gap-1 text-[11px] font-semibold cursor-pointer transition-all whitespace-nowrap"
                 title="打开机构投研工作区 (自定义专户管理、关注主权池、本季 3 件事、学术复现码)"
               >
-                <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
+                <Briefcase className="w-3 h-3 text-indigo-400" />
                 <span className="hidden sm:inline">工作区</span>
                 {workspaceAlertCount > 0 && (
                   <span
@@ -282,10 +284,10 @@ export default function Header({
               <button
                 onClick={onOpenPitchDeck}
                 data-testid="header-pitchdeck-btn"
-                className="h-7 px-2.5 rounded-lg border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-200 hover:text-white flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all whitespace-nowrap shadow-sm"
+                className="h-7 px-1.5 rounded-lg border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-200 hover:text-white flex items-center gap-1 text-[11px] font-semibold cursor-pointer transition-all whitespace-nowrap shadow-sm"
                 title="打开投委会 4 幕决策路演幻灯片 (IC PitchDeck)"
               >
-                <Presentation className="w-3.5 h-3.5 text-amber-400" />
+                <Presentation className="w-3 h-3 text-amber-400" />
                 <span className="hidden sm:inline">投委会路演</span>
               </button>
             )}
@@ -295,7 +297,7 @@ export default function Header({
               <button
                 onClick={onOpenInvestigationModal}
                 data-testid="header-investigation-btn"
-                className="hidden sm:flex h-7 px-2.5 rounded-lg border border-white/[0.1] bg-[#0d1321] hover:bg-[#131b2e] text-slate-200 hover:text-white items-center gap-1 text-xs font-medium cursor-pointer transition-all whitespace-nowrap"
+                className="hidden sm:flex h-7 px-1.5 rounded-lg border border-white/[0.1] bg-[#0d1321] hover:bg-[#131b2e] text-slate-200 hover:text-white items-center gap-0.5 text-[11px] font-medium cursor-pointer transition-all whitespace-nowrap"
                 title="打开剧本式宏观侦探主线推演 (Guided Investigation Playbooks)"
               >
                 <span>🕵️</span>
@@ -307,10 +309,10 @@ export default function Header({
             {onOpenChartCard && (
               <button
                 onClick={onOpenChartCard}
-                className="hidden sm:flex h-7 px-2.5 rounded-lg border border-white/[0.1] bg-[#0d1321] hover:bg-[#131b2e] text-slate-200 hover:text-white items-center gap-1 text-xs font-medium cursor-pointer transition-all whitespace-nowrap"
+                className="hidden sm:flex h-7 px-1.5 rounded-lg border border-white/[0.1] bg-[#0d1321] hover:bg-[#131b2e] text-slate-200 hover:text-white items-center gap-0.5 text-[11px] font-medium cursor-pointer transition-all whitespace-nowrap"
                 title="一键生成投行级研报单图卡片 (Publication-Ready Chart Card)"
               >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <Sparkles className="w-3 h-3 text-indigo-400" />
                 <span>研报卡片</span>
               </button>
             )}
@@ -319,7 +321,7 @@ export default function Header({
             {onCopyDeepLink && (
               <button
                 onClick={onCopyDeepLink}
-                className="h-7 w-7 rounded-lg border border-white/[0.08] bg-[#0d1321] hover:bg-[#131b2e] text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                className="h-7 w-6 rounded-lg border border-white/[0.08] bg-[#0d1321] hover:bg-[#131b2e] text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
                 title="一键复制当前推演视图深度链接 (包含当前季度、所选经济体与分析模块)"
               >
                 <Share2 className="w-3.5 h-3.5 text-indigo-400" />
@@ -330,11 +332,30 @@ export default function Header({
             <button
               onClick={onToggleTheme}
               data-testid="header-theme-toggle"
-              className="hidden md:flex h-7 w-7 rounded-lg border border-white/[0.08] bg-[#0d1321] hover:bg-[#131b2e] text-slate-300 hover:text-white items-center justify-center cursor-pointer transition-colors"
+              className="hidden md:flex h-7 w-6 rounded-lg border border-white/[0.08] bg-[#0d1321] hover:bg-[#131b2e] text-slate-300 hover:text-white items-center justify-center cursor-pointer transition-colors"
               title={theme === 'dark' ? '切换研报纸本亮色主题' : '切换静奢石墨暗色主题'}
             >
               {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-500" />}
             </button>
+
+            {/* v7.5 Zen Canvas Mode Toggle */}
+            {onToggleZenMode && (
+              <button
+                onClick={() => {
+                  soundFx.playTick();
+                  onToggleZenMode();
+                }}
+                data-testid="toggle-zen-canvas-btn"
+                className={`h-7 px-1.5 rounded-lg border text-[11px] font-semibold flex items-center gap-0.5 cursor-pointer transition-all whitespace-nowrap shrink-0 ${
+                  isZenMode
+                    ? 'border-indigo-400/60 bg-indigo-500/25 text-indigo-100 hover:bg-indigo-500/35 shadow-sm'
+                    : 'border-white/[0.1] bg-[#0d1321] hover:bg-[#131b2e] text-slate-200 hover:text-white'
+                }`}
+                title={isZenMode ? '退出极简画布模式，恢复顶部 KPI 与诊断条' : '开启极简画布模式 (释放 85% 主视窗视野)'}
+              >
+                <span>{isZenMode ? '退出极简' : '🧘 极简画布'}</span>
+              </button>
+            )}
 
             {/* Structured Toolbox Popover */}
             <div className="relative" ref={toolboxRef}>
@@ -344,7 +365,7 @@ export default function Header({
                   setIsToolboxOpen(prev => !prev);
                 }}
                 data-testid="header-toolbox-btn"
-                className={`h-7 px-2 rounded-lg border text-xs font-medium flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap ${
+                className={`h-7 px-1.5 rounded-lg border text-[11px] font-medium flex items-center gap-0.5 cursor-pointer transition-all whitespace-nowrap ${
                   isToolboxOpen || customFileName
                     ? 'border-indigo-400/50 bg-[#182238] text-white'
                     : 'border-white/[0.08] bg-[#0d1321] hover:bg-[#131b2e] text-slate-300 hover:text-white'
@@ -471,21 +492,21 @@ export default function Header({
             {onOpenChangelog && (
               <button
                 onClick={onOpenChangelog}
-                className="h-7 px-2.5 rounded-lg border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-200 hover:text-white flex items-center gap-1.5 text-[11px] font-mono font-semibold cursor-pointer transition-all whitespace-nowrap shadow-sm"
-                title="查看 v7.0.0 版本更迭记录与架构演进日志"
+                className="h-7 px-1.5 rounded-lg border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-200 hover:text-white flex items-center gap-1 text-[11px] font-mono font-semibold cursor-pointer transition-all whitespace-nowrap shadow-sm"
+                title="查看 v7.5.0 版本更迭记录与架构演进日志"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>v7.0.0</span>
+                <span>v7.5.0</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* ROW 2: Compact 36px Navigation Bar (Mode Switcher + 4 Core Pillars OR 5 Domains & Active Modules) */}
+        {/* ROW 2: Compact 32px Navigation Bar (Mode Switcher + 4 Core Pillars OR 5 Domains & Active Modules) */}
         <div
           id="module-nav-container"
           data-testid="module-nav-container"
-          className="h-9 flex items-center gap-2 overflow-x-auto scrollbar-none py-1"
+          className="h-8 flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5"
         >
           {/* Focus vs Pro Mode Toggle */}
           {onToggleViewMode && (

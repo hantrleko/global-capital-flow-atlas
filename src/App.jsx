@@ -24,6 +24,7 @@ import MacroInsightsBanner from './components/MacroInsightsBanner';
 import ExecutiveVerdictBanner from './components/ExecutiveVerdictBanner';
 import GuidedInvestigationHUD from './components/GuidedInvestigationHUD';
 import InvestigationTracksModal from './components/InvestigationTracksModal';
+import UniversalCausalBridge from './components/UniversalCausalBridge';
 import { buildLiveClearingShockMap } from './utils/portfolioStressEngine';
 import soundFx from './utils/soundEffects';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -131,6 +132,7 @@ export default function App() {
   const [isChartCardOpen, setIsChartCardOpen] = useState(false);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [isPitchDeckOpen, setIsPitchDeckOpen] = useState(false);
+  const [isZenMode, setIsZenMode] = useState(false);
   const [activeCustomPortfolio, setActiveCustomPortfolio] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [customMatrix, setCustomMatrix] = useState(null);
@@ -620,6 +622,8 @@ export default function App() {
         onOpenWorkspace={() => setIsWorkspaceOpen(true)}
         workspaceAlertCount={workspaceAlertCount}
         onOpenPitchDeck={() => setIsPitchDeckOpen(true)}
+        isZenMode={isZenMode}
+        onToggleZenMode={() => setIsZenMode(z => !z)}
       />
 
       {/* Historical Macro Milestones Ribbon (2018-2026 Epochs) */}
@@ -660,55 +664,98 @@ export default function App() {
       <main
         id="main-viewport"
         tabIndex={-1}
-        className="flex-1 max-w-[1780px] w-full mx-auto px-3 sm:px-5 py-1.5 space-y-1.5 scroll-mt-24 outline-none"
+        className="flex-1 max-w-[1780px] w-full mx-auto px-3 sm:px-5 pt-0.5 pb-1.5 space-y-0.5 scroll-mt-24 outline-none"
       >
-        {/* 3 Compact Executive KPIs: 全球信贷总额 · 美元计价份额与紧缩 · 核心走廊与枢纽 */}
-        <ExecutiveKpiRow
-          dataset={activeDataset}
-          selectedQuarter={selectedQuarter}
-          selectedCurrency={selectedCurrency}
-        />
+        {isZenMode ? (
+          <div
+            data-testid="zen-mode-floating-bar"
+            className="w-full px-3 py-1.5 rounded-xl bg-slate-900/90 border border-indigo-500/35 flex items-center justify-between gap-3 flex-wrap shadow-sm animate-fade-in"
+          >
+            <div className="flex items-center gap-2 text-[11px] font-medium text-indigo-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0" />
+              <span>极简画布模式已开启 · 释放 85% 主视窗视野</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                soundFx.playTick();
+                setIsZenMode(false);
+              }}
+              className="h-6 px-2.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/35 border border-indigo-400/40 text-indigo-100 hover:text-white text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap"
+            >
+              恢复完整指标栏
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* 3 Compact Executive KPIs: 全球信贷总额 · 美元计价份额与紧缩 · 核心走廊与枢纽 */}
+            <ExecutiveKpiRow
+              dataset={activeDataset}
+              selectedQuarter={selectedQuarter}
+              selectedCurrency={selectedCurrency}
+            />
 
-        {/* Pinned Entity Context Ribbon: Cross-Module Sovereign Stress Testing */}
-        {selectedCountry && (
-          <GlobalPinnedEntityBar
-            selectedCountry={selectedCountry}
-            dataset={activeDataset}
-            selectedQuarter={selectedQuarter}
+            {/* Pinned Entity Context Ribbon: Cross-Module Sovereign Stress Testing */}
+            {selectedCountry && (
+              <GlobalPinnedEntityBar
+                selectedCountry={selectedCountry}
+                dataset={activeDataset}
+                selectedQuarter={selectedQuarter}
+                activeTab={activeTab}
+                onSelectTab={handleSelectTab}
+                onSetContagionEpicenter={(code) => {
+                  setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
+                }}
+                onClearCountry={() => {
+                  setSelectedCountry(null);
+                  setIsCountryDrawerOpen(false);
+                }}
+                onOpenDrawer={() => setIsCountryDrawerOpen(true)}
+              />
+            )}
+
+            {/* 30-Second Institutional Macro Insights Single-Line Ticker (34px height, only on map tab to protect secondary tab folds) */}
+            {activeTab === 'map' && (
+              <MacroInsightsBanner
+                dataset={activeDataset}
+                selectedQuarter={selectedQuarter}
+                onSelectTab={handleSelectTab}
+                onSelectCountry={(code) => setSelectedCountry(code)}
+                onSetContagionEpicenter={(code) => {
+                  setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
+                }}
+              />
+            )}
+
+            {/* v3.5 First-Screen Top Dynamic Verdict Strip (Compact ~38px bar, expands into 3-stage reasoning deck) */}
+            <ExecutiveVerdictBanner
+              activeTab={activeTab}
+              onSelectTab={handleSelectTab}
+              context={liveVerdictContext}
+              isBeginnerMode={isBeginnerMode}
+              onToggleBeginnerMode={handleToggleBeginnerMode}
+            />
+          </>
+        )}
+
+        {/* v7.5 19-Module Universal Causal Action Bridge Bar */}
+        {!['map', 'shadow', 'contagion', 'portfolio'].includes(activeTab) && (
+          <UniversalCausalBridge
             activeTab={activeTab}
-            onSelectTab={handleSelectTab}
-            onSetContagionEpicenter={(code) => {
-              setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
-            }}
-            onClearCountry={() => {
-              setSelectedCountry(null);
-              setIsCountryDrawerOpen(false);
-            }}
-            onOpenDrawer={() => setIsCountryDrawerOpen(true)}
-          />
-        )}
-
-        {/* 30-Second Institutional Macro Insights Single-Line Ticker (34px height, only on map tab to protect secondary tab folds) */}
-        {activeTab === 'map' && (
-          <MacroInsightsBanner
-            dataset={activeDataset}
             selectedQuarter={selectedQuarter}
-            onSelectTab={handleSelectTab}
-            onSelectCountry={(code) => setSelectedCountry(code)}
-            onSetContagionEpicenter={(code) => {
-              setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
+            selectedCountry={selectedCountry}
+            onInjectContagion={(config) => {
+              setContagionConfig(config);
+              handleSelectTab('contagion');
             }}
+            onMapToPortfolio={() => handleSelectTab('portfolio')}
+            onOpenSovereignDrawer={(code) => {
+              setSelectedCountry(code);
+              setIsCountryDrawerOpen(true);
+            }}
+            onOpenPitchDeck={() => setIsPitchDeckOpen(true)}
           />
         )}
-
-        {/* v3.5 First-Screen Top Dynamic Verdict Strip (Compact ~38px bar, expands into 3-stage reasoning deck) */}
-        <ExecutiveVerdictBanner
-          activeTab={activeTab}
-          onSelectTab={handleSelectTab}
-          context={liveVerdictContext}
-          isBeginnerMode={isBeginnerMode}
-          onToggleBeginnerMode={handleToggleBeginnerMode}
-        />
 
         <ErrorBoundary fallbackTitle="当前主视图分析模块">
           <Suspense fallback={<LoadingFallback />}>
@@ -1236,7 +1283,7 @@ export default function App() {
               title="查看平台版本迭代记录与演进架构"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>v7.0.0 日志</span>
+              <span>v7.5.0 日志</span>
             </button>
             <span>·</span>
             <span>官方序列截至 2026Q1 ($47.62T)</span>

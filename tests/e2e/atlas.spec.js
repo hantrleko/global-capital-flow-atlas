@@ -531,12 +531,12 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(exitBtn).toBeVisible();
     await exitBtn.click();
 
-    // 6. Verify Changelog Modal Displays v7.0.0 Current
+    // 6. Verify Changelog Modal Displays v7.5.0 Current
     const changelogBtn = page.getByRole('button', { name: /v[2-7]\.[05]\.0/i }).first();
     await expect(changelogBtn).toBeVisible();
     await changelogBtn.click();
 
-    await expect(page.getByText('v7.0.0 Current').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('v7.5.0 Current').first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/反向求根与智能风控处方系统/).first()).toBeVisible();
   });
 
@@ -972,6 +972,87 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const arenaPanel = page.locator('[data-testid="multi-portfolio-arena"]');
     await expect(arenaPanel).toBeVisible();
     await expect(arenaPanel.getByText('多专户横向抗压竞技场')).toBeVisible();
+  });
+
+  test('19. Phase 12 v7.5.0: Zen Canvas Mode, Granular CSV Holdings Importer & Universal Causal Bridge', async ({ page }) => {
+    // 1. Zen Canvas Mode Toggle & Restoration
+    await page.goto('/?tab=map&q=2026Q1&intro=0');
+    await expect(page.locator('#main-viewport')).toBeVisible({ timeout: 10000 });
+
+    const verdictBanner = page.locator('[data-testid="executive-verdict-banner"]');
+    await expect(verdictBanner).toBeVisible({ timeout: 5000 });
+
+    const zenToggleBtn = page.locator('[data-testid="toggle-zen-canvas-btn"]');
+    await expect(zenToggleBtn).toBeVisible();
+    await expect(zenToggleBtn).toContainText('极简画布');
+    await zenToggleBtn.click();
+
+    const zenFloatingBar = page.locator('[data-testid="zen-mode-floating-bar"]');
+    await expect(zenFloatingBar).toBeVisible({ timeout: 5000 });
+    await expect(zenFloatingBar).toContainText('极简画布模式已开启 · 释放 85% 主视窗视野');
+    await expect(verdictBanner).not.toBeVisible();
+    await expect(zenToggleBtn).toContainText('退出极简');
+
+    const restoreBarBtn = zenFloatingBar.getByRole('button', { name: /恢复完整指标栏/ });
+    await expect(restoreBarBtn).toBeVisible();
+    await restoreBarBtn.click();
+
+    await expect(zenFloatingBar).not.toBeVisible();
+    await expect(verdictBanner).toBeVisible({ timeout: 5000 });
+    await expect(zenToggleBtn).toContainText('极简画布');
+
+    // 2. Granular CSV Holdings Importer & Duration/OAS Mapping
+    await page.goto('/?tab=portfolio&q=2026Q1&intro=0');
+    const overlay = page.locator('[data-testid="portfolio-stress-overlay"]');
+    await expect(overlay).toBeVisible({ timeout: 10000 });
+    await expect(overlay.getByText('10 项持仓标的')).toBeVisible();
+
+    const openCsvBtn = page.locator('[data-testid="open-csv-holdings-btn"]');
+    await expect(openCsvBtn).toBeVisible();
+    await openCsvBtn.click();
+
+    const csvPanel = page.locator('[data-testid="csv-holdings-importer-panel"]');
+    await expect(csvPanel).toBeVisible({ timeout: 5000 });
+
+    const loadSampleBtn = page.locator('[data-testid="load-sample-csv-btn"]');
+    await expect(loadSampleBtn).toBeVisible();
+    await loadSampleBtn.click();
+
+    const csvTextarea = page.locator('[data-testid="csv-holdings-textarea"]');
+    await expect(csvTextarea).toHaveValue(/UST-10Y/);
+    await expect(csvPanel.getByText('5 只')).toBeVisible();
+    await expect(csvPanel.getByText('$500M')).toBeVisible();
+    await expect(csvPanel.getByText('5.36 Years')).toBeVisible();
+    await expect(csvPanel.getByText('186.5 bps')).toBeVisible();
+
+    const applyCsvBtn = page.locator('[data-testid="apply-csv-holdings-btn"]');
+    await expect(applyCsvBtn).toBeEnabled();
+    await applyCsvBtn.click();
+
+    await expect(csvPanel).not.toBeVisible();
+    await expect(page.locator('[data-testid="preset-custom"]')).toHaveClass(/atlas-pill-active/);
+    await expect(page.locator('[data-testid="preset-custom"]')).toContainText('$500M');
+    await expect(overlay.getByText('5 项持仓标的')).toBeVisible();
+    await expect(page.locator('[data-testid="active-granular-bond-summary"]')).toContainText('加权久期 5.36 Years');
+    await expect(overlay.getByText('UST-10Y').first()).toBeVisible();
+    await expect(overlay.getByText('TURK-32').first()).toBeVisible();
+
+    // 3. Universal Causal Action Bridge on Secondary Module (swaps -> contagion)
+    await page.goto('/?tab=swaps&q=2026Q1&intro=0');
+    await expect(page.locator('#main-viewport')).toBeVisible({ timeout: 10000 });
+
+    const causalBridge = page.locator('[data-testid="universal-causal-bridge"]');
+    await expect(causalBridge).toBeVisible({ timeout: 8000 });
+    await expect(causalBridge).toContainText('2026Q1');
+
+    const bridgeContagionBtn = page.locator('[data-testid="bridge-to-contagion-btn"]');
+    await expect(bridgeContagionBtn).toBeVisible();
+    await bridgeContagionBtn.click();
+
+    await expect(page.locator('[data-testid="network-contagion-simulator"]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[data-testid="multi-epicenter-swap-panel"]')).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText('跨国银行网络传染模拟器 (Eisenberg-Noe)').first()).toBeVisible();
+    expect(page.url()).toContain('tab=contagion');
   });
 
 });

@@ -80,6 +80,11 @@ import {
   computeCountryDrawerStressPreview,
   computeMultiPortfolioArena
 } from '../src/utils/v7QuantEngine.js';
+import {
+  SAMPLE_GRANULAR_CSV,
+  parseAndValidateHoldingsCsv,
+  computeGranularBondStress
+} from '../src/utils/csvHoldingsEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1614,6 +1619,80 @@ function runTestSuite() {
     });
     assert(arena.arenaRows.length >= 3, 'Multi-portfolio arena must compare all preset institutional portfolios');
     assert(typeof arena.mostResilientPortfolioName === 'string' && arena.mostResilientPortfolioName.length > 0, 'Arena must identify most resilient champion portfolio');
+  }
+
+  // =========================================================================
+  // Test 46: Phase 12 V7.5.0 Granular CSV Holdings Importer & Duration/OAS Bond Stress
+  // =========================================================================
+  console.log('\nTest 46: Phase 12 V7.5.0 Granular CSV Holdings Importer & Duration/OAS Bond Stress');
+  {
+    assert(typeof SAMPLE_GRANULAR_CSV === 'string' && SAMPLE_GRANULAR_CSV.includes('UST-10Y'), 'SAMPLE_GRANULAR_CSV must export realistic institutional CSV template');
+
+    // 1. Parse sample CSV and verify weighted duration, OAS, AUM, and country coverage
+    const parsed = parseAndValidateHoldingsCsv(SAMPLE_GRANULAR_CSV);
+    assert(parsed.errors.length === 0, `Sample CSV must parse with zero errors (got ${parsed.errors.length})`);
+    assert(parsed.count === 5, `Sample CSV must contain 5 holdings (got ${parsed.count})`);
+    assert(parsed.totalAumMn === 500, `Sample CSV total AUM must be 500M (got ${parsed.totalAumMn})`);
+    assert(parsed.weightedDurationYears === 5.36, `Sample CSV weighted duration must be 5.36Y (got ${parsed.weightedDurationYears})`);
+    assert(parsed.weightedOasBps === 186.5, `Sample CSV weighted OAS must be 186.5bps (got ${parsed.weightedOasBps})`);
+
+    const parsedCountries = parsed.positions.map(p => p.country);
+    ['US', 'DE', 'GB', 'TR', 'KY'].forEach(code => {
+      assert(parsedCountries.includes(code), `Sample CSV holdings must include jurisdiction ${code}`);
+    });
+    const weightSum = parsed.positions.reduce((sum, p) => sum + p.weight, 0);
+    assert(Math.abs(weightSum - 1.0) < 0.002, `Position weights must sum to ~1.0 (got ${weightSum})`);
+
+    // 2. Verify integration with computePortfolioStressOverlay
+    const overlayResult = computePortfolioStressOverlay(
+      {
+        id: 'csv-sample',
+        name: 'CSV Sample Book',
+        baseAumUsdMn: parsed.totalAumMn,
+        positions: parsed.positions
+      },
+      { scenarioId: 'tr_sovereign_crisis' }
+    );
+    assert(overlayResult.baseAumUsdMn === 500, 'Overlay baseAumUsdMn must match parsed CSV AUM');
+    assert(overlayResult.positionResults.length === 5, 'Overlay must compute stress for all 5 CSV holdings');
+    assert(overlayResult.totalLossMn > 0, 'Overlay must produce positive stress loss on sample CSV portfolio');
+
+    // 3. Verify normalization, defaults, blank line skipping, and validation error handling
+    const messyCsv = [
+      'ticker,name,country,assetClass,amountMn,durationYears,oasBps',
+      '',
+      'BUND-5Y,German Bund 5Y,de,gov_bond,100,,',
+      'CORP-X,Unknown Bucket Corp,us,unknown_bucket,50,3.2,200',
+      'BAD-ISO,Invalid Country Row,USA,corporate_credit,25,2.0,100',
+      'BAD-AMT,Negative Amount Row,GB,corporate_credit,-10,2.0,100'
+    ].join('\n');
+    const messyParsed = parseAndValidateHoldingsCsv(messyCsv);
+    assert(messyParsed.count === 2, `Messy CSV must parse 2 valid rows and quarantine 2 invalid rows (got ${messyParsed.count})`);
+    assert(messyParsed.errors.length === 2, `Messy CSV must report 2 validation errors (got ${messyParsed.errors.length})`);
+    assert(messyParsed.positions[0].country === 'DE', 'Country code must be normalized to uppercase ISO-2');
+    assert(messyParsed.positions[0].assetClass === 'sovereign_debt', 'Alias gov_bond must normalize to sovereign_debt');
+    assert(messyParsed.positions[0].durationYears === 6.5, 'Missing durationYears must fall back to sovereign_debt default (6.5)');
+    assert(messyParsed.positions[0].oasBps === 45, 'Missing oasBps must fall back to sovereign_debt default (45)');
+    assert(messyParsed.positions[1].assetClass === 'corporate_credit', 'Unknown assetClass must fall back to corporate_credit');
+
+    const emptyParsed = parseAndValidateHoldingsCsv('');
+    assert(emptyParsed.count === 0 && emptyParsed.errors.length > 0, 'Empty CSV input must return 0 positions and error message');
+
+    // 4. Verify computeGranularBondStress math, monotonicity, and zero-shock boundary
+    const bondStress150 = computeGranularBondStress(parsed.positions, 150);
+    assert(bondStress150.shockRateBps === 150, 'Shock rate must record 150 bps');
+    assert(bondStress150.totalAumMn === 500, 'Bond stress totalAumMn must equal 500');
+    assert(Math.abs(bondStress150.durationLossMn - 40.19) < 0.05, `150bps duration MtM loss must be ~40.19M (got ${bondStress150.durationLossMn})`);
+    assert(bondStress150.spreadStressAdjustmentMn > 0, 'Spread stress adjustment must be positive for positive OAS holdings');
+    assert(bondStress150.totalLossMn > bondStress150.durationLossMn, 'Total MtM loss must combine duration and OAS spread shocks');
+    assert(bondStress150.positionImpacts.length === 5, 'Position impacts must cover all 5 holdings');
+
+    const bondStress300 = computeGranularBondStress(parsed.positions, 300);
+    assert(bondStress300.totalLossMn > bondStress150.totalLossMn, 'Higher rate/spread shock (300bps) must yield strictly higher loss than 150bps');
+
+    const bondStressZero = computeGranularBondStress(parsed.positions, 0);
+    assert(bondStressZero.totalLossMn === 0, 'Zero bps shock must produce exactly 0 bond stress loss');
+    assert(computeGranularBondStress([], 150).totalLossMn === 0, 'Empty positions array must yield 0 bond stress loss');
   }
 
   console.log('\n===============================================================');
