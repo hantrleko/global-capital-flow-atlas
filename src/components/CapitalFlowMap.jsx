@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as echarts from 'echarts';
 import GlobalFlowGlobe3D from './GlobalFlowGlobe3D';
 import MethodologyFootnote from './MethodologyFootnote';
-import DataClassificationBadge from './DataClassificationBadge';
+import { bisSnapshot } from '../utils/bisObservations';
 import MobileFilterDrawer from './MobileFilterDrawer';
 import MobileInspectCard from './MobileInspectCard';
 import ConceptTooltip from './ConceptTooltip';
@@ -657,7 +657,7 @@ export default function CapitalFlowMap({
         map: 'world',
         roam: true,
         scaleLimit: { min: 0.8, max: 6.0 },
-        layoutCenter: ['50%', '52%'],
+        layoutCenter: ['50%', isMobile ? '44%' : '52%'],
         layoutSize: isMobile ? '98%' : '126%',
         zoom: geoZoom,
         center: geoCenter,
@@ -986,12 +986,9 @@ export default function CapitalFlowMap({
     { label: '强美元紧缩', quarter: '2022Q3', tag: 'DXY 114' },
     { label: '硅谷银行风暴', quarter: '2023Q1', tag: 'SVB/瑞信' },
     { label: '日元套息巨震', quarter: '2024Q3', tag: 'BOJ加息' },
-    { label: '全球降息周期', quarter: '2024Q4', tag: '官方审计' },
-    { label: '跨境信贷破46T', quarter: '2025Q4', tag: '基准审计' },
-    { label: 'SDMX确证47.6T', quarter: '2026Q1', tag: '官方最新' },
-    { label: '预估基准47.8T', quarter: '2026Q2', tag: '待官方发布' },
-    { label: '多极情景推演', quarter: '2026Q4', tag: '前瞻推演' }
-  ];
+    { label: '全球降息周期', quarter: '2024Q4', tag: '历史回放' },
+    { label: '最新 BIS 观测期', quarter: bisSnapshot.latest_stock_quarter, tag: '模型回放' }
+  ].filter(epoch => dataset.quarters.includes(epoch.quarter));
 
   useEffect(() => {
     if (!selectedCorridor) {
@@ -1107,6 +1104,7 @@ export default function CapitalFlowMap({
               <h2 className="text-sm font-bold text-white tracking-wide whitespace-nowrap">
                 全球双边跨国信贷流向图谱
               </h2>
+              <span className="rounded border border-amber-600/50 px-1.5 text-xs text-amber-200">模型重构</span>
               {onOpenAppendix && (
                 <button
                   onClick={onOpenAppendix}
@@ -1156,7 +1154,7 @@ export default function CapitalFlowMap({
                   ? 'atlas-pill-active'
                   : 'text-slate-300 hover:text-white'
               }`}
-              title="BIS CBS 最终风险穿透口径 (Look-Through OFCs · 穿透开曼/卢森堡/香港等壳架构，还原至母国真实风险承担者)"
+              title="用预设国籍权重分配离岸中心敞口"
             >
               <Sparkles className="w-3 h-3 text-amber-300" />
               <span>穿透离岸中心</span>
@@ -1176,7 +1174,7 @@ export default function CapitalFlowMap({
                 setSelectedSector(e.target.value);
               }}
               className="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer text-[11px]"
-              title="按跨国交易对手部门切片 (BIS CBS Table B 部门拆解)"
+              title="按跨国交易对手部门切片 (模型部门权重)"
             >
               <option value="all" className="bg-slate-900 text-slate-200">🏢 全部门</option>
               <option value="banks" className="bg-slate-900 text-slate-200">🏦 银行同业</option>
@@ -1383,7 +1381,7 @@ export default function CapitalFlowMap({
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
               <span>
-                <strong className="text-indigo-200">已开启离岸中心穿透还原 (Look-Through OFCs · CBS Table B)</strong>：已将开曼群岛 (KY)、卢森堡 (LU)、中国香港 (HK) 等 <strong>${lookThroughResult?.totalBypassedBn ?? '6840'}B</strong> 离岸通道资金按母国国籍穿透并入母公司最终风险敞口（以美中德英日为主），虚化离岸中转重影。
+                <strong className="text-indigo-200">离岸中心模型穿透</strong>：已将开曼群岛 (KY)、卢森堡 (LU)、中国香港 (HK) 等 <strong>${lookThroughResult?.totalBypassedBn ?? 0}B</strong> 离岸通道资金依据预设权重重新分配至母国。
               </span>
             </div>
             <button
@@ -1413,7 +1411,7 @@ export default function CapitalFlowMap({
                 <div className="font-semibold text-amber-200 flex items-center gap-1">
                   <span>剥离离岸过桥空壳</span>
                   <span className="text-[10px] px-1 rounded bg-amber-500/20 text-amber-300 font-mono">
-                    -${((lookThroughResult?.totalBypassedBn ?? 6840) / 1000).toFixed(2)}T
+                    -${((lookThroughResult?.totalBypassedBn ?? 0) / 1000).toFixed(2)}T
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-400 truncate">开曼/卢森堡/香港通道 (KY / LU / HK)</div>
@@ -1462,7 +1460,7 @@ export default function CapitalFlowMap({
               {/* Ocean Background Canvas with adaptive flex-grow height */}
               <div 
                 ref={chartRef} 
-                className="w-full flex-1 min-h-[580px] xl:min-h-[720px] 2xl:min-h-[760px] bg-[#070a12] cursor-grab active:cursor-grabbing" 
+                className="w-full flex-1 min-h-[350px] md:min-h-[580px] xl:min-h-[720px] 2xl:min-h-[760px] bg-[#070a12] cursor-grab active:cursor-grabbing"
               />
 
               {/* Floating Return to Global Overview Pill when country is selected */}
@@ -1692,7 +1690,7 @@ export default function CapitalFlowMap({
                   {flowMode === 'flows' ? <Zap className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                 </span>
                 <h4 className="text-xs font-bold text-white tracking-wide">
-                  {flowMode === 'flows' ? '当季存量变动走廊 Top 5' : '当季核心信贷动脉 Top 5'}
+                  {flowMode === 'flows' ? '模型余额变化 Top 5' : '模型债权余额 Top 5'}
                 </h4>
               </div>
               <button
@@ -1855,16 +1853,8 @@ export default function CapitalFlowMap({
             </span>
             <div>
               <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                36 个季度时间序列全息穿透 (2018Q1 - 2026Q4)
-                <span className={`text-[11px] font-mono px-2 py-0.5 rounded border ${
-                  selectedQuarter > '2026Q2' 
-                    ? 'text-purple-300 bg-purple-500/15 border-purple-500/35 shadow-[0_0_8px_rgba(168,85,247,0.25)]' 
-                    : selectedQuarter === '2026Q2'
-                      ? 'text-amber-300 bg-amber-500/15 border-amber-500/35'
-                      : 'text-sky-300 bg-sky-500/10 border-sky-500/30'
-                }`}>
-                  当前处于: {selectedQuarter} {selectedQuarter > '2026Q2' ? '[NOWCAST 情景推演]' : selectedQuarter === '2026Q2' ? '[待官方发布 · 缓存预估基准]' : '[BIS 官方确证存量 · 模型重构]'}
-                </span>
+                历史季度与情景回放
+                <span className="text-xs font-mono text-slate-300">{selectedQuarter} · Atlas 模型</span>
               </h3>
               <p className="text-[11px] text-slate-400 mt-0.5">
                 点击折线或柱状图任意季度，地图将动态重算并渲染该季度的双边信贷重构网络
@@ -1872,15 +1862,7 @@ export default function CapitalFlowMap({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-400 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
-            <span>总跨度: 9 年 / 36 季</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-emerald-400 font-semibold">2026Q1 官方最新: $47.62T</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-amber-400 font-semibold">2026Q2 待发布预估: $47.82T</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-purple-400 font-semibold">2026Q4 情景推演: ~$48.60T (范围: $47.90T–$49.30T)</span>
-          </div>
+          <p className="text-xs text-slate-400">{dataset.quarters.length} 个模型季度 · BIS 快照截至 {bisSnapshot.latest_stock_quarter}</p>
         </div>
 
         {/* Macro Historical Epoch Anchors */}
@@ -1939,7 +1921,7 @@ export default function CapitalFlowMap({
         <MethodologyFootnote
           source="BIS LBS Table A6.2 (Locational Banking Statistics by Residence)"
           accounting="常住地即时交易对手原则 (Immediate Counterparty Basis)"
-          model={selectedQuarter > '2026Q2' ? "动态空间引力外推 (Gravity Nowcast v2.4)" : "最大熵矩阵平衡 (RAS Entropy Balancing)"}
+          model="RAS 矩阵重构与情景校准"
           onOpenAppendix={onOpenAppendix}
         />
       </div>

@@ -289,7 +289,7 @@ export default function CountryRiskMatrix({
             </span>
             <DataClassificationBadge
               quarter={selectedQuarter}
-              sourceText="BIS CBS 综合统计与国别外储"
+              sourceText="Atlas 国别风险校准值"
               methodText="穿透归属 (Ultimate Risk) 与压力测算"
               onOpenAppendix={onOpenAppendix}
             />

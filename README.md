@@ -2,7 +2,7 @@
 ### 国际清算银行 (BIS) 统计宏观金融图谱与跨国风险敞口监测平台
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![BIS SDMX Standard](https://img.shields.io/badge/BIS%20SDMX-2.1%20Audited-emerald.svg)](https://stats.bis.org)
+[![BIS SDMX Standard](https://img.shields.io/badge/BIS%20SDMX-LBS%20Observations-emerald.svg)](https://stats.bis.org)
 [![Time Coverage](https://img.shields.io/badge/Coverage-36%20Quarters%20(2018Q1--2026Q4)-blueviolet.svg)](#-时间跨度与数据分层架构)
 [![Online Deployment](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-sky.svg)](https://hantrleko.github.io/global-capital-flow-atlas/)
 
@@ -15,15 +15,14 @@
 
 ## 🏛️ 时间跨度与数据分层架构 (Data Architecture & Provenance)
 
-系统严格按照国际学术规范划分数据来源与置信等级，杜绝将模型推演混同于官方统计事实：
+首页的季度观察使用 BIS 发布的跨境银行债权序列。模型分析以单独的校准快照为基础。
 
-| 数据层级 (Tier) | 涵盖周期 | 最新存量规模 | 统计/测算依据与数据流 |
-| :--- | :--- | :--- | :--- |
-| **官方确证基准层 (SDMX Verified)** | **2018Q1 – 2026Q1** (33 季) | **$47.62 万亿美元** (2026Q1)<br/>*$46.12 万亿美元 (2025Q4)* | 全球总量严格经由 BIS SDMX 2.1 官方发布序列实时校验核准入库 (WS_LBS_D_PUB Table A6.2)；国别总额与双边走廊通过双比例 RAS 最大熵算法严格收敛分配。 |
-| **待核实估算层 (Pending BIS Release)** | **2026Q2** (1 季) | **~$47.82 万亿美元** (2026Q2 待核验) | 根据 BIS 官方统计发布日历，2026Q2 数据预定于 2026-10-30 发布。在官方数据更新前降级标注为“待核实估算”，杜绝提前冒充官方事实。 |
-| **前瞻情景推演层 (Scenario Projections)** | **2026Q3 – 2026Q4** (2 季) | **~$48.20T (Q3)**<br/>**~$48.60T (Q4)** | 前瞻宏观探索情景（非已校准确定性计量预测），全要素标注 `[SCENARIO PROJECTION]` 徽标与情景探索假定范围 [$47.90T, $49.30T] (±1.4%)。 |
-| **微观双边矩阵平衡 (Matrix Balancing)** | 全 36 季度双边网络 | 走廊守恒平衡 (全部已收敛) | 采用**双比例迭代最大熵平衡法 (Biproportional RAS / IPF, 容差 < 1e-4)** 求解，每季均通过严格边际收敛校验；未做汇率/断点平滑的存量差分均严格规范为“未调整存量变化”。 |
-| **系统性传染与微观透视 (Stylized Simulation)** | 级联清算与 G-SIB 震荡 | 压力测试模拟 | 银行核心资本、杠杆率与附加缓冲严格取自 FSB 与巴塞尔 Pillar 3，传染路径基于 **Eisenberg-Noe (2001) 清算向量定理** 进行**结构性计量演示**，非监管保密明细。 |
+| 数据 | 内容 | 来源 |
+| --- | --- | --- |
+| BIS 全球债权 | 从 2018Q1 起，显示期末余额、相邻季度余额差，以及汇率和统计断点调整后的变动。 | BIS LBS SDMX 序列，首页提供原始序列链接。 |
+| BIS 试点走廊 | 首批五条公开双边走廊，展示报告地、交易对手所在地、报告期和数据状态。 | BIS LBS A6.2 季度观测，快照随 CSV 和 Excel 发布。 |
+| Atlas 双边模型 | 按预设国别边际和双比例平衡法重构完整网络，用于模型地图和压力测试。 | 仓库的 Atlas 校准快照。 |
+| Atlas 前瞻情景 | 按预设参数展示未来季度的网络情景。 | Atlas 模型设定。 |
 
 ---
 
@@ -82,10 +81,16 @@ npm run dev
 ```
 本地服务将在 `http://localhost:5173/` 启动。
 
-### 2. 执行数据校验与标定
+### 2. 更新 BIS 公开观测
+
 ```bash
-python scripts/fetch_bis_data.py
+python -m unittest discover -s tests -p 'test_bis_observations.py'
+python scripts/update_bis_observations.py
 ```
+
+首页和季度导出读取 `src/data/bis_observations.json`。快照记录 BIS LBS 存量和汇率及统计断点调整后变动的序列键、状态和版本。试点走廊包含报告地与交易对手所在地。可通过 `--csv-dir` 从归档的 `stocks.csv`、`adjusted.csv` 和 `pilot.csv` 重建快照。自动更新会在数据缺失、序列不匹配或单位变化时退出并保留上一版本。
+
+压力测试使用独立的 Atlas 校准矩阵。矩阵维护入口为 `scripts/fetch_bis_data.py`。
 
 ### 3. 生产打包
 ```bash

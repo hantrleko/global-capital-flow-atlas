@@ -446,14 +446,12 @@ export function getModuleVerdict(tabId, context = {}) {
 
   // Derive dynamic global macro metrics for selected quarter
   const globalMacro = (dataset.global_macro || []).find(m => m.quarter === selectedQuarter) || {};
-  const totalClaims = (globalMacro.total_cross_border_claims_usd_bn || 47600) / 1000;
-  const qoqGrowth = globalMacro.global_qoq_growth_pct !== undefined ? globalMacro.global_qoq_growth_pct : 1.2;
-  const qoqStr = qoqGrowth >= 0 ? `+${qoqGrowth}%` : `${qoqGrowth}%`;
+  const modelClaims = globalMacro.total_cross_border_claims_usd_bn;
 
   // Find top bilateral corridor
   const links = (dataset.bilateral_matrix || {})[selectedQuarter] || [];
   const topLink = links.length > 0 ? [...links].sort((a, b) => b.claims_usd_bn - a.claims_usd_bn)[0] : null;
-  const topCorridorStr = topLink ? `${topLink.source} ➔ ${topLink.target} ($${topLink.claims_usd_bn}B)` : 'US ➔ GB / KY';
+  const topCorridorStr = topLink ? `${topLink.source} ➔ ${topLink.target} ($${topLink.claims_usd_bn}B)` : null;
 
   // Country name map
   const countries = dataset.countries || [];
@@ -467,8 +465,8 @@ export function getModuleVerdict(tabId, context = {}) {
       const cInbound = links.filter(l => l.target === selectedCountry).reduce((acc, l) => acc + l.claims_usd_bn, 0);
       return {
         ...dynamicBase,
-        headline: `${selectedQuarter} · ${countryName} 对外债权 $${Math.round(cOutbound)}B / 跨境负债 $${Math.round(cInbound)}B`,
-        observation: `${selectedQuarter} 视角：${countryName} 跨国对外债权为 $${Math.round(cOutbound)}B，跨境借入债务为 $${Math.round(cInbound)}B。`,
+        headline: `${selectedQuarter} · ${countryName} 模型债权 $${Math.round(cOutbound)}B / 模型负债 $${Math.round(cInbound)}B`,
+        observation: `${selectedQuarter} Atlas 模型中，${countryName} 对外债权为 $${Math.round(cOutbound)}B，跨境负债为 $${Math.round(cInbound)}B。`,
         mechanism: `${countryName} 跨国信贷高度依赖核心中枢通道，在全球流动性波动时易受对手方收缩影响。`,
         verdict: `【主权专属研判】建议核查 ${countryName} 的表外外汇掉期隐性负债与短期期限错配程度，预防展期断裂。`,
         severity: (selectedCountry === 'TR' || selectedCountry === 'KY') ? 'CRITICAL' : 'WARNING'
@@ -476,8 +474,10 @@ export function getModuleVerdict(tabId, context = {}) {
     }
     return {
       ...dynamicBase,
-      headline: `${selectedQuarter} 全球跨境信贷 $${totalClaims.toFixed(2)}T (环比 ${qoqStr}) · 首要走廊 ${topCorridorStr}${lookThroughEnabled ? ' · 已开启离岸穿透' : ''}`,
-      observation: `${selectedQuarter} 官方核准数据：全球跨国银行信贷总额为 $${totalClaims.toFixed(2)}T (环比: ${qoqStr})，最大信贷动脉为 ${topCorridorStr}。`,
+      headline: `${selectedQuarter} · Atlas 模型网络${lookThroughEnabled ? ' · 离岸模型穿透' : ''}`,
+      observation: Number.isFinite(modelClaims)
+        ? `本季 Atlas 矩阵的债权校准总额为 $${(modelClaims / 1000).toFixed(2)}T${topCorridorStr ? `，基准矩阵最大走廊为 ${topCorridorStr}` : ''}。`
+        : '当前季度缺少矩阵校准总额。',
       mechanism: `资金深度集聚于跨大西洋走廊与离岸避税中枢，${lookThroughEnabled ? '已开启离岸穿透，还原至最终母国风险承担者。' : '表外对冲基金借道离岸群岛大幅加杠杆。'}`,
       verdict: lookThroughEnabled 
         ? '【穿透还原状态】最终母国风险已重分配至美欧大行，建议前往【影子银行】进一步核查表外掉期负债。'

@@ -291,7 +291,7 @@ export default function UsdFundingMonitor({
             </span>
             <DataClassificationBadge
               quarter={selectedQuarter}
-              sourceText="BIS SDMX 官方公布序列"
+              sourceText="Atlas 美元份额与合成融资压力"
               methodText="美元计价与宏观流动性压力指数"
               onOpenAppendix={onOpenAppendix}
             />

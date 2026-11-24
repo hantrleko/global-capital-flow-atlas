@@ -4,7 +4,7 @@ import {
   ExternalLink, Copy, Check, ShieldCheck, Database,
   Table, Play, Wifi, RefreshCw, AlertCircle, Sparkles
 } from 'lucide-react';
-import { getDataClassification } from '../utils/dataClassification';
+import { bisResearchMetrics, bisResearchRows, bisSnapshot, formatBisAmount } from '../utils/bisObservations';
 import DataClassificationBadge from './DataClassificationBadge';
 
 export default function ResearchDossier({
@@ -22,6 +22,7 @@ export default function ResearchDossier({
   const [isPingingApi, setIsPingingApi] = useState(false);
   const [apiPingResult, setApiPingResult] = useState(null);
 
+  const officialMacro = bisResearchMetrics(selectedQuarter);
   const currentMacro = (dataset.global_macro || []).find(m => m.quarter === selectedQuarter) || {};
 
   // Export full multi-sheet Excel Workbook (.xlsx)
@@ -32,18 +33,13 @@ export default function ResearchDossier({
       const wb = XLSX.utils.book_new();
 
       // Sheet 0: Methodology, Units & Mathematical Conservation Notes
-      const classification = getDataClassification(selectedQuarter);
       const metaRows = [
         { 'Attribute': 'Project Name', 'Specification': 'BIS Global Capital Flow Atlas' },
         { 'Attribute': 'Target Quarter', 'Specification': selectedQuarter },
-        { 'Attribute': 'Data Classification', 'Specification': classification.label },
-        { 'Attribute': 'Classification Provenance', 'Specification': classification.provenance },
-        { 'Attribute': 'Official Status', 'Specification': classification.isOfficial ? 'VERIFIED_OFFICIAL_BIS_IBS' : 'FORWARD_SCENARIO_PROJECTION' },
-        { 'Attribute': 'Monetary Unit', 'Specification': 'Billion US Dollars (USD Bn) — $1,000 Bn = $1.00 Trillion USD' },
-        { 'Attribute': 'Core Accounting Metric', 'Specification': 'Amounts Outstanding / Positions (期末未偿存量), strictly distinguished from Net Flows (期间变动)' },
-        { 'Attribute': 'Official Verified Quarters', 'Specification': '2018Q1 – 2026Q1 (BIS SDMX WS_LBS_D_PUB Table A6.2 Verified)' },
-        { 'Attribute': 'Cached Benchmark Quarter', 'Specification': '2026Q2 ($47.82T cached baseline — pending BIS official release on Oct 30)' },
-        { 'Attribute': 'Scenario Projection Quarters', 'Specification': '2026Q3 – 2026Q4 (Forward momentum scenario paths: $47.90T–$49.30T)' },
+        { 'Attribute': 'BIS Snapshot Version', 'Specification': bisSnapshot.version },
+        { 'Attribute': 'Latest Observed Stock Quarter', 'Specification': bisSnapshot.latest_stock_quarter },
+        { 'Attribute': 'Atlas Model Vintage', 'Specification': dataset.metadata?.data_vintage },
+        { 'Attribute': 'Monetary Unit', 'Specification': 'Model sheets: USD Bn. BIS_Quarterly_Observations: USD million.' },
         { 'Attribute': 'Mathematical Conservation', 'Specification': 'Sum(Outgoing Corridors for Country i) == Node Claims; Sum(Incoming Corridors for Country j) == Node Liabilities; Sum(All Corridors) == Global Macro Total (Conserved to 0.00 Bn)' },
         { 'Attribute': 'Matrix Balancing Method', 'Specification': 'Biproportional RAS (IPF) with Maximum Entropy (Continuous Residual < 1e-4; Exported Rounded Residual = 0.00 Bn across all 506 corridors)' }
       ];
@@ -53,14 +49,13 @@ export default function ResearchDossier({
       // Sheet 1: Global Macro Timeline (36 Quarters: 2018Q1 - 2026Q4)
       const macroRows = (dataset.global_macro || []).map(m => ({
         'Quarter': m.quarter,
-        'Observation Status': m.observation_status || (m.is_nowcast ? 'SCENARIO_PROJECTION' : 'OFFICIAL_OBSERVED'),
-        'Data Provenance': m.sdmx_verified ? 'BIS SDMX Official (WS_LBS_D_PUB)' : m.quarter === '2026Q2' ? 'Cached Benchmark (Pending Oct 30 Release)' : 'Atlas Scenario Projection',
-        'Data Vintage': m.data_vintage || '2026-10-14 BIS SDMX',
+        'Data Classification': m.is_nowcast ? 'Model scenario' : 'Archived model calibration',
+        'Model Data Vintage': dataset.metadata?.data_vintage,
         'Total Cross-Border Claims (USD Bn)': m.total_cross_border_claims_usd_bn,
         'Total Cross-Border Claims (USD Trillion)': Number((m.total_cross_border_claims_usd_bn / 1000).toFixed(2)),
         'USD Claims (USD Bn)': m.total_usd_cross_border_bn,
         'USD Share (%)': m.global_usd_share_pct,
-        'BIS USD Funding Stress Index': m.bis_usd_funding_stress_index,
+        'Atlas Synthetic USD Funding Stress Index': m.bis_usd_funding_stress_index,
         'Global QoQ Growth (%)': m.global_qoq_growth_pct,
         'EUR/USD 3M Basis (bps)': m.cross_currency_basis?.eur_usd_3m_bps || -20,
         'JPY/USD 3M Basis (bps)': m.cross_currency_basis?.jpy_usd_3m_bps || -30,
@@ -71,6 +66,8 @@ export default function ResearchDossier({
       const wsMacro = XLSX.utils.json_to_sheet(macroRows);
       XLSX.utils.book_append_sheet(wb, wsMacro, '1_Global_Macro_Timeline');
 
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(bisResearchRows(selectedQuarter)), 'BIS_Quarterly_Observations');
+
       // Sheet 2: Bilateral Corridors for Selected Quarter
       const corridorRows = (dataset.bilateral_matrix?.[selectedQuarter] || []).map(c => ({
         'Quarter': selectedQuarter,
@@ -80,7 +77,7 @@ export default function ResearchDossier({
         'USD Volume (USD Bn)': c.usd_denominated_bn,
         'Corridor Category': c.corridor_category,
         'Balancing Method': 'RAS Maximum Entropy Balanced',
-        'Source Constraint': 'BIS LBS Table A6.2 Anchored'
+        'Data Classification': 'Atlas model matrix'
       }));
       const wsCorridors = XLSX.utils.json_to_sheet(corridorRows);
       XLSX.utils.book_append_sheet(wb, wsCorridors, '2_Bilateral_Corridors');
@@ -108,7 +105,7 @@ export default function ResearchDossier({
         };
       });
       const wsCbs = XLSX.utils.json_to_sheet(cbsRows);
-      XLSX.utils.book_append_sheet(wb, wsCbs, '3_CBS_Country_Risk');
+      XLSX.utils.book_append_sheet(wb, wsCbs, '3_Model_Country_Risk');
 
       // Sheet 4: Maturity Structure & Greenspan-Guidotti
       const maturityRows = (dataset.countries || []).map(c => {
@@ -148,8 +145,7 @@ export default function ResearchDossier({
       const wsSwaps = XLSX.utils.json_to_sheet(swapRows);
       XLSX.utils.book_append_sheet(wb, wsSwaps, '5_Central_Bank_Swaps');
 
-      // Generate download with classification label
-      XLSX.writeFile(wb, `BIS_Global_Capital_Flow_Atlas_${selectedQuarter}_[${classification.label}].xlsx`);
+      XLSX.writeFile(wb, `Atlas_${selectedQuarter}_${bisSnapshot.version}.xlsx`);
     } catch (err) {
       console.error('Failed to export xlsx:', err);
     } finally {
@@ -176,20 +172,20 @@ export default function ResearchDossier({
     let csv = "# BIS Global Capital Flow Atlas - Research Dataset Export\n";
     csv += `# Selected Quarter: ${selectedQuarter}\n`;
     csv += `# Metric Units: Monetary figures in Billion USD (USD Bn)\n`;
-    csv += `# Provenance: Macro Total Anchored to BIS SDMX Official (<=2026Q1) / Cached (2026Q2) / Scenario (2026Q3-Q4); Country and Corridor Positions Model-Allocated via RAS Balancing\n`;
+    csv += `# Provenance: Atlas model export. Published observations are available in the quarterly BIS download.\n`;
     csv += "CountryCode,CountryName,Region,Quarter,Claims_USD_Bn,Liabilities_USD_Bn,Net_Position_USD_Bn,USD_Share_Pct,Debt_To_Reserves,Vulnerability_Score,Rating,CountryDataCategory,MacroAnchorStatus\n";
     countries.forEach(c => {
       const qLbs = (lbsData[c.code] || [])[qIdx] || {};
       const qCbs = (cbsData[c.code] || [])[qIdx] || {};
-      const macroStatus = selectedQuarter <= '2026Q1' ? 'BIS_SDMX_OFFICIAL_ANCHORED' : selectedQuarter === '2026Q2' ? 'CACHED_BENCHMARK_PENDING_RELEASE' : 'SCENARIO_PROJECTION';
-      csv += `${c.code},"${c.name}",${c.region},${selectedQuarter},${qLbs.claims_usd_bn || ''},${qLbs.liabilities_usd_bn || ''},${qLbs.net_position_usd_bn || ''},${(qLbs.currency_breakdown?.USD) || ''},${qCbs.debt_to_reserves_ratio || ''},${qCbs.vulnerability_score || ''},${qCbs.rating || ''},MODEL_ALLOCATED,${macroStatus}\n`;
+      const macroStatus = dataset.metadata?.nowcast_quarters?.includes(selectedQuarter) ? 'MODEL_SCENARIO' : 'ARCHIVED_MODEL_CALIBRATION';
+      csv += `${c.code},"${c.name}",${c.region},${selectedQuarter},${qLbs.claims_usd_bn ?? ''},${qLbs.liabilities_usd_bn ?? ''},${qLbs.net_position_usd_bn ?? ''},${(qLbs.currency_breakdown?.USD) ?? ''},${qCbs.debt_to_reserves_ratio ?? ''},${qCbs.vulnerability_score ?? ''},${qCbs.rating ?? ''},MODEL_ALLOCATED,${macroStatus}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", url);
-    downloadAnchor.setAttribute("download", `bis_capital_flow_${selectedQuarter}.csv`);
+    downloadAnchor.setAttribute("download", `atlas_model_${selectedQuarter}.csv`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -342,7 +338,7 @@ print("\\n=== Research Package Generation Completed Successfully ===")
                 </h2>
                 <DataClassificationBadge
                   quarter={selectedQuarter}
-                  sourceText="BIS SDMX 官方数据与全网微观走廊"
+                  sourceText="BIS 公开观测与 Atlas 模型分表"
                   methodText="机构级多表导出与计量脚本"
                   onOpenAppendix={onOpenAppendix}
                 />
@@ -395,22 +391,23 @@ print("\\n=== Research Package Generation Completed Successfully ===")
         {/* Dynamic Research Report Content */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-xl">
-            <div className="text-xs text-slate-400 uppercase tracking-wider font-mono">1. 信贷规模与环比动能</div>
+            <div className="text-xs text-slate-400 uppercase tracking-wider font-mono">1. BIS 跨境银行债权</div>
             <div className="text-sm font-semibold text-white mt-1">
-              跨境总债权规模达 <span className="text-blue-400 font-mono font-bold">${(currentMacro.total_cross_border_claims_usd_bn / 1000).toFixed(2)}T (${Math.round(currentMacro.total_cross_border_claims_usd_bn * 10).toLocaleString()} 亿美元)</span>
+              期末余额 <span className="text-blue-400 font-mono">{formatBisAmount(officialMacro.stock.valueMn)}</span>
+              <span className="ml-1 text-xs text-slate-300">十亿美元</span>
             </div>
             <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-              年化环比增速为 <span className="font-mono text-emerald-400">{currentMacro.global_qoq_growth_pct}%</span>。在主要发达经济体间，跨国商业银行同业拆借与存托头寸占据了主导流动性渠道。
+              余额较上季变化 {formatBisAmount(officialMacro.stockChangeMn)}，调整后变动 {formatBisAmount(officialMacro.adjusted.valueMn)}（十亿美元）。
             </p>
           </div>
 
           <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-xl">
-            <div className="text-xs text-slate-400 uppercase tracking-wider font-mono">2. 美元霸权与离岸融资压迫</div>
+            <div className="text-xs text-slate-400 uppercase tracking-wider font-mono">2. 美元份额与融资压力模型</div>
             <div className="text-sm font-semibold text-white mt-1">
               美元跨境比重 <span className="text-emerald-400 font-mono font-bold">{currentMacro.global_usd_share_pct}%</span> (规模 ${(currentMacro.total_usd_cross_border_bn / 1000).toFixed(2)}T / ${Math.round(currentMacro.total_usd_cross_border_bn * 10).toLocaleString()} 亿美元)
             </div>
             <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-              BIS 美元融资压力读数为 <span className="font-mono text-amber-400">{currentMacro.bis_usd_funding_stress_index}</span>。由于非美实体存在大量美元计价未对冲负债，美元汇率与利率变动直接决定全球金融条件松紧。
+              Atlas 合成融资压力指数为 <span className="font-mono text-amber-400">{currentMacro.bis_usd_funding_stress_index}</span>。由于非美实体存在大量美元计价未对冲负债，美元汇率与利率变动直接决定全球金融条件松紧。
             </p>
           </div>
 

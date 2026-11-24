@@ -1,3 +1,4 @@
+import { BIS_TABLE, bisSnapshot } from '../utils/bisObservations';
 import React, { useState } from 'react';
 import { 
   X, BookOpen, Database, ShieldAlert, Cpu, Layers, 
@@ -119,9 +120,9 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                       <CheckCircle className="w-4 h-4" />
                       官方观测区间 (Observed Periods)
                     </div>
-                    <div className="text-xl font-bold font-mono text-white">2018Q1 – 2026Q1 官方确证 / 2026Q2 待发布预估</div>
+                    <div className="text-xl font-bold font-mono text-white">BIS 全球债权余额截至 {bisSnapshot.latest_stock_quarter}</div>
                     <p className="text-xs text-slate-300">
-                      <strong>全球总量锚定 BIS 官方公布值</strong>（2025 年末全球跨境银行总债权收于 <strong>$46.12T</strong>，2026Q1 SDMX 官方最新确证值为 <strong>$47.62T</strong>，2026Q2 待官方发布估算基准值为 <strong>$47.82T</strong>）；国别总额与双边信贷走廊在满足该总量硬约束下，基于申报国权重与双比例最大熵矩阵平衡 (RAS) 进行模型重构校准。
+                      <strong>全球总量锚定 BIS 官方公布值</strong>按每期公布的序列更新。<a href={BIS_TABLE} target="_blank" rel="noreferrer" className="text-sky-300 underline">原始 A6.2 表</a>。试点走廊读取 BIS 公开单元格，完整模型网络沿用校准快照与预设边际。
                     </p>
                   </div>
 
@@ -157,7 +158,7 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                         <tr>
                           <td className="py-2 font-bold text-white font-sans">全球跨境总债权</td>
                           <td className="py-2">BIS SDMX 2.1 API (WS_LBS_D_PUB Table A6.2)</td>
-                          <td className="py-2 text-emerald-400 font-sans">官方观测 (≤2026Q1) / 待核实估算 (2026Q2)</td>
+                          <td className="py-2 text-emerald-400 font-sans">官方观测截至 {bisSnapshot.latest_stock_quarter}</td>
                           <td className="py-2 text-slate-400">stats.bis.org API 实时核验</td>
                         </tr>
                         <tr>
@@ -196,7 +197,7 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                   </div>
                   <p className="text-xs text-slate-300 leading-normal">
                     本项目严格遵循 BIS 国际银行统计准则：<br />
-                    • <strong>未清偿存量资产 (Amounts Outstanding / Positions)</strong>：反映期末全球跨境银行债权总额（如 2026Q1 官方确证值 $47.62T）。不可将其称为单季“资本流动量”；<br />
+                    • <strong>未清偿存量资产 (Amounts Outstanding / Positions)</strong>：反映期末全球跨境银行债权总额。不可将其称为单季“资本流动量”；<br />
                     • <strong>未调整存量变化 (Unadjusted Stock Changes)</strong>：反映相邻季度间存量资产一阶差分 ΔClaims = Claims(t) - Claims(t-1)。注意：由于切片未做多币种汇率波动与统计断点剔除，不可等同于正式的调整后资金净流动 (Break- & FX-adjusted Flows)。
                   </p>
                 </div>
@@ -204,7 +205,7 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                 <div className="p-4 rounded-xl border border-slate-700 bg-slate-950/60 space-y-2">
                   <div className="text-xs font-semibold text-slate-200">数据发布周期与更新机制</div>
                   <p className="text-xs text-slate-400 leading-normal">
-                    国际清算银行通常在每年 1 月、4 月、7 月、10 月发布季度银行统计公报。本项目通过 GitHub Actions 流水线自动化同步官方更新，确保历史序列与国际金融统计完全接轨。
+                    国际清算银行通常在每年 1 月、4 月、7 月、10 月发布季度银行统计公报。本项目通过 GitHub Actions 流水线自动化同步官方更新，官方快照记录来源、数据状态和版本，抓取失败时保留上次发布。
                   </p>
                 </div>
               </div>
@@ -266,7 +267,7 @@ export default function MethodologyAppendixModal({ isOpen, onClose }) {
                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ∑_i X_ij = Liab_j    (各对手国入境总头寸硬约束)
                   </div>
                   <p className="text-slate-400 text-[11px] leading-relaxed">
-                    算法通过迭代双比例平衡因子 (r_i, s_j)，使得双边矩阵 <code className="text-sky-300">X_ij = r_i * X_ij^0 * s_j</code> 在极小化信息相对熵的条件下精确收敛于各国官方边际总量，保障总资产与总负债的会计一致性。
+                    算法通过迭代双比例平衡因子 (r_i, s_j)，使得双边矩阵 <code className="text-sky-300">X_ij = r_i * X_ij^0 * s_j</code> 在极小化信息相对熵的条件下精确收敛于模型设定的国别边际总量，保障总资产与总负债的会计一致性。
                   </p>
                 </div>
 

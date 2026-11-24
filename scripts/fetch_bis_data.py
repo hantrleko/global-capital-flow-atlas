@@ -29,6 +29,10 @@ import ssl
 import urllib.request
 from typing import Dict, List, Any, Optional, Tuple
 
+from pathlib import Path
+import tempfile
+from update_bis_observations import download, key as bis_key, parse_csv, quarter_range
+
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "src", "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -302,28 +306,22 @@ def fetch_bis_sdmx_official_data() -> Dict[str, float]:
     Key: Q.S.C.A.TO1.A.5J.A.5A.A.5J.N (Global cross-border bank claims, All currencies, All sectors)
     Parses live quarterly observations and updates HISTORICAL_MACRO_SERIES.
     """
-    ctx = ssl.create_default_context()
-    url = "https://stats.bis.org/api/v1/data/BIS,WS_LBS_D_PUB,1.0/Q.S.C.A.TO1.A.5J.A.5A.A.5J.N?startPeriod=2018-Q1&format=csv"
-    claims_by_quarter = {}
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 'Accept': 'text/csv'})
-        with urllib.request.urlopen(req, timeout=12, context=ctx) as resp:
-            if resp.status == 200:
-                raw_csv = resp.read().decode('utf-8')
-                for line in raw_csv.splitlines()[1:]:
-                    parts = line.split(',')
-                    if len(parts) > 21 and parts[20] and parts[21]:
-                        q_clean = parts[20].strip().replace("-", "")
-                        try:
-                            val_m = float(parts[21].strip())
-                            claims_by_quarter[q_clean] = round(val_m / 1000.0, 1)
-                        except ValueError:
-                            continue
-                print(f"[BIS SDMX Ingestion] Live connection verified: Ingested {len(claims_by_quarter)} official quarterly observations from stats.bis.org.")
-                return claims_by_quarter
-    except Exception as e:
-        print(f"[BIS SDMX Ingestion] Live query notice ({e}). Utilizing cached official SDMX benchmarks.")
-    return claims_by_quarter
+    series_key = bis_key("S")
+    published = parse_csv(download(series_key, "2018-Q1"), {series_key})[series_key]
+    claims = {q: item["value_mn"] / 1000.0 for q, item in published.items()
+              if q <= QUARTERS[-1] and item["state"] == "observed"}
+    previous_path = os.path.join(DATA_DIR, "bis_atlas_dataset.json")
+    if os.path.exists(previous_path):
+        with open(previous_path, encoding="utf-8") as previous:
+            previously_verified = {row["quarter"] for row in json.load(previous)["global_macro"]
+                                   if row.get("sdmx_verified")}
+        if not previously_verified.issubset(claims):
+            raise ValueError("Incomplete BIS data. The previous model dataset has been preserved.")
+    if len(claims) < 2 or sorted(claims) != quarter_range(QUARTERS[0], max(claims)):
+        raise ValueError("The BIS global stock series is incomplete.")
+    print(f"[BIS SDMX Ingestion] Loaded {len(claims)} public observations.")
+    return claims
+
 
 def compute_dynamic_gravity_nowcast(historical_series: Dict[str, Dict[str, Any]], 
                                     observed_end: str = "2026Q1", 
@@ -1074,8 +1072,15 @@ def build_dataset():
     }
 
     out_file = os.path.join(DATA_DIR, "bis_atlas_dataset.json")
-    with open(out_file, "w", encoding="utf-8") as f:
-        json.dump(full_atlas_data, f, ensure_ascii=False, indent=2)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=DATA_DIR,
+                                     prefix=".atlas-", delete=False) as handle:
+        temporary = Path(handle.name)
+        try:
+            with handle:
+                json.dump(full_atlas_data, handle, ensure_ascii=False, indent=2, allow_nan=False)
+            temporary.replace(out_file)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     print(f" Successfully calibrated & generated BIS Atlas Dataset: {out_file}")
     print(f"  Quarters: {len(QUARTERS)} (Observed: 2018Q1-2026Q2, Nowcast: 2026Q3-2026Q4)")

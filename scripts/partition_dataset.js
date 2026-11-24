@@ -21,14 +21,17 @@ if (!fs.existsSync(FULL_DATASET_PATH)) {
 console.log('📦 Partitioning BIS Atlas Dataset for Optimal Cold-Start Performance...');
 const fullData = JSON.parse(fs.readFileSync(FULL_DATASET_PATH, 'utf8'));
 
-// Default initial quarters needed for instant map paint on cold start (latest official release: 2026Q1 and baseline 2025Q4)
-const DEFAULT_CORE_QUARTERS = ['2025Q4', '2026Q1'];
+const { latest_stock_quarter: observedQuarter } = JSON.parse(
+  fs.readFileSync(path.join(DATA_DIR, 'bis_observations.json'), 'utf8')
+);
+const coreQuarterIndex = fullData.quarters.findLastIndex(quarter => quarter <= observedQuarter);
+const coreQuarters = fullData.quarters.slice(Math.max(0, coreQuarterIndex - 1), coreQuarterIndex + 1);
 const coreBilateral = {};
 const histRecentBilateral = {}; // 2022Q1 - 2026Q4 (excluding core)
 const histPastBilateral = {};   // 2018Q1 - 2021Q4
 
 for (const [q, links] of Object.entries(fullData.bilateral_matrix || {})) {
-  if (DEFAULT_CORE_QUARTERS.includes(q)) {
+  if (coreQuarters.includes(q)) {
     coreBilateral[q] = links;
   } else if (q >= '2022Q1') {
     histRecentBilateral[q] = links;

@@ -270,9 +270,13 @@ export default function PortfolioStressOverlay({
   // Synchronize live portfolio stress result to parent ExecutiveVerdictBanner (Single Source of Truth)
   useEffect(() => {
     if (stressResult && onPortfolioResultChange) {
-      onPortfolioResultChange(stressResult);
+      onPortfolioResultChange({
+        ...stressResult,
+        quarter: selectedQuarter,
+        reportPortfolio: activePortfolio
+      });
     }
-  }, [stressResult, onPortfolioResultChange]);
+  }, [stressResult, onPortfolioResultChange, selectedQuarter, activePortfolio]);
 
   // Animated KPI readouts (synchronous initial value, smooth 260ms tween on subsequent changes)
   const animTotalLoss = useAnimatedNumber(stressResult.totalLossMn, 260);
@@ -1477,7 +1481,7 @@ ${stressResult.hedgingAdvice.map((h, i) => `  ${i + 1}. [${h.priority}] ${h.titl
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
-                  v7.0 肥尾随机引擎 · {monteCarloResult.trialsCount} 次抽样
+                  {monteCarloResult.trialsCount} 次抽样 · 99% ES 使用尾部 {monteCarloResult.tailSampleCount} 个样本
                 </span>
                 <h3 className="text-sm font-bold text-white tracking-tight">
                   蒙特卡洛肥尾损失分布与 99% 期望短缺 (Expected Shortfall / CVaR)

@@ -20,7 +20,6 @@ import InstitutionalReportModal from './components/InstitutionalReportModal';
 import MacroIntelligenceBriefing from './components/MacroIntelligenceBriefing';
 import ExecutiveKpiRow from './components/ExecutiveKpiRow';
 import GlobalPinnedEntityBar from './components/GlobalPinnedEntityBar';
-import MacroInsightsBanner from './components/MacroInsightsBanner';
 import ExecutiveVerdictBanner from './components/ExecutiveVerdictBanner';
 import GuidedInvestigationHUD from './components/GuidedInvestigationHUD';
 import InvestigationTracksModal from './components/InvestigationTracksModal';
@@ -29,6 +28,8 @@ import { buildLiveClearingShockMap } from './utils/portfolioStressEngine';
 import soundFx from './utils/soundEffects';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getDataClassification } from './utils/dataClassification';
+import { bisResearchMetrics, bisSnapshot, formatBisAmount } from './utils/bisObservations';
+import BisQuarterlyResearch from './components/BisQuarterlyResearch';
 import { Keyboard, X, Bot, Sparkles } from 'lucide-react';
 
 // Lazy-loaded secondary quant components for bundle code-splitting
@@ -94,15 +95,11 @@ export default function App() {
   const paramCountry = initialParams.get('country');
   const paramCurrency = initialParams.get('currency');
 
-  // Default to the latest official observed quarter (2026Q1) or deep-linked quarter
-  const latestOfficialQuarter = useMemo(() => {
-    const official = quarters.filter(q => q <= '2026Q1');
-    return official[official.length - 1] || '2026Q1';
-  }, [quarters]);
+  const latestOfficialQuarter = quarters.findLast(q => q <= bisSnapshot.latest_stock_quarter);
 
   const [selectedQuarter, setSelectedQuarter] = useState(() => {
     if (paramQ && quarters.includes(paramQ)) return paramQ;
-    return '2026Q1';
+    return latestOfficialQuarter ?? quarters.at(-1);
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [playSpeed, setPlaySpeed] = useState(1);
@@ -118,10 +115,7 @@ export default function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isMacroAiOpen, setIsMacroAiOpen] = useState(false);
-  const [isIntroOpen, setIsIntroOpen] = useState(() => {
-    if (initialParams.get('intro') === '0' || initialParams.get('intro') === 'false') return false;
-    return !localStorage.getItem('bis_atlas_intro_seen');
-  });
+  const [isIntroOpen, setIsIntroOpen] = useState(() => initialParams.get('intro') === '1');
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
   const [isCodeExporterOpen, setIsCodeExporterOpen] = useState(false);
   const [isShockSandboxOpen, setIsShockSandboxOpen] = useState(false);
@@ -473,24 +467,9 @@ export default function App() {
     return Object.fromEntries((datasetState.global_macro || []).map(m => [m.quarter, m]));
   }, [datasetState]);
 
-  const currentQuarterMacro = globalMacroMap[selectedQuarter] || {};
-  const currentClaimsVal = currentQuarterMacro.total_cross_border_claims_usd_bn
-    ? (currentQuarterMacro.total_cross_border_claims_usd_bn / 1000).toFixed(2)
-    : '47.62';
-
-  const quarterStatusLabel = useMemo(() => {
-    const meta = getDataClassification(selectedQuarter);
-    return {
-      badge: meta.label,
-      badgeColor: meta.badgeClass,
-      dotColor: meta.dotClass,
-      text: meta.isOfficial
-        ? `官方总额 $${currentClaimsVal}T (BIS 审计发布)`
-        : meta.type === 'PENDING_ESTIMATE'
-          ? `待公布估算 $${currentClaimsVal}T (待10月30日公布)`
-          : `情景中值 $${currentClaimsVal}T (范围 $47.90T–$49.30T)`
-    };
-  }, [selectedQuarter, currentClaimsVal]);
+  const modelScenario = (datasetState.metadata?.nowcast_quarters || []).includes(selectedQuarter);
+  const quarterStatusLabel = getDataClassification(selectedQuarter, { isScenario: modelScenario });
+  const { stock: currentOfficialStock } = bisResearchMetrics(selectedQuarter);
 
   // Auto-play timer for timeline with variable playback speed
   useEffect(() => {
@@ -580,6 +559,8 @@ export default function App() {
       <Header
         quarters={quarters}
         selectedQuarter={selectedQuarter}
+        latestOfficialQuarter={latestOfficialQuarter}
+        scenarioQuarters={datasetState.metadata?.nowcast_quarters || []}
         onSelectQuarter={(q) => {
           setSelectedQuarter(q);
           setIsPlaying(false);
@@ -689,11 +670,21 @@ export default function App() {
         ) : (
           <>
             {/* 3 Compact Executive KPIs: 全球信贷总额 · 美元计价份额与紧缩 · 核心走廊与枢纽 */}
-            <ExecutiveKpiRow
+            {activeTab === 'map' ? (
+              <BisQuarterlyResearch
+                quarter={selectedQuarter}
+                countries={activeDataset.countries}
+                onStress={code => {
+                  setSelectedCountry(code);
+                  setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
+                  handleSelectTab('contagion');
+                }}
+              />
+            ) : <ExecutiveKpiRow
               dataset={activeDataset}
               selectedQuarter={selectedQuarter}
               selectedCurrency={selectedCurrency}
-            />
+            />}
 
             {/* Pinned Entity Context Ribbon: Cross-Module Sovereign Stress Testing */}
             {selectedCountry && (
@@ -711,19 +702,6 @@ export default function App() {
                   setIsCountryDrawerOpen(false);
                 }}
                 onOpenDrawer={() => setIsCountryDrawerOpen(true)}
-              />
-            )}
-
-            {/* 30-Second Institutional Macro Insights Single-Line Ticker (34px height, only on map tab to protect secondary tab folds) */}
-            {activeTab === 'map' && (
-              <MacroInsightsBanner
-                dataset={activeDataset}
-                selectedQuarter={selectedQuarter}
-                onSelectTab={handleSelectTab}
-                onSelectCountry={(code) => setSelectedCountry(code)}
-                onSetContagionEpicenter={(code) => {
-                  setContagionConfig({ epicenter: code, haircut: 35, deleveraging: 1.8, dollarSqueeze: 15 });
-                }}
               />
             )}
 
@@ -1181,12 +1159,13 @@ export default function App() {
             onClose={() => setIsPitchDeckOpen(false)}
             dataset={activeDataset}
             selectedQuarter={selectedQuarter}
-            portfolioStressResult={livePortfolioResult}
-            activePortfolio={activeCustomPortfolio}
+            portfolioStressResult={activeTab === 'portfolio' && livePortfolioResult?.quarter === selectedQuarter ? livePortfolioResult : null}
+            activePortfolio={(activeTab === 'portfolio' && livePortfolioResult?.quarter === selectedQuarter
+              ? livePortfolioResult.reportPortfolio : null) ?? activeCustomPortfolio}
             clearingResult={liveClearingResult}
             epicenter={contagionConfig?.epicenter || 'TR'}
-            haircut={contagionConfig?.haircut || 25}
-            bufferMultiplier={contagionConfig?.bufferMultiplier || 1.5}
+            haircut={contagionConfig?.haircut ?? 25}
+            bufferMultiplier={contagionConfig?.bufferMultiplier ?? 1.5}
           />
         </Suspense>
       )}
@@ -1261,12 +1240,12 @@ export default function App() {
 
           {/* User Requested Data Statement with Methodology Link & Dynamic Provenance */}
           <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-slate-400 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800/60">
-            <span className={`inline-block w-1.5 h-1.5 rounded-full ${quarterStatusLabel.dotColor} animate-pulse`} />
-            <span className={`px-1.5 py-0.5 rounded border text-[11px] ${quarterStatusLabel.badgeColor}`}>
-              {quarterStatusLabel.badge}
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${quarterStatusLabel.dotClass}`} />
+            <span className={`px-1.5 py-0.5 rounded border text-[11px] ${quarterStatusLabel.badgeClass}`}>
+              {quarterStatusLabel.label}
             </span>
             <span>
-              {selectedQuarter} · {quarterStatusLabel.text} · 国别/双边走廊由 RAS 模型重构分配 · 
+              {selectedQuarter} · BIS 债权余额 {formatBisAmount(currentOfficialStock.valueMn)}{currentOfficialStock.valueMn !== null && ' 十亿美元'} · 完整网络为 Atlas 模型重构 ·
             </span>
             <button
               onClick={() => setIsAppendixOpen(true)}
@@ -1286,7 +1265,7 @@ export default function App() {
               <span>v7.5.0 日志</span>
             </button>
             <span>·</span>
-            <span>官方序列截至 2026Q1 ($47.62T)</span>
+            <span>官方序列截至 {bisSnapshot.latest_stock_quarter}</span>
             <span>·</span>
             <span>36 季度跨国网络</span>
             <span>·</span>

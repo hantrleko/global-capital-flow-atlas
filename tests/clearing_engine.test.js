@@ -1564,6 +1564,19 @@ function runTestSuite() {
   // =========================================================================
   console.log('\nTest 44: Phase 11 V7.0.0 Deterministic 500-Trial Monte Carlo Fat-Tail & 99% CVaR (Expected Shortfall)');
   {
+    const zeroLoss = { unhedgedLossMn: 0, totalLossMn: 0 };
+    const zero = runPortfolioMonteCarloSimulation({ baseStressResult: zeroLoss });
+    const paid = runPortfolioMonteCarloSimulation({ baseStressResult: { ...zeroLoss, hedgeCostMn: 25 } });
+    const empty = runPortfolioMonteCarloSimulation({
+      activePortfolio: { baseAumUsdMn: 0, positions: [] },
+      baseStressResult: { unhedgedLossMn: 25 }
+    });
+    assert(zero.unhedgedStats.meanLossMn === 0 && zero.unhedgedStats.cvar99Mn === 0, 'A valid zero loss remains zero');
+    assert(paid.hedgedStats.meanLossMn === 25 && paid.hedgedStats.cvar99Mn === 25, 'Paid hedge costs remain when losses are zero');
+    assert(paid.histogramBins.reduce((count, bin) => count + bin.hedgedCount, 0) === paid.trialsCount, 'Histogram includes all hedged loss samples');
+    assert(empty.unhedgedStats.meanLossMn === 0 && empty.unhedgedStats.cvar99PctOfAum === 0, 'A zero-sized portfolio has zero simulated risk');
+    assert(zero.tailSampleCount === 5, '500 trials provide five samples for 99% expected shortfall');
+
     const mc1 = runPortfolioMonteCarloSimulation({
       activePortfolio: PORTFOLIO_PRESETS[0],
       scenarioId: 'tr_sovereign_crisis',

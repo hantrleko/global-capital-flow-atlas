@@ -390,14 +390,14 @@ export default function EarlyWarningSystem({
                 <ShieldAlert className="w-5 h-5" />
               </span>
               <h2 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-                BIS Basel III 宏观审慎危机早期预警系统 (EWS)
+                宏观审慎预警情景 (EWS)
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-mono border border-blue-400/40">
-                  BCBS Standard · {selectedQuarter}
+                  模型演示 · {selectedQuarter}
                 </span>
               </h2>
             </div>
             <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
-              基于国际清算银行（BIS）与巴塞尔银行监管委员会核心预警指标库：监测
+              用模型指标演示宏观审慎框架，比较
               <strong className="text-white"> 信贷/GDP 缺口（Credit-to-GDP Gap）</strong>、
               <strong className="text-white"> 还本付息比率偏差（DSR Gap）</strong> 及
               <strong className="text-white"> 跨境借款敞口</strong>，提供逆周期资本缓冲（CCyB）自动推荐及系统性红黄绿三色信号灯。
@@ -456,7 +456,7 @@ export default function EarlyWarningSystem({
           </div>
 
           <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2">
-            <span>官方标准: BCBS Guidance on CCyB (HP Filter λ=400,000)</span>
+            <span>模型输入采用预设的季度信贷缺口与偿债负担</span>
           </div>
         </div>
       </div>
@@ -853,9 +853,9 @@ export default function EarlyWarningSystem({
 
       {/* Academic Methodology Footnote */}
       <MethodologyFootnote
-        source="BIS Table WS_CREDIT_GAP (Credit-to-GDP Gaps) & CBS Table B4"
+        source="Atlas 合成季度指标"
         accounting="巴塞尔 III 逆周期资本缓冲框架 (BCBS CCyB Guidelines)"
-        model="HP 滤波趋势偏离 (HP Filter Trend Deviation, λ=400,000)"
+        model="季度分段、周期项与情景权重"
         onOpenAppendix={onOpenAppendix}
       />
     </div>

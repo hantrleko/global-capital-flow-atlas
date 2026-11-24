@@ -246,7 +246,7 @@ export default function GravityEconometrics({
               </span>
               <DataClassificationBadge
                 quarter={selectedQuarter}
-                sourceText="BIS 双边信贷与 CEPII 地理距离"
+                sourceText="Atlas RAS 双边矩阵与 CEPII 地理距离"
                 methodText="双对数 OLS 计量回归与残差分解"
                 onOpenAppendix={onOpenAppendix}
               />

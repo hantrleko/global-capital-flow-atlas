@@ -1,0 +1,619 @@
+{
+  "fetched_at": "2026-11-24T05:48:43+00:00",
+  "latest_stock_quarter": "2026Q2",
+  "series": {
+    "Q.F.C.A.TO1.A.5J.A.5A.A.5J.N": {
+      "2018Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 437171.453
+      },
+      "2018Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -58700.342
+      },
+      "2018Q3": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -75413.179
+      },
+      "2018Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 137958.058
+      },
+      "2019Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 1231754.255
+      },
+      "2019Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 533327.714
+      },
+      "2019Q3": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 853866.204
+      },
+      "2019Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -861964.982
+      },
+      "2020Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 3025442.656
+      },
+      "2020Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -1218709.947
+      },
+      "2020Q3": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -90808.213
+      },
+      "2020Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 407778.845
+      },
+      "2021Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 600963.914
+      },
+      "2021Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -289243.731
+      },
+      "2021Q3": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 221371.287
+      },
+      "2021Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 73030.685
+      },
+      "2022Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 1878737.435
+      },
+      "2022Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 889118.336
+      },
+      "2022Q3": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 1261276.003
+      },
+      "2022Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -1242820.889
+      },
+      "2023Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 466192.604
+      },
+      "2023Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 484569.924
+      },
+      "2023Q3": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 706124.127
+      },
+      "2023Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -359676.479
+      },
+      "2024Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 1064182.082
+      },
+      "2024Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 17542.198
+      },
+      "2024Q3": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 678086.812
+      },
+      "2024Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 536052.587
+      },
+      "2025Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 711028.928
+      },
+      "2025Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 1203779.365
+      },
+      "2025Q3": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 869840.474
+      },
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 1088512.534
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 2182389.387
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 1253748.072
+      }
+    },
+    "Q.F.C.A.TO1.A.5J.A.DE.A.US.N": {
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -2044.566
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 83688.666
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -34024.93
+      }
+    },
+    "Q.F.C.A.TO1.A.5J.A.GB.A.JP.N": {
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -13582.846
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 36604.922
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -44436.588
+      }
+    },
+    "Q.F.C.A.TO1.A.5J.A.GB.A.US.N": {
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -3166.185
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 194782.426
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -53742.732
+      }
+    },
+    "Q.F.C.A.TO1.A.5J.A.JP.A.US.N": {
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 69752.073
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 108345.812
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -72601.3
+      }
+    },
+    "Q.F.C.A.TO1.A.5J.A.US.A.GB.N": {
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": -30041.572
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 83065.607
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 25414.77
+      }
+    },
+    "Q.S.C.A.TO1.A.5J.A.5A.A.5J.N": {
+      "2018Q1": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 31287977.027
+      },
+      "2018Q2": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 30410337.589
+      },
+      "2018Q3": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 30187754.376
+      },
+      "2018Q4": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 30384425.168
+      },
+      "2019Q1": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 31457531.616
+      },
+      "2019Q2": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 32135087.71
+      },
+      "2019Q3": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 32407132.899
+      },
+      "2019Q4": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 32074688.893
+      },
+      "2020Q1": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 34651198.043
+      },
+      "2020Q2": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 33733601.333
+      },
+      "2020Q3": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 34489486.082
+      },
+      "2020Q4": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 35763833.948
+      },
+      "2021Q1": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 36082678.1
+      },
+      "2021Q2": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 36005851.226
+      },
+      "2021Q3": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 36129023.843
+      },
+      "2021Q4": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 36423887.133
+      },
+      "2022Q1": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 37887771.283
+      },
+      "2022Q2": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 37423521.308
+      },
+      "2022Q3": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 37477612.597
+      },
+      "2022Q4": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 37837594.544
+      },
+      "2023Q1": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 38602362.925
+      },
+      "2023Q2": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 38867589.39
+      },
+      "2023Q3": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 39083997.684
+      },
+      "2023Q4": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 39583749.335
+      },
+      "2024Q1": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 40092275.094
+      },
+      "2024Q2": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 39774206.076
+      },
+      "2024Q3": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 41766527.532
+      },
+      "2024Q4": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 40791076.612
+      },
+      "2025Q1": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 42253687.628
+      },
+      "2025Q2": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 44956318.342
+      },
+      "2025Q3": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 45753729.012
+      },
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 46751819.423
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 48416646.79
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "B",
+        "state": "observed",
+        "value_mn": 49467994.819
+      }
+    },
+    "Q.S.C.A.TO1.A.5J.A.DE.A.US.N": {
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 390896.0
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 472036.0
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 437734.0
+      }
+    },
+    "Q.S.C.A.TO1.A.5J.A.GB.A.JP.N": {
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 388728.0
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 419003.0
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 369297.0
+      }
+    },
+    "Q.S.C.A.TO1.A.5J.A.GB.A.US.N": {
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 2257176.0
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 2440737.0
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 2383415.0
+      }
+    },
+    "Q.S.C.A.TO1.A.5J.A.JP.A.US.N": {
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 2272771.51
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 2379304.268
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 2305424.439
+      }
+    },
+    "Q.S.C.A.TO1.A.5J.A.US.A.GB.N": {
+      "2025Q4": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 1135747.0
+      },
+      "2026Q1": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 1216001.0
+      },
+      "2026Q2": {
+        "obs_conf": "F",
+        "obs_status": "A",
+        "state": "observed",
+        "value_mn": 1240422.0
+      }
+    }
+  },
+  "version": "ad0a6b759732ef15"
+}

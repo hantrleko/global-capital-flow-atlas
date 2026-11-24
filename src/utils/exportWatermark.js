@@ -25,13 +25,13 @@ export function addWatermarkToDataUrl(dataUrl, quarter, chartTitle = 'BIS IBS Ca
       // 1. Draw base chart image
       ctx.drawImage(img, 0, 0);
 
-      const classification = getDataClassification(quarter);
+      const classification = getDataClassification(quarter, { scope: 'model' });
 
       // 2. Top Watermark Banner (34px height)
-      const bannerHeight = 34;
+      const bannerHeight = 48;
       ctx.fillStyle = classification.isScenario 
         ? 'rgba(88, 28, 135, 0.92)' 
-        : classification.type === 'PENDING_ESTIMATE'
+        : classification.type === 'MODEL'
           ? 'rgba(120, 53, 15, 0.92)'
           : 'rgba(15, 23, 42, 0.92)';
       ctx.fillRect(0, 0, canvas.width, bannerHeight);
@@ -40,14 +40,13 @@ export function addWatermarkToDataUrl(dataUrl, quarter, chartTitle = 'BIS IBS Ca
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`EUGENE FINANCE · Global Capital Flow Atlas · ${chartTitle} · ${quarter}`, 14, bannerHeight / 2);
+      ctx.fillText(`EUGENE FINANCE · Global Capital Flow Atlas · ${chartTitle} · ${quarter}`, 14, 14, canvas.width - 28);
 
       // Top-right: Data Classification Pill
       const statusText = `[ ${classification.label} ] ${classification.provenance}`;
       ctx.font = 'bold 12px "SF Pro Display", monospace';
-      ctx.fillStyle = classification.isScenario ? '#e9d5ff' : classification.type === 'PENDING_ESTIMATE' ? '#fde68a' : '#a7f3d0';
-      const textWidth = ctx.measureText(statusText).width;
-      ctx.fillText(statusText, canvas.width - textWidth - 14, bannerHeight / 2);
+      ctx.fillStyle = classification.isScenario ? '#e9d5ff' : classification.type === 'MODEL' ? '#fde68a' : '#a7f3d0';
+      ctx.fillText(statusText, 14, 34, canvas.width - 28);
 
       // 3. Subtle Scenario Watermark Pattern (Diagonal corner stripe if Scenario)
       if (classification.isScenario) {
@@ -68,7 +67,7 @@ export function addWatermarkToDataUrl(dataUrl, quarter, chartTitle = 'BIS IBS Ca
       ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textBaseline = 'middle';
       ctx.fillText(
-        `EUGENE FINANCE Macro Research · BIS LBS / CBS Matrix Calibrated · Exported: ${new Date().toISOString().split('T')[0]} · https://hantrleko.github.io/global-capital-flow-atlas/`,
+        `EUGENE FINANCE Macro Research · Atlas 分析图 · Exported: ${new Date().toISOString().split('T')[0]} · https://hantrleko.github.io/global-capital-flow-atlas/`,
         14,
         canvas.height - footerHeight / 2
       );

@@ -15,7 +15,9 @@ export { NAVIGATION_DOMAINS, getTabTaskMeta };
 
 export default function Header({
   quarters = [],
-  selectedQuarter = '2026Q1',
+  selectedQuarter,
+  latestOfficialQuarter,
+  scenarioQuarters = [],
   onSelectQuarter,
   isPlaying = false,
   onTogglePlay,
@@ -86,7 +88,8 @@ export default function Header({
   }, [isToolboxOpen]);
 
   const currentDisplayDomain = NAVIGATION_DOMAINS.find(d => d.id === selectedDomainId) || activeDomain;
-  const classification = useMemo(() => getDataClassification(selectedQuarter), [selectedQuarter]);
+  const scenarioQuarter = scenarioQuarters.filter(quarter => quarter > latestOfficialQuarter && quarters.includes(quarter)).at(-1);
+  const classification = getDataClassification(selectedQuarter, { isScenario: scenarioQuarters.includes(selectedQuarter) });
 
   const searchResults = searchQuery.trim() === '' ? [] : countries.filter(c =>
     c.name_zh.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -163,14 +166,14 @@ export default function Header({
             </span>
 
             {/* Scenario vs Official Quick Switch (Visible on sm+) */}
-            {selectedQuarter <= '2026Q1' ? (
+            {scenarioQuarter && latestOfficialQuarter && (selectedQuarter <= latestOfficialQuarter ? (
               <button
                 onClick={() => {
                   soundFx.playChime();
-                  onSelectQuarter('2026Q4');
+                  onSelectQuarter(scenarioQuarter);
                 }}
                 className="hidden sm:flex h-7 px-1.5 rounded-lg bg-[#131b2e] hover:bg-[#182238] border border-indigo-400/30 text-indigo-200 hover:text-white text-[11px] font-medium items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
-                title="切换至 2026Q3–Q4 宏观前瞻情景与压力敏感性推演"
+                title={`切换至 ${scenarioQuarter} 前瞻情景`}
               >
                 <Sparkles className="w-3 h-3 text-indigo-400" />
                 <span>进入前瞻情景</span>
@@ -179,15 +182,15 @@ export default function Header({
               <button
                 onClick={() => {
                   soundFx.playTick();
-                  onSelectQuarter('2026Q1');
+                  onSelectQuarter(latestOfficialQuarter);
                 }}
                 className="hidden sm:flex h-7 px-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 hover:text-white text-[11px] font-medium items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
-                title="返回最新 BIS 官方核准发布季度 (2026Q1: $47.62T)"
+                title={`返回 ${latestOfficialQuarter} BIS 债权余额`}
               >
                 <Check className="w-3 h-3 text-emerald-400" />
                 <span>返回官方最新</span>
               </button>
-            )}
+            ))}
           </div>
 
           {/* Right: Search, Investigation, Chart Card, Share, Theme, Zen Mode, Toolbox Popover & Version */}

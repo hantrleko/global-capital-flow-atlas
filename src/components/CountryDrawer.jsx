@@ -183,7 +183,7 @@ export default function CountryDrawer({
     onClose();
   };
 
-  const classification = useMemo(() => getDataClassification(selectedQuarter), [selectedQuarter]);
+  const classification = useMemo(() => getDataClassification(selectedQuarter, { scope: 'model' }), [selectedQuarter]);
 
   return (
     <div className="fixed inset-y-0 right-0 z-40 w-full max-w-lg bg-slate-950/95 border-l border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-y-auto flex flex-col justify-between p-5 backdrop-blur-2xl animate-fade-in font-sans">

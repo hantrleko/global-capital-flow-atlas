@@ -34,7 +34,7 @@ export default function InstitutionalChartCardModal({
 
   if (!isOpen) return null;
 
-  const classification = getDataClassification(selectedQuarter);
+  const classification = getDataClassification(selectedQuarter, { scope: 'model' });
   const globalMacro = (dataset?.global_macro || {})[selectedQuarter] || {};
   const totalClaims = (globalMacro.total_cross_border_claims_usd_bn || 47600) / 1000;
   const usdShare = globalMacro.global_usd_share_pct || 54.2;

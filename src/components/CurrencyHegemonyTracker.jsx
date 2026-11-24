@@ -332,7 +332,7 @@ export default function CurrencyHegemonyTracker({
               </span>
               <DataClassificationBadge
                 quarter={selectedQuarter}
-                sourceText="BIS LBS 币种细分官方序列"
+                sourceText="Atlas 币种份额校准值"
                 methodText="货币错配指数与离岸多元化追踪"
                 onOpenAppendix={onOpenAppendix}
               />

@@ -255,25 +255,32 @@ export function runPortfolioMonteCarloSimulation({
   trialsCount = 500,
   seed = 20260700
 }) {
+  if (!Number.isSafeInteger(trialsCount) || trialsCount < 1) {
+    throw new RangeError('trialsCount must be a positive integer');
+  }
   const portfolio = activePortfolio || PORTFOLIO_PRESETS[0];
-  const baseAum = portfolio.baseAumUsdMn || 500.0;
 
   const deterministicBase = baseStressResult || computePortfolioStressOverlay(portfolio, {
     scenarioId,
     enableLookThrough: true
   });
+  const baseAum = Math.max(0, portfolio.baseAumUsdMn ?? deterministicBase.baseAumUsdMn ?? 500);
 
-  const baseUnhedgedLoss = Math.max(1.0, deterministicBase.unhedgedLossMn || deterministicBase.totalLossMn || 42.5);
-  const optimalHedge = solveOptimalHedgePackage({
+  const suppliedLoss = [deterministicBase.unhedgedLossMn, deterministicBase.totalLossMn].find(Number.isFinite);
+  const computedBase = suppliedLoss === undefined && baseAum > 0
+    ? computePortfolioStressOverlay(portfolio, { scenarioId, enableLookThrough: true })
+    : null;
+  const baseUnhedgedLoss = baseAum > 0 ? Math.max(0, suppliedLoss ?? computedBase?.unhedgedLossMn ?? 0) : 0;
+  const optimalHedge = baseUnhedgedLoss > 0 ? solveOptimalHedgePackage({
     activePortfolio: portfolio,
     scenarioId,
     maxBudgetBps: 150
-  });
-  const bestRec = optimalHedge.bestRecommendation;
-  const hedgeProtectionRatio = baseUnhedgedLoss > 0
-    ? Math.min(0.78, Math.max(0.28, (bestRec?.grossSavedMn || baseUnhedgedLoss * 0.52) / baseUnhedgedLoss))
-    : 0.52;
-  const fixedHedgeCostMn = bestRec?.hedgeCostMn || Math.round(baseAum * 0.0045 * 10) / 10;
+  }) : null;
+  const bestRec = optimalHedge?.bestRecommendation;
+  const grossSavings = bestRec?.grossSavedMn ?? 0;
+  const hedgeProtectionRatio = grossSavings > 0 ? Math.min(0.78, grossSavings / baseUnhedgedLoss) : 0;
+  const paidCost = deterministicBase.hedgeCostMn;
+  const fixedHedgeCostMn = bestRec?.hedgeCostMn ?? (baseAum > 0 && Number.isFinite(paidCost) ? Math.max(0, paidCost) : 0);
 
   const rng = createDeterministicPrng(seed);
   const unhedgedLosses = new Float64Array(trialsCount);
@@ -317,36 +324,36 @@ export function runPortfolioMonteCarloSimulation({
       var99Mn: Math.round(var99 * 10) / 10,
       cvar99Mn: Math.round(cvar99 * 10) / 10,
       maxTailLossMn: Math.round(maxTail * 10) / 10,
-      cvar99PctOfAum: Math.round((cvar99 / baseAum) * 1000) / 10
+      cvar99PctOfAum: baseAum > 0 ? Math.round((cvar99 / baseAum) * 1000) / 10 : 0
     };
   };
 
   const unhedgedStats = computeStats(sortedUnhedged);
   const hedgedStats = computeStats(sortedHedged);
 
-  // Build 12 histogram buckets across [0, maxUnhedged]
+  // Include the full support of both loss distributions.
   const binCount = 12;
-  const maxDomainMn = Math.max(20, Math.ceil(unhedgedStats.maxTailLossMn / 10) * 10);
+  const maxDomainMn = Math.max(20, Math.ceil(Math.max(sortedUnhedged.at(-1), sortedHedged.at(-1)) / 10) * 10);
   const binWidth = maxDomainMn / binCount;
 
   const histogramBins = Array.from({ length: binCount }, (_, bIdx) => {
-    const minMn = Math.round(bIdx * binWidth * 10) / 10;
-    const maxMn = Math.round((bIdx + 1) * binWidth * 10) / 10;
+    const minMn = bIdx * binWidth;
+    const maxMn = bIdx === binCount - 1 ? maxDomainMn : (bIdx + 1) * binWidth;
     let uCount = 0;
     let hCount = 0;
 
     for (let i = 0; i < trialsCount; i++) {
       const uVal = sortedUnhedged[i];
       const hVal = sortedHedged[i];
-      if (uVal >= minMn && (bIdx === binCount - 1 ? uVal <= maxMn * 1.05 : uVal < maxMn)) uCount++;
-      if (hVal >= minMn && (bIdx === binCount - 1 ? hVal <= maxMn * 1.05 : hVal < maxMn)) hCount++;
+      if (uVal >= minMn && (bIdx === binCount - 1 ? uVal <= maxMn : uVal < maxMn)) uCount++;
+      if (hVal >= minMn && (bIdx === binCount - 1 ? hVal <= maxMn : hVal < maxMn)) hCount++;
     }
 
     return {
       binIndex: bIdx,
       binLabel: `$${Math.round(minMn)}-${Math.round(maxMn)}M`,
-      minMn,
-      maxMn,
+      minMn: Math.round(minMn * 10) / 10,
+      maxMn: Math.round(maxMn * 10) / 10,
       unhedgedCount: uCount,
       hedgedCount: hCount,
       unhedgedPct: Math.round((uCount / trialsCount) * 1000) / 10,
@@ -362,13 +369,14 @@ export function runPortfolioMonteCarloSimulation({
 
   return {
     trialsCount,
+    tailSampleCount: trialsCount - Math.floor(trialsCount * 0.99),
     seed: `ATLAS-MC-${seed}`,
     baseAumUsdMn: baseAum,
     unhedgedStats,
     hedgedStats,
     tailReductionMn,
     tailReductionPct,
-    appliedHedgeName: bestRec?.name || '主权 CDS + 跨货币基差领口组合',
+    appliedHedgeName: bestRec?.name ?? (fixedHedgeCostMn > 0 ? '仅计入已提供的对冲成本' : '无模拟对冲'),
     histogramBins
   };
 }

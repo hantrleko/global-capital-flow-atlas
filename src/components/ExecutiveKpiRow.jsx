@@ -119,7 +119,7 @@ export default function ExecutiveKpiRow({
     const sorted = [...currentLinks].sort((a, b) => b.claims_usd_bn - a.claims_usd_bn);
     const sum5 = sorted.slice(0, 5).reduce((acc, cur) => acc + (cur.claims_usd_bn || 0), 0);
     const sumAll = sorted.reduce((acc, cur) => acc + (cur.claims_usd_bn || 0), 0);
-    return sumAll > 0 ? Math.round((sum5 / sumAll) * 1000) / 10 : 41.8;
+    return sumAll > 0 ? Math.round((sum5 / sumAll) * 1000) / 10 : null;
   }, [currentLinks]);
 
   const animatedTop5 = useAnimatedNumber(top5Claims, 260);
@@ -130,11 +130,11 @@ export default function ExecutiveKpiRow({
       <div className="min-w-[280px] md:min-w-0 flex-1 atlas-card-elevated atlas-specular-bar rounded-xl px-4 py-2 flex items-center justify-between gap-2 shadow-md hover:border-sky-400/30 transition-all shrink-0">
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-300 whitespace-nowrap" title="Total Cross-Border Banking Claims (BIS LBS)">
-              全球跨境信贷总额
+            <span className="text-xs font-semibold text-slate-300 whitespace-nowrap" title="Total Cross-Border Banking Claims (Atlas 模型)">
+              全球跨境债权校准值
             </span>
             <span className="text-[11px] font-mono text-sky-300 bg-sky-950/60 px-1.5 py-0.2 rounded border border-sky-500/25 whitespace-nowrap shrink-0">
-              BIS LBS
+              Atlas 模型
             </span>
           </div>
           <div className="flex items-baseline gap-2 tabular-nums flex-wrap sm:flex-nowrap">
@@ -166,7 +166,7 @@ export default function ExecutiveKpiRow({
               美元份额与紧缩指数
             </span>
             <span className="text-[11px] font-mono text-indigo-300 bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-500/25 whitespace-nowrap shrink-0">
-              CBS 统计
+              合成指标
             </span>
           </div>
           <div className="flex items-baseline gap-2 tabular-nums whitespace-nowrap">
@@ -197,12 +197,12 @@ export default function ExecutiveKpiRow({
               走廊集中度与核心枢纽
             </span>
             <span className="text-[11px] font-mono text-emerald-300 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/25 whitespace-nowrap shrink-0">
-              506 走廊
+              {currentLinks.length} 条走廊
             </span>
           </div>
           <div className="flex items-baseline gap-2 tabular-nums">
             <span className="text-base md:text-lg font-black font-mono text-white tracking-tight whitespace-nowrap">
-              Top 5 占 {Number(animatedTop5).toFixed(1)}%
+              {top5Claims === null ? '暂无走廊数据' : 'Top 5 占 ' + Number(animatedTop5).toFixed(1) + '%'}
             </span>
             <span className="text-xs font-sans text-slate-400 whitespace-nowrap truncate">
               枢纽: 美英日德中

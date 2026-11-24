@@ -1,4 +1,20 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import * as XLSX from 'xlsx';
+const bisSnapshot = JSON.parse(await readFile(new URL('../../src/data/bis_observations.json', import.meta.url), 'utf8'));
+const amounts = new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 });
+const formatBisAmount = value => amounts.format(value / 1000);
+function bisResearchMetrics(quarter, reporter = '5A', counterparty = '5J') {
+  const series = measure => 'Q.' + measure + '.C.A.TO1.A.5J.A.' + reporter + '.A.' + counterparty + '.N';
+  const read = (measure, q) => ({
+    valueMn: bisSnapshot.series[series(measure)]?.[q]?.value_mn,
+    source: 'https://data.bis.org/topics/LBS/BIS,WS_LBS_D_PUB,1.0/' + series(measure)
+  });
+  const stock = read('S', quarter);
+  const previous = new Date(Date.UTC(Number(quarter.slice(0, 4)), Number(quarter.at(-1)) * 3 - 4, 1));
+  const previousQuarter = previous.getUTCFullYear() + 'Q' + (Math.floor(previous.getUTCMonth() / 3) + 1);
+  return { stock, adjusted: read('F', quarter), stockChangeMn: stock.valueMn - read('S', previousQuarter).valueMn };
+}
 
 test.describe('Global Capital Flow Atlas - Production Verification', () => {
 
@@ -51,24 +67,15 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     expect(barBox, 'Module bar must have a valid bounding box').not.toBeNull();
     expect(barBox.width, 'Module bar width at 1280px must be >= 500px').toBeGreaterThanOrEqual(500);
 
-    // Verify Default Quarter is 2026Q1 (Official)
+    // Landing defaults to the latest published BIS stock
     const officialBadge = page.getByText(/官方观测/i).first();
     await expect(officialBadge).toBeVisible();
 
-    // Verify Executive KPI Row Values are Valid Non-Empty Quantities (No $undefined, no naked $)
-    const kpiRow = page.locator('#main-viewport > div').first();
-    await expect(kpiRow).toBeVisible();
-    const kpiText = await kpiRow.innerText();
-    
-    // KPI 1 Total Claims must have valid amount (e.g. $47.62T or equivalent)
-    expect(kpiText).toMatch(/\$[0-9]+\.[0-9]{2}T|\€[0-9]+|\¥[0-9]+/);
-    expect(kpiText).not.toContain('$undefined');
-    expect(kpiText).not.toContain('NaN');
-    expect(kpiText).not.toMatch(/\$\s+[A-Z]/); // No lone $ with whitespace
-
-    // KPI 2 USD Share & Stress Index must have valid numeric percentages
-    expect(kpiText).toMatch(/[0-9]+\.[0-9]%/);
-    expect(kpiText).toMatch(/压力:\s*[0-9]+\.[0-9]/);
+    const research = page.getByRole('region', { name: '跨境银行债权季度观察' });
+    const { stock, adjusted, stockChangeMn } = bisResearchMetrics(bisSnapshot.latest_stock_quarter);
+    await expect(research.getByText(formatBisAmount(stock.valueMn), { exact: true })).toBeVisible();
+    await expect(research.getByText(formatBisAmount(adjusted.valueMn), { exact: true })).toBeVisible();
+    await expect(research.getByText(formatBisAmount(stockChangeMn), { exact: true })).toBeVisible();
 
     // Verify First-Screen Fold: Map Canvas starts within the upper fold (y <= 380px) and height >= 300px
     const mapCanvas = page.locator('#main-viewport canvas').first();
@@ -77,6 +84,51 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     expect(mapBox, 'Map canvas bounding box must exist').not.toBeNull();
     expect(mapBox.y, 'Map canvas must start within the first screen fold (y <= 380px)').toBeLessThanOrEqual(380);
     expect(mapBox.height, 'Map canvas must have at least 300px height for primary visualization').toBeGreaterThanOrEqual(300);
+  });
+
+  test('Published corridor details, CSV and study draft use the same quarter', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (const quarter of ['2026Q1', '2026Q2']) {
+      await page.goto('/?q=' + quarter);
+      const research = page.getByRole('region', { name: '跨境银行债权季度观察' });
+      const links = research.locator('#bis-corridors button');
+      await expect(links.filter({ visible: true })).toHaveCount(3);
+      await research.getByRole('button', { name: '查看全部五条' }).click();
+      await expect(links.filter({ visible: true })).toHaveCount(5);
+      const { stock, adjusted } = bisResearchMetrics(quarter, 'JP', 'US');
+      await research.getByRole('button', { name: new RegExp(formatBisAmount(adjusted.valueMn).replace('.', '[.]')) }).click();
+      const detail = research.locator('#bis-corridor-detail');
+      await expect(detail.getByRole('link', { name: '存量序列' })).toHaveAttribute('href', stock.source);
+      await expect(detail.getByRole('link', { name: '调整序列' })).toHaveAttribute('href', adjusted.source);
+      await expect(detail).toContainText(formatBisAmount(stock.valueMn));
+      const pending = page.waitForEvent('download');
+      await research.getByRole('button', { name: '下载季度 CSV' }).click();
+      const csv = await pending;
+      const downloaded = await readFile(await csv.path(), 'utf8');
+      expect(csv.suggestedFilename()).toContain(quarter + '-' + bisSnapshot.version);
+      expect(downloaded).toContain('"' + quarter + '","' + quarter + '","JP","US","fx_break_adjusted_change","' + adjusted.valueMn + '"');
+      expect(downloaded).toContain(adjusted.source);
+    }
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    for (const quarter of ['2020Q1', '2026Q2']) {
+      await page.goto('/?q=' + quarter);
+      await page.getByTestId('header-pitchdeck-btn').click();
+      const draft = page.getByTestId('ic-pitchdeck-modal');
+      await expect(draft).toContainText(quarter + ' · 研究草案');
+      await expect(draft).toContainText(formatBisAmount(bisResearchMetrics(quarter).stock.valueMn));
+      await expect(draft).not.toContainText('全票通过');
+    }
+
+    await page.goto('/?tab=dossier&q=2026Q2');
+    const workbookPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: '导出机构级 Excel' }).click();
+    const workbookFile = await workbookPromise;
+    const workbook = XLSX.read(await readFile(await workbookFile.path()));
+    const observations = XLSX.utils.sheet_to_json(workbook.Sheets['BIS_Quarterly_Observations']);
+    const total = observations.find(row => row.reporting_location === '5A' && row.metric === 'stock');
+    expect(total.value_usd_million).toBe(bisResearchMetrics('2026Q2').stock.valueMn);
+    expect(total.snapshot_version).toBe(bisSnapshot.version);
   });
 
   test('2. GitHub Pages Subpath Mount (/global-capital-flow-atlas/)', async ({ page }) => {
@@ -184,8 +236,8 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const mainViewport = page.locator('#main-viewport');
     await expect(mainViewport).toBeVisible({ timeout: 10000 });
 
-    // Verify initial is 2026Q1 Official
-    await expect(page.locator('#current-quarter-display')).toHaveText('2026Q1');
+    // Verify the snapshot's latest official quarter
+    await expect(page.locator('#current-quarter-display')).toHaveText(bisSnapshot.latest_stock_quarter);
     await expect(page.getByText('官方观测').first()).toBeVisible();
 
     // Click '进入前瞻情景'
@@ -202,8 +254,8 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     await expect(returnOfficialBtn).toBeVisible();
     await returnOfficialBtn.click();
 
-    // Verify returned to 2026Q1 Official
-    await expect(page.locator('#current-quarter-display')).toHaveText('2026Q1');
+    // Verify return to the published quarter
+    await expect(page.locator('#current-quarter-display')).toHaveText(bisSnapshot.latest_stock_quarter);
     await expect(page.getByText('官方观测').first()).toBeVisible();
   });
 
@@ -273,8 +325,8 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const mainViewport = page.locator('#main-viewport');
     await expect(mainViewport).toBeVisible({ timeout: 10000 });
 
-    // 1. Initial 2026Q1: Must show '官方观测'
-    await expect(page.locator('#current-quarter-display')).toHaveText('2026Q1');
+    // 1. Landing shows the official stock classification
+    await expect(page.locator('#current-quarter-display')).toHaveText(bisSnapshot.latest_stock_quarter);
     const officialCount = await page.getByText('官方观测').count();
     expect(officialCount).toBeGreaterThanOrEqual(1);
 
@@ -303,8 +355,7 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     const shareBtn = page.getByTitle(/一键复制当前推演视图深度链接/);
     await expect(shareBtn).toBeVisible();
 
-    // 3. Macro Insights Banner
-    await expect(page.getByText(/本季 30 秒宏观洞察/)).toBeVisible();
+    await expect(page.getByRole('region', { name: '跨境银行债权季度观察' })).toBeVisible();
 
     // 4. Global Pinned Entity Bar for GB
     const pinnedBar = page.locator('#pinned-entity-bar');
@@ -372,8 +423,8 @@ test.describe('Global Capital Flow Atlas - Production Verification', () => {
     // Verify Active Look-Through Banner is displayed
     const activeBanner = page.locator('[data-testid="look-through-active-banner"]');
     await expect(activeBanner).toBeVisible({ timeout: 5000 });
-    await expect(activeBanner).toContainText('已开启离岸中心穿透还原 (Look-Through OFCs · CBS Table B)');
-    await expect(activeBanner).toContainText('按母国国籍穿透并入母公司最终风险敞口');
+    await expect(activeBanner).toContainText('离岸中心模型穿透');
+    await expect(activeBanner).toContainText('依据预设权重重新分配至母国');
 
     // 2. Open Chart Card Modal and verify Template 5 (Look-Through OFC Card)
     const chartCardBtn = page.getByRole('button', { name: /研报卡片/i }).first();
